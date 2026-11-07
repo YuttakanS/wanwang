@@ -8,7 +8,6 @@ import {
   MessageSquare,
   Edit2,
   Trash2,
-  RotateCcw,
   Trash,
 } from 'lucide-react';
 import { Participant } from '@/types';
@@ -18,7 +17,6 @@ interface ParticipantsListProps {
   participants: Participant[];
   onEdit: (participant: Participant) => void;
   onDelete: (id: string) => void;
-  onResetData: () => void;
   onClearAll: () => void;
 }
 
@@ -26,7 +24,6 @@ export default function ParticipantsList({
   participants,
   onEdit,
   onDelete,
-  onResetData,
   onClearAll,
 }: ParticipantsListProps) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -61,27 +58,20 @@ export default function ParticipantsList({
           </div>
         </div>
 
-        {/* Admin reset / clear options */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onResetData}
-            title="รีเซ็ตเป็นข้อมูลตัวอย่าง"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-medium transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">ใส่ตัวอย่างใหม่</span>
-          </button>
-          <button
-            type="button"
-            onClick={onClearAll}
-            title="ล้างข้อมูลทั้งหมดเพื่อเริ่มใช้จริง"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-red-950/60 border border-slate-700 hover:border-red-500/40 text-slate-400 hover:text-red-300 text-xs font-medium transition-colors"
-          >
-            <Trash className="w-3.5 h-3.5" />
-            <span>ล้างทั้งหมด</span>
-          </button>
-        </div>
+        {/* Admin clear options */}
+        {participants.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClearAll}
+              title="ล้างข้อมูลทั้งหมด"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-red-950/60 border border-slate-700 hover:border-red-500/40 text-slate-400 hover:text-red-300 text-xs font-medium transition-colors"
+            >
+              <Trash className="w-3.5 h-3.5" />
+              <span>ล้างทั้งหมด</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {participants.length === 0 ? (

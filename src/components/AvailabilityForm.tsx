@@ -90,37 +90,6 @@ export default function AvailabilityForm({
     }
   };
 
-  // Quick preset: Select all Weekends in this month (Sat & Sun)
-  const handleSelectWeekends = () => {
-    const weekendDates: string[] = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      const d = new Date(year, month, day);
-      const dayOfWeek = d.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        weekendDates.push(dateStr);
-      }
-    }
-    // Union with current selected
-    const merged = Array.from(new Set([...selectedDates, ...weekendDates]));
-    setSelectedDates(merged);
-  };
-
-  // Quick preset: Select all Fri, Sat, Sun in this month
-  const handleSelectFriSatSun = () => {
-    const dates: string[] = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      const d = new Date(year, month, day);
-      const dayOfWeek = d.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        dates.push(dateStr);
-      }
-    }
-    const merged = Array.from(new Set([...selectedDates, ...dates]));
-    setSelectedDates(merged);
-  };
-
   const handleClearSelection = () => {
     setSelectedDates([]);
   };
@@ -223,7 +192,7 @@ export default function AvailabilityForm({
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="เช่น Member 4, Member 2, Member 3สายเบียร์"
+              placeholder="กรอกชื่อของคุณ"
               className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-white placeholder-slate-500 text-sm outline-none transition-all"
             />
           </div>
@@ -285,32 +254,16 @@ export default function AvailabilityForm({
               </p>
             </div>
 
-            {/* Quick Presets */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            {/* Clear Selection Button */}
+            {selectedDates.length > 0 && (
               <button
                 type="button"
-                onClick={handleSelectFriSatSun}
-                className="text-xs px-2.5 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-500/30 text-cyan-200 font-medium transition-colors"
+                onClick={handleClearSelection}
+                className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
               >
-                ⚡ ว่างทุก ศ.-ส.-อา.
+                ล้างวันที่เลือก ({selectedDates.length})
               </button>
-              <button
-                type="button"
-                onClick={handleSelectWeekends}
-                className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-950/80 hover:bg-blue-900/80 border border-blue-500/30 text-blue-200 font-medium transition-colors"
-              >
-                🌴 ว่างทุก ส.-อา.
-              </button>
-              {selectedDates.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearSelection}
-                  className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
-                >
-                  ล้าง ({selectedDates.length})
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Month Header Controller */}

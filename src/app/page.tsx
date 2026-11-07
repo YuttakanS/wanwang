@@ -68,26 +68,8 @@ export default function Home() {
     }
   };
 
-  const handleResetData = async () => {
-    if (confirm('ต้องการโหลดข้อมูลตัวอย่างกลับมาใหม่หรือไม่?')) {
-      try {
-        const res = await fetch('/api/participants', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'reset' }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          setParticipants(data.data);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  };
-
   const handleClearAll = async () => {
-    if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลทั้งหมด เพื่อให้เพื่อนๆ เริ่มลงชื่อจริง?')) {
+    if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลทั้งหมด?')) {
       try {
         const res = await fetch('/api/participants', {
           method: 'POST',
@@ -156,7 +138,6 @@ export default function Home() {
             participants={participants}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onResetData={handleResetData}
             onClearAll={handleClearAll}
           />
         </div>
