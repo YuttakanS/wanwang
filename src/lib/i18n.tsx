@@ -244,6 +244,11 @@ export const translations: Record<Language, Translations> = {
     notFoundTitle: 'ไม่พบกิจกรรมนี้',
     notFoundDesc: 'ลิงก์กิจกรรมอาจไม่ถูกต้อง หรือกิจกรรมถูกลบไปแล้ว',
     returnHomeBtn: 'กลับหน้าหลัก',
+    pageNotFoundTitle: 'ไม่พบหน้านี้',
+    pageNotFoundDesc: 'ลิงก์อาจไม่ถูกต้อง หรือหน้านี้ถูกย้ายไปแล้ว',
+    errorTitle: 'เกิดข้อผิดพลาด',
+    errorDesc: 'ระบบขัดข้องชั่วคราว ลองใหม่อีกครั้งได้เลย',
+    retryBtn: 'ลองใหม่',
   },
 
   en: {
@@ -481,6 +486,11 @@ export const translations: Record<Language, Translations> = {
     notFoundTitle: 'Event not found',
     notFoundDesc: 'The link might be broken or this event was removed.',
     returnHomeBtn: 'Return to home',
+    pageNotFoundTitle: 'Page not found',
+    pageNotFoundDesc: 'The link might be broken or this page has moved.',
+    errorTitle: 'Something went wrong',
+    errorDesc: 'This is a temporary problem. Please try again.',
+    retryBtn: 'Try again',
   },
 };
 

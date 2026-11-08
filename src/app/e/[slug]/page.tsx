@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, use } from 'react';
-import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import ScheduleMatrix from '@/components/ScheduleMatrix';
 import BestTimeLeaderboard from '@/components/BestTimeLeaderboard';
 import EventShareBar from '@/components/EventShareBar';
 import ParticipantsRoster from '@/components/ParticipantsRoster';
 import AdminLinkNotice from '@/components/AdminLinkNotice';
+import StatusPage from '@/components/StatusPage';
 import {
   clearAdminLinkPending,
   getStoredAdminKey,
@@ -19,6 +19,18 @@ import {
 import { WanWangEvent, Participant, EVENT_CATEGORIES, EventCategory } from '@/types';
 import { formatLocalizedDate, formatLocalizedDateRange } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
+
+class EventLoadError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+async function readEventResponse(res: Response) {
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data) throw new EventLoadError(data?.error || '', res.status);
+  return data;
+}
 
 export default function EventDetailPage({
   params,
@@ -33,7 +45,7 @@ export default function EventDetailPage({
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
   const [highlightSlotIds, setHighlightSlotIds] = useState<string[]>([]);
   const [showAdminNotice, setShowAdminNotice] = useState(false);
   const [adminLinkInvalid, setAdminLinkInvalid] = useState(false);
@@ -61,11 +73,7 @@ export default function EventDetailPage({
         return fetch(`/api/events/${slug}`, { headers, cache: 'no-store' });
       };
 
-      let res = await requestEvent(linkKey || storedKey);
-      let data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to load event');
-      }
+      let data = await readEventResponse(await requestEvent(linkKey || storedKey));
 
       if (linkKey) {
         pendingAdminKeyRef.current = null;
@@ -76,22 +84,22 @@ export default function EventDetailPage({
           setAdminLinkInvalid(true);
           // A bad link must not hide rights this browser already has.
           if (storedKey && storedKey !== linkKey) {
-            res = await requestEvent(storedKey);
-            data = await res.json();
-            if (!res.ok) {
-              throw new Error(data.error || 'Failed to load event');
-            }
+            data = await readEventResponse(await requestEvent(storedKey));
           }
         }
       }
 
+      setLoadError(null);
       setEvent(data.event);
       setParticipants(data.participants || []);
       setIsAdmin(Boolean(data.isAdmin));
       setShowAdminNotice(Boolean(data.isAdmin) && isAdminLinkPending(slug));
     } catch (err: unknown) {
-      const error = err as Error;
-      setErrorMsg(error?.message || 'FAILED TO LOAD EVENT DATA');
+      setLoadError(
+        err instanceof EventLoadError
+          ? { status: err.status, message: err.message }
+          : { status: 0, message: '' } // network failure
+      );
     } finally {
       setIsLoading(false);
     }
@@ -131,23 +139,22 @@ export default function EventDetailPage({
     );
   }
 
-  if (errorMsg || !event) {
+  if ((!loadError && !event) || loadError?.status === 404) {
+    return <StatusPage title={t('notFoundTitle')} description={t('notFoundDesc')} />;
+  }
+
+  if (loadError || !event) {
     return (
-      <div className="min-h-screen bg-white text-black">
-        <Navbar />
-        <div className="max-w-md mx-auto py-20 px-4 text-center space-y-4">
-          <div className="border-3 border-black p-6 bg-white space-y-3">
-            <h2 className="text-xl font-bold">{t('notFoundTitle')}</h2>
-            <p className="text-xs text-[#525252]">{errorMsg || t('notFoundDesc')}</p>
-            <Link
-              href="/"
-              className="btn-primary-raw px-4 py-2 text-xs"
-            >
-              {t('returnHomeBtn')}
-            </Link>
-          </div>
-        </div>
-      </div>
+      <StatusPage
+        title={t('errorTitle')}
+        // The 429 message tells people to wait; other server messages are not written for users.
+        description={(loadError?.status === 429 && loadError.message) || t('errorDesc')}
+        onRetry={() => {
+          setLoadError(null);
+          setIsLoading(true);
+          fetchEventData();
+        }}
+      />
     );
   }
 
