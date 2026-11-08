@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { WanWangEvent, Participant, AdminEventSummary } from '@/types';
 import { supabase, useSupabase } from './supabaseClient';
-import { hashAdminKey, safeEqual, verifyAdminKey } from './validation';
+import { hashSecret, verifySecret } from './validation';
 import { generateDatesInRange, formatDateToISO } from './timeUtils';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -90,7 +90,7 @@ export async function createEvent(
   const newEvent: WanWangEvent = {
     ...params,
     id,
-    adminKey: hashAdminKey(params.adminKey),
+    adminKey: hashSecret(params.adminKey),
     dateRangeStart,
     dateRangeEnd,
     durationDays: params.durationDays || 1,
@@ -233,7 +233,7 @@ export async function updateEvent(
       .eq('slug', slug)
       .single();
 
-    if (!existing || !verifyAdminKey(adminKey, existing.admin_key)) {
+    if (!existing || !verifySecret(adminKey, existing.admin_key)) {
       throw new Error('UNAUTHORIZED');
     }
 
@@ -304,7 +304,7 @@ export async function updateEvent(
   }
 
   const events = await readLocalEvents();
-  const index = events.findIndex(e => (e.slug === slug || e.id === slug) && verifyAdminKey(adminKey, e.adminKey));
+  const index = events.findIndex(e => (e.slug === slug || e.id === slug) && verifySecret(adminKey, e.adminKey));
   if (index === -1) return null;
 
   const existingEvent = events[index];
@@ -353,6 +353,7 @@ export async function updateEvent(
   return { ...events[index], adminKey };
 }
 
+/** editToken here is the stored hash. Never send it to a client. */
 export async function getParticipantsByEventId(eventId: string): Promise<Participant[]> {
   if (useSupabase() && supabase) {
     const { data, error } = await supabase
@@ -382,6 +383,7 @@ export async function getParticipantsByEventId(eventId: string): Promise<Partici
   return all.filter(p => p.eventId === eventId);
 }
 
+/** Stores only the token's hash and returns the plaintext token to its owner. */
 export async function upsertParticipant(
   eventId: string,
   data: {
@@ -407,7 +409,7 @@ export async function upsertParticipant(
         })
         .eq('id', data.id)
         .eq('event_id', eventId)
-        .eq('edit_token', data.editToken)
+        .eq('edit_token', hashSecret(data.editToken))
         .select()
         .maybeSingle();
 
@@ -419,7 +421,7 @@ export async function upsertParticipant(
         eventId: updated.event_id,
         name: updated.name,
         note: updated.note,
-        editToken: updated.edit_token,
+        editToken: data.editToken,
         availability: updated.availability,
         createdAt: updated.created_at,
         updatedAt: updated.updated_at,
@@ -432,7 +434,7 @@ export async function upsertParticipant(
           event_id: eventId,
           name: data.name,
           note: data.note,
-          edit_token: editToken,
+          edit_token: hashSecret(editToken),
           availability: data.availability,
         })
         .select()
@@ -445,7 +447,7 @@ export async function upsertParticipant(
         eventId: inserted.event_id,
         name: inserted.name,
         note: inserted.note,
-        editToken: inserted.edit_token,
+        editToken,
         availability: inserted.availability,
         createdAt: inserted.created_at,
         updatedAt: inserted.updated_at,
@@ -456,7 +458,7 @@ export async function upsertParticipant(
   const participants = await readLocalParticipants();
   if (data.id) {
     const idx = participants.findIndex(
-      p => p.id === data.id && p.eventId === eventId && safeEqual(p.editToken, data.editToken)
+      p => p.id === data.id && p.eventId === eventId && verifySecret(data.editToken, p.editToken)
     );
     if (idx === -1) throw new Error('FORBIDDEN');
     participants[idx] = {
@@ -467,15 +469,16 @@ export async function upsertParticipant(
       updatedAt: now,
     };
     await writeLocalParticipants(participants);
-    return participants[idx];
+    return { ...participants[idx], editToken: data.editToken };
   }
 
+  const editToken = crypto.randomBytes(16).toString('hex');
   const newParticipant: Participant = {
     id: crypto.randomUUID(),
     eventId,
     name: data.name,
     note: data.note,
-    editToken: crypto.randomBytes(16).toString('hex'),
+    editToken: hashSecret(editToken),
     availability: data.availability,
     createdAt: now,
     updatedAt: now,
@@ -483,7 +486,7 @@ export async function upsertParticipant(
 
   participants.push(newParticipant);
   await writeLocalParticipants(participants);
-  return newParticipant;
+  return { ...newParticipant, editToken };
 }
 
 export async function deleteParticipant(
@@ -500,7 +503,7 @@ export async function deleteParticipant(
       .eq('id', participantId)
       .eq('event_id', eventId);
     if (!auth.asAdmin) {
-      query = query.eq('edit_token', auth.editToken!);
+      query = query.eq('edit_token', hashSecret(auth.editToken!));
     }
     const { data, error } = await query.select('id');
     return !error && (data?.length ?? 0) > 0;
@@ -512,7 +515,7 @@ export async function deleteParticipant(
       !(
         p.id === participantId &&
         p.eventId === eventId &&
-        (auth.asAdmin || safeEqual(p.editToken, auth.editToken))
+        (auth.asAdmin || verifySecret(auth.editToken, p.editToken))
       )
   );
   if (filtered.length !== participants.length) {
@@ -525,7 +528,7 @@ export async function deleteParticipant(
 /** Replaces the admin key, invalidating the old key and every link built from it. */
 export async function rotateAdminKey(slug: string, currentKey: string): Promise<string | null> {
   const newKey = crypto.randomBytes(16).toString('hex');
-  const newHash = hashAdminKey(newKey);
+  const newHash = hashSecret(newKey);
   const now = new Date().toISOString();
 
   if (useSupabase() && supabase) {
@@ -534,7 +537,7 @@ export async function rotateAdminKey(slug: string, currentKey: string): Promise<
       .select('id, admin_key')
       .eq('slug', slug)
       .maybeSingle();
-    if (!existing || !verifyAdminKey(currentKey, existing.admin_key)) return null;
+    if (!existing || !verifySecret(currentKey, existing.admin_key)) return null;
 
     // Matching the old key too means two simultaneous rotations cannot both win.
     const { data, error } = await supabase
@@ -549,7 +552,7 @@ export async function rotateAdminKey(slug: string, currentKey: string): Promise<
   }
 
   const events = await readLocalEvents();
-  const index = events.findIndex(e => e.slug === slug && verifyAdminKey(currentKey, e.adminKey));
+  const index = events.findIndex(e => e.slug === slug && verifySecret(currentKey, e.adminKey));
   if (index === -1) return null;
   events[index] = { ...events[index], adminKey: newHash, updatedAt: now };
   await writeLocalEvents(events);
@@ -571,7 +574,7 @@ export async function getAdminEventSummaries(
     if (error) throw new Error(error.message);
 
     return (data || [])
-      .filter(e => verifyAdminKey(keyBySlug.get(e.slug), e.admin_key))
+      .filter(e => verifySecret(keyBySlug.get(e.slug), e.admin_key))
       .map(e => ({
         slug: e.slug,
         title: e.title,
@@ -583,7 +586,7 @@ export async function getAdminEventSummaries(
 
   const [events, participants] = await Promise.all([readLocalEvents(), readLocalParticipants()]);
   return events
-    .filter(e => verifyAdminKey(keyBySlug.get(e.slug), e.adminKey))
+    .filter(e => verifySecret(keyBySlug.get(e.slug), e.adminKey))
     .map(e => ({
       slug: e.slug,
       title: e.title,
@@ -600,13 +603,13 @@ export async function deleteEvent(slug: string, adminKey: string): Promise<boole
       .select('id, admin_key')
       .eq('slug', slug)
       .maybeSingle();
-    if (!existing || !verifyAdminKey(adminKey, existing.admin_key)) return false;
+    if (!existing || !verifySecret(adminKey, existing.admin_key)) return false;
     const { error } = await supabase.from('events').delete().eq('id', existing.id);
     return !error;
   }
 
   const events = await readLocalEvents();
-  const found = events.find(e => e.slug === slug && verifyAdminKey(adminKey, e.adminKey));
+  const found = events.find(e => e.slug === slug && verifySecret(adminKey, e.adminKey));
   if (!found) return false;
   await writeLocalEvents(events.filter(e => e.id !== found.id));
   const participants = await readLocalParticipants();

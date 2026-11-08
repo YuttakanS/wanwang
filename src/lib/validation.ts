@@ -25,14 +25,17 @@ export function safeEqual(a: string | null | undefined, b: string | null | undef
   return crypto.timingSafeEqual(ba, bb);
 }
 
-/** Keys are 128-bit random, so a fast unsalted hash is enough. Must match the migration in schema.sql. */
-export function hashAdminKey(key: string): string {
-  return crypto.createHash('sha256').update(key).digest('hex');
+/**
+ * For admin keys and edit tokens. Both are 128-bit random, so a fast unsalted
+ * hash is enough. Must match the migrations in schema.sql.
+ */
+export function hashSecret(secret: string): string {
+  return crypto.createHash('sha256').update(secret).digest('hex');
 }
 
-export function verifyAdminKey(presented: string | null | undefined, storedHash: string | null | undefined): boolean {
+export function verifySecret(presented: string | null | undefined, storedHash: string | null | undefined): boolean {
   if (!presented) return false;
-  return safeEqual(hashAdminKey(presented), storedHash);
+  return safeEqual(hashSecret(presented), storedHash);
 }
 
 export function generateSlug(length = 10): string {

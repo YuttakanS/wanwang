@@ -6,7 +6,7 @@ import {
   getParticipantsByEventId,
 } from '@/lib/db';
 import { rateLimit } from '@/lib/rateLimit';
-import { safeEqual, validateEventPatch, ValidationError, verifyAdminKey } from '@/lib/validation';
+import { validateEventPatch, ValidationError, verifySecret } from '@/lib/validation';
 
 export async function GET(
   req: NextRequest,
@@ -27,13 +27,13 @@ export async function GET(
 
     const { adminKey: adminKeyHash, ...publicEvent } = event;
     const presentedKey = req.headers.get('x-admin-key');
-    const isAdmin = verifyAdminKey(presentedKey, adminKeyHash);
+    const isAdmin = verifySecret(presentedKey, adminKeyHash);
     const myToken = req.headers.get('x-edit-token');
 
     // Never expose other people's edit tokens.
     const publicParticipants = participants.map(({ editToken, ...p }) => ({
       ...p,
-      isMine: safeEqual(myToken, editToken),
+      isMine: verifySecret(myToken, editToken),
     }));
 
     return NextResponse.json({

@@ -149,6 +149,13 @@ SET admin_key = encode(sha256(convert_to(admin_key, 'UTF8')), 'hex')
 WHERE admin_key !~ '^[0-9a-f]{64}$';
 ALTER TABLE events ADD CONSTRAINT events_admin_key_hashed CHECK (admin_key ~ '^[0-9a-f]{64}$');
 
--- 8. Optional retention (enable pg_cron first): delete events older than 180 days
+-- 8. Store edit tokens as SHA-256 hex, same as admin keys. One-way; tokens held by browsers keep working.
+ALTER TABLE participants DROP CONSTRAINT IF EXISTS participants_edit_token_hashed;
+UPDATE participants
+SET edit_token = encode(sha256(convert_to(edit_token, 'UTF8')), 'hex')
+WHERE edit_token !~ '^[0-9a-f]{64}$';
+ALTER TABLE participants ADD CONSTRAINT participants_edit_token_hashed CHECK (edit_token ~ '^[0-9a-f]{64}$');
+
+-- 9. Optional retention (enable pg_cron first): delete events older than 180 days
 -- SELECT cron.schedule('wanwang-cleanup', '0 3 * * *',
 --   $$DELETE FROM events WHERE created_at < NOW() - INTERVAL '180 days'$$);
