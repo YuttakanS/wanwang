@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { WanWangEvent, Participant } from '@/types';
 import { generateLineShareMessage } from '@/lib/timeUtils';
+import { useRouter } from 'next/navigation';
+import { buildAdminLink, forgetEvent, getStoredAdminKey } from '@/lib/adminAccess';
+import ConfirmModal from '@/components/ConfirmModal';
 import { useI18n } from '@/lib/i18n';
 
 interface EventShareBarProps {
@@ -10,6 +13,7 @@ interface EventShareBarProps {
   participants: Participant[];
   isAdmin: boolean;
   onEventUpdated: () => void;
+  onAdminKeyRotated: (newKey: string) => void;
 }
 
 export default function EventShareBar({
@@ -17,13 +21,21 @@ export default function EventShareBar({
   participants,
   isAdmin,
   onEventUpdated,
+  onAdminKeyRotated,
 }: EventShareBarProps) {
   const { lang, t } = useI18n();
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
-  const [copiedAdminKey, setCopiedAdminKey] = useState(false);
+  const [copiedAdminLink, setCopiedAdminLink] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [rotateFailed, setRotateFailed] = useState(false);
+  const [deleteFailed, setDeleteFailed] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const closeDeleteConfirm = useCallback(() => setConfirmingDelete(false), []);
+  const [confirmingRotate, setConfirmingRotate] = useState(false);
+  const closeRotateConfirm = useCallback(() => setConfirmingRotate(false), []);
+  const router = useRouter();
 
   const getEventUrl = () => {
     if (typeof window !== 'undefined') {
@@ -64,15 +76,60 @@ export default function EventShareBar({
     }
   };
 
-  const handleCopyAdminKey = async () => {
-    const adminKey = typeof window !== 'undefined'
-      ? localStorage.getItem(`wanwang_admin_${event.slug}`) || event.adminKey
-      : event.adminKey;
+  const handleCopyAdminLink = async () => {
+    const adminKey = event.adminKey || getStoredAdminKey(event.slug);
 
     if (adminKey) {
-      await navigator.clipboard.writeText(adminKey);
-      setCopiedAdminKey(true);
-      setTimeout(() => setCopiedAdminKey(false), 2000);
+      await navigator.clipboard.writeText(buildAdminLink(event.slug, adminKey));
+      setCopiedAdminLink(true);
+      setTimeout(() => setCopiedAdminLink(false), 2000);
+    }
+  };
+
+  const handleRotateAdminLink = async () => {
+    const adminKey = event.adminKey || getStoredAdminKey(event.slug);
+    if (!adminKey) return;
+
+    setIsUpdating(true);
+    setRotateFailed(false);
+
+    try {
+      const res = await fetch(`/api/events/${event.slug}/admin-key`, {
+        method: 'POST',
+        headers: { 'x-admin-key': adminKey },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.adminKey) throw new Error(data.error || 'Rotate failed');
+      onAdminKeyRotated(data.adminKey);
+    } catch (err) {
+      console.error('Rotate admin key failed:', err);
+      setRotateFailed(true);
+    } finally {
+      setIsUpdating(false);
+      setConfirmingRotate(false);
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    const adminKey = event.adminKey || getStoredAdminKey(event.slug);
+    if (!adminKey) return;
+
+    setIsUpdating(true);
+    setDeleteFailed(false);
+
+    try {
+      const res = await fetch(`/api/events/${event.slug}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-key': adminKey },
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      forgetEvent(event.slug);
+      router.push('/');
+    } catch (err) {
+      console.error('Delete event failed:', err);
+      setDeleteFailed(true);
+      setIsUpdating(false);
+      setConfirmingDelete(false);
     }
   };
 
@@ -145,10 +202,19 @@ export default function EventShareBar({
 
             <button
               type="button"
-              onClick={handleCopyAdminKey}
+              onClick={handleCopyAdminLink}
               className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
             >
-              {copiedAdminKey ? t('copyAdminKeyDone') : t('copyAdminKeyBtn')}
+              {copiedAdminLink ? t('copyAdminLinkDone') : t('copyAdminLinkBtn')}
+            </button>
+
+            <button
+              type="button"
+              disabled={isUpdating}
+              onClick={() => setConfirmingRotate(true)}
+              className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
+            >
+              {t('rotateAdminBtn')}
             </button>
 
             <button
@@ -163,9 +229,54 @@ export default function EventShareBar({
             >
               {event.isClosed ? t('reopenVotingBtn') : t('closeVotingBtn')}
             </button>
+
+            <button
+              type="button"
+              disabled={isUpdating}
+              onClick={() => setConfirmingDelete(true)}
+              className="px-2.5 py-1 font-mono text-xs font-bold border-2 border-black bg-[#FF0000] text-white hover:bg-black hover:text-[#FF0000] transition-none"
+            >
+              {t('deleteEventBtn')}
+            </button>
           </div>
         )}
       </div>
+
+      {rotateFailed && (
+        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">
+          [ERROR] {t('rotateAdminFailed')}
+        </div>
+      )}
+
+      {deleteFailed && (
+        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">
+          [ERROR] {t('deleteEventFailed')}
+        </div>
+      )}
+
+      {confirmingDelete && (
+        <ConfirmModal
+          title={t('deleteEventConfirmTitle', { title: event.title })}
+          description={t('deleteEventConfirmDesc')}
+          cancelLabel={t('confirmCancelBtn')}
+          confirmLabel={isUpdating ? t('deleteEventDeleting') : t('deleteEventConfirmBtn')}
+          isBusy={isUpdating}
+          onCancel={closeDeleteConfirm}
+          onConfirm={handleDeleteEvent}
+        />
+      )}
+
+      {confirmingRotate && (
+        <ConfirmModal
+          title={t('rotateAdminConfirmTitle')}
+          description={t('rotateAdminConfirmDesc')}
+          cancelLabel={t('confirmCancelBtn')}
+          confirmLabel={isUpdating ? t('rotateAdminRotating') : t('rotateAdminConfirmBtn')}
+          isBusy={isUpdating}
+          onCancel={closeRotateConfirm}
+          onConfirm={handleRotateAdminLink}
+        />
+      )}
     </div>
   );
 }

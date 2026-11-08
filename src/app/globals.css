@@ -82,6 +82,98 @@ h1, h2, h3, h4 {
   color: #FFFFFF;
 }
 
+/* ==========================================================================
+   Motion (web-motion-design skill, constrained by RawBlock in design.md)
+   Only transform/opacity are animated. Colors still invert instantly and no
+   soft shadows or glows are added. Slot cells are divs, so they stay
+   unanimated and drag-select on large ranges stays fast.
+   ========================================================================== */
+:root {
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Squash & stretch on press. Specificity beats Tailwind's .transition-none. */
+button:not(.btn-primary-raw):not(.btn-secondary-raw) {
+  transition: transform 120ms var(--ease-standard);
+}
+
+button.btn-secondary-raw {
+  transition: background-color 0.1s ease, color 0.1s ease, transform 120ms var(--ease-standard);
+}
+
+button:not(.btn-primary-raw):active:not(:disabled) {
+  transform: scale(0.96, 1.04);
+}
+
+/* Staging: page sections arrive in reading order. `backwards` leaves no
+   transform behind once finished, so sticky headers and stacking are unaffected. */
+@keyframes motion-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.motion-stagger > *,
+.motion-enter {
+  animation: motion-rise 240ms var(--ease-enter) backwards;
+}
+
+.motion-stagger > :nth-child(2) { animation-delay: 60ms; }
+.motion-stagger > :nth-child(3) { animation-delay: 120ms; }
+.motion-stagger > :nth-child(4) { animation-delay: 180ms; }
+.motion-stagger > :nth-child(n + 5) { animation-delay: 240ms; }
+
+@keyframes motion-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.motion-fade {
+  animation: motion-fade 160ms var(--ease-enter) backwards;
+}
+
+/* Exaggeration: overshoot when something becomes selected or appears. */
+@keyframes motion-pop {
+  from { transform: scale(0.94); }
+  to { transform: scale(1); }
+}
+
+.motion-pop {
+  animation: motion-pop 180ms var(--ease-overshoot) backwards;
+}
+
+/* Follow through: the headline highlight lands after the hero. */
+.motion-highlight {
+  animation: motion-pop 280ms var(--ease-overshoot) 160ms backwards;
+}
+
+/* Errors shake. */
+@keyframes motion-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  45% { transform: translateX(8px); }
+  70% { transform: translateX(-4px); }
+  85% { transform: translateX(2px); }
+}
+
+.motion-shake {
+  animation: motion-shake 320ms var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  button:not(.btn-primary-raw):active:not(:disabled) {
+    transform: none;
+  }
+}
+
 /* Hyperlinks strictly #0000FF */
 a.raw-link {
   color: #0000FF;

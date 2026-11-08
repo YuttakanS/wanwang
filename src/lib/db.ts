@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import { WanWangEvent, Participant } from '@/types';
+import { WanWangEvent, Participant, AdminEventSummary } from '@/types';
 import { supabase, useSupabase } from './supabaseClient';
 import { safeEqual } from './validation';
 import { generateDatesInRange, formatDateToISO } from './timeUtils';
@@ -515,6 +515,76 @@ export async function deleteParticipant(
     return true;
   }
   return false;
+}
+
+/** Replaces the admin key, invalidating the old key and every link built from it. */
+export async function rotateAdminKey(slug: string, currentKey: string): Promise<string | null> {
+  const newKey = crypto.randomBytes(16).toString('hex');
+  const now = new Date().toISOString();
+
+  if (useSupabase() && supabase) {
+    const { data: existing } = await supabase
+      .from('events')
+      .select('id, admin_key')
+      .eq('slug', slug)
+      .maybeSingle();
+    if (!existing || !safeEqual(existing.admin_key, currentKey)) return null;
+
+    // Matching the old key too means two simultaneous rotations cannot both win.
+    const { data, error } = await supabase
+      .from('events')
+      .update({ admin_key: newKey, updated_at: now })
+      .eq('id', existing.id)
+      .eq('admin_key', existing.admin_key)
+      .select('id')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? newKey : null;
+  }
+
+  const events = await readLocalEvents();
+  const index = events.findIndex(e => e.slug === slug && safeEqual(e.adminKey, currentKey));
+  if (index === -1) return null;
+  events[index] = { ...events[index], adminKey: newKey, updatedAt: now };
+  await writeLocalEvents(events);
+  return newKey;
+}
+
+/** Summaries for the events whose key matches; others are silently left out. */
+export async function getAdminEventSummaries(
+  items: { slug: string; adminKey: string }[]
+): Promise<AdminEventSummary[]> {
+  if (items.length === 0) return [];
+  const keyBySlug = new Map(items.map(i => [i.slug, i.adminKey]));
+
+  if (useSupabase() && supabase) {
+    const { data, error } = await supabase
+      .from('events')
+      .select('slug, title, is_closed, created_at, admin_key, participants(count)')
+      .in('slug', [...keyBySlug.keys()]);
+    if (error) throw new Error(error.message);
+
+    return (data || [])
+      .filter(e => safeEqual(e.admin_key, keyBySlug.get(e.slug)))
+      .map(e => ({
+        slug: e.slug,
+        title: e.title,
+        isClosed: e.is_closed,
+        createdAt: e.created_at,
+        participantCount: (e.participants as unknown as { count: number }[])?.[0]?.count ?? 0,
+      }));
+  }
+
+  const [events, participants] = await Promise.all([readLocalEvents(), readLocalParticipants()]);
+  return events
+    .filter(e => safeEqual(e.adminKey, keyBySlug.get(e.slug)))
+    .map(e => ({
+      slug: e.slug,
+      title: e.title,
+      isClosed: e.isClosed,
+      createdAt: e.createdAt,
+      participantCount: participants.filter(p => p.eventId === e.id).length,
+    }));
 }
 
 export async function deleteEvent(slug: string, adminKey: string): Promise<boolean> {

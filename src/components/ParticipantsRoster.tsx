@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import ConfirmModal from '@/components/ConfirmModal';
 import { WanWangEvent, Participant } from '@/types';
 import { useI18n } from '@/lib/i18n';
 
@@ -18,7 +19,10 @@ export default function ParticipantsRoster({
   onParticipantDeleted,
 }: ParticipantsRosterProps) {
   const { t } = useI18n();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Participant | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteFailed, setDeleteFailed] = useState(false);
+  const closeConfirm = useCallback(() => setPendingDelete(null), []);
 
   if (participants.length === 0) return null;
 
@@ -31,11 +35,8 @@ export default function ParticipantsRoster({
     : null;
 
   const handleDelete = async (participant: Participant) => {
-    if (!confirm(t('deleteConfirm', { name: participant.name }))) {
-      return;
-    }
-
-    setDeletingId(participant.id);
+    setIsDeleting(true);
+    setDeleteFailed(false);
 
     try {
       const headers: Record<string, string> = {};
@@ -54,17 +55,19 @@ export default function ParticipantsRoster({
         }
       );
 
-      if (res.ok) {
-        if (typeof window !== 'undefined' && participant.isMine) {
-          localStorage.removeItem(`wanwang_token_${event.slug}`);
-          localStorage.removeItem(`wanwang_pid_${event.slug}`);
-        }
-        onParticipantDeleted();
+      if (!res.ok) throw new Error('Delete failed');
+
+      if (typeof window !== 'undefined' && participant.isMine) {
+        localStorage.removeItem(`wanwang_token_${event.slug}`);
+        localStorage.removeItem(`wanwang_pid_${event.slug}`);
       }
+      onParticipantDeleted();
     } catch (err) {
       console.error('Delete failed:', err);
+      setDeleteFailed(true);
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -114,8 +117,7 @@ export default function ParticipantsRoster({
               {canDelete && (
                 <button
                   type="button"
-                  disabled={deletingId === p.id}
-                  onClick={() => handleDelete(p)}
+                  onClick={() => setPendingDelete(p)}
                   className="px-2.5 py-1 bg-white hover:bg-black hover:text-white text-black border-2 border-black font-mono text-xs self-start sm:self-center transition-none font-bold"
                 >
                   {t('deleteBtn')}
@@ -125,6 +127,24 @@ export default function ParticipantsRoster({
           );
         })}
       </div>
+
+      {deleteFailed && (
+        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">
+          [ERROR] {t('deleteParticipantFailed')}
+        </div>
+      )}
+
+      {pendingDelete && (
+        <ConfirmModal
+          title={t('deleteParticipantConfirmTitle', { name: pendingDelete.name })}
+          description={t('deleteParticipantConfirmDesc')}
+          cancelLabel={t('confirmCancelBtn')}
+          confirmLabel={isDeleting ? t('deleteEventDeleting') : t('deleteParticipantConfirmBtn')}
+          isBusy={isDeleting}
+          onCancel={closeConfirm}
+          onConfirm={() => handleDelete(pendingDelete)}
+        />
+      )}
     </div>
   );
 }

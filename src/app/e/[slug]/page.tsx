@@ -1,14 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, use } from 'react';
+import React, { useState, useEffect, useCallback, useRef, use } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import ScheduleMatrix from '@/components/ScheduleMatrix';
 import BestTimeLeaderboard from '@/components/BestTimeLeaderboard';
 import EventShareBar from '@/components/EventShareBar';
 import ParticipantsRoster from '@/components/ParticipantsRoster';
+import AdminLinkNotice from '@/components/AdminLinkNotice';
+import {
+  clearAdminLinkPending,
+  getStoredAdminKey,
+  isAdminLinkPending,
+  markAdminLinkPending,
+  storeAdminKey,
+  takeAdminKeyFromHash,
+} from '@/lib/adminAccess';
 import { WanWangEvent, Participant, EVENT_CATEGORIES, EventCategory } from '@/types';
-import { formatLocalizedDate } from '@/lib/timeUtils';
+import { formatLocalizedDate, formatLocalizedDateRange } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
 
 export default function EventDetailPage({
@@ -26,37 +35,60 @@ export default function EventDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [highlightSlotIds, setHighlightSlotIds] = useState<string[]>([]);
+  const [showAdminNotice, setShowAdminNotice] = useState(false);
+  const [adminLinkInvalid, setAdminLinkInvalid] = useState(false);
+  const pendingAdminKeyRef = useRef<string | null>(null);
 
   const fetchEventData = useCallback(async () => {
     try {
-      const adminKey = typeof window !== 'undefined'
-        ? localStorage.getItem(`wanwang_admin_${slug}`) || ''
-        : '';
+      // Kept in a ref because reading the hash clears it, and a second call can
+      // start before the first finishes (Strict Mode double-runs effects in dev).
+      pendingAdminKeyRef.current = takeAdminKeyFromHash() ?? pendingAdminKeyRef.current;
+      const linkKey = pendingAdminKeyRef.current;
+      const storedKey = getStoredAdminKey(slug);
 
-      const headers: Record<string, string> = {};
-      if (adminKey) {
-        headers['x-admin-key'] = adminKey;
-      }
-      const myToken = typeof window !== 'undefined'
-        ? localStorage.getItem(`wanwang_token_${slug}`)
-        : null;
-      if (myToken) {
-        headers['x-edit-token'] = myToken;
-      }
+      const requestEvent = (adminKey: string | null) => {
+        const headers: Record<string, string> = {};
+        if (adminKey) {
+          headers['x-admin-key'] = adminKey;
+        }
+        const myToken = typeof window !== 'undefined'
+          ? localStorage.getItem(`wanwang_token_${slug}`)
+          : null;
+        if (myToken) {
+          headers['x-edit-token'] = myToken;
+        }
+        return fetch(`/api/events/${slug}`, { headers, cache: 'no-store' });
+      };
 
-      const res = await fetch(`/api/events/${slug}`, {
-        headers,
-        cache: 'no-store',
-      });
-
-      const data = await res.json();
+      let res = await requestEvent(linkKey || storedKey);
+      let data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to load event');
       }
 
+      if (linkKey) {
+        pendingAdminKeyRef.current = null;
+        if (data.isAdmin) {
+          storeAdminKey(slug, linkKey);
+          setAdminLinkInvalid(false);
+        } else {
+          setAdminLinkInvalid(true);
+          // A bad link must not hide rights this browser already has.
+          if (storedKey && storedKey !== linkKey) {
+            res = await requestEvent(storedKey);
+            data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || 'Failed to load event');
+            }
+          }
+        }
+      }
+
       setEvent(data.event);
       setParticipants(data.participants || []);
-      setIsAdmin(Boolean(data.isAdmin || adminKey));
+      setIsAdmin(Boolean(data.isAdmin));
+      setShowAdminNotice(Boolean(data.isAdmin) && isAdminLinkPending(slug));
     } catch (err: unknown) {
       const error = err as Error;
       setErrorMsg(error?.message || 'FAILED TO LOAD EVENT DATA');
@@ -67,7 +99,27 @@ export default function EventDetailPage({
 
   useEffect(() => {
     fetchEventData();
+    // Pasting an admin link into a tab already on this event only changes the hash.
+    const handleHashChange = () => {
+      if (window.location.hash.startsWith('#admin=')) fetchEventData();
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, [fetchEventData]);
+
+  // The new key goes through the same path as an admin link, so the refetch
+  // still has admin rights even if localStorage is blocked and the save failed.
+  const handleAdminKeyRotated = (newKey: string) => {
+    storeAdminKey(slug, newKey);
+    markAdminLinkPending(slug);
+    pendingAdminKeyRef.current = newKey;
+    fetchEventData();
+  };
+
+  const dismissAdminNotice = () => {
+    clearAdminLinkPending(slug);
+    setShowAdminNotice(false);
+  };
 
   if (isLoading) {
     return (
@@ -114,14 +166,24 @@ export default function EventDetailPage({
   const rangeStart = event.dateRangeStart || event.dates[0];
   const rangeEnd = event.dateRangeEnd || event.dates[event.dates.length - 1];
   const dateRangeStr = rangeStart && rangeEnd
-    ? `${formatLocalizedDate(rangeStart, lang, 'chip')} - ${formatLocalizedDate(rangeEnd, lang, 'chip')}`
+    ? formatLocalizedDateRange(rangeStart, rangeEnd, lang)
     : '';
 
   return (
     <div className="min-h-screen bg-white text-black flex flex-col">
       <Navbar />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 space-y-6 motion-stagger">
+        {showAdminNotice && event.adminKey && (
+          <AdminLinkNotice slug={slug} adminKey={event.adminKey} onDismiss={dismissAdminNotice} />
+        )}
+
+        {adminLinkInvalid && (
+          <div className="p-3 bg-[#FFE500] border-3 border-black text-black font-mono text-xs motion-shake">
+            [ERROR] {t('adminLinkInvalidMsg')}
+          </div>
+        )}
+
         {/* Pinned Confirmed Date Banner */}
         {event.confirmedDate && (
           <div className="bg-[#FFE500] border-4 border-black p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[4px_4px_0_#000]">
@@ -195,6 +257,7 @@ export default function EventDetailPage({
           participants={participants}
           isAdmin={isAdmin}
           onEventUpdated={fetchEventData}
+          onAdminKeyRotated={handleAdminKeyRotated}
         />
 
         {/* Top Matches Leaderboard */}

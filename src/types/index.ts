@@ -111,6 +111,17 @@ export interface Participant {
   updatedAt: string;
 }
 
+/** Max events per POST /api/events/lookup; the client splits larger lists. */
+export const MAX_ADMIN_LOOKUP = 50;
+
+export interface AdminEventSummary {
+  slug: string;
+  title: string;
+  isClosed: boolean;
+  createdAt: string;
+  participantCount: number;
+}
+
 export interface TimeSlot {
   id: string;
   date: string;

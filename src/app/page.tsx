@@ -3,6 +3,7 @@
 import React from 'react';
 import Navbar from '@/components/Navbar';
 import CreateEventForm from '@/components/CreateEventForm';
+import MyEvents from '@/components/MyEvents';
 import { useI18n } from '@/lib/i18n';
 
 export default function HomePage() {
@@ -13,7 +14,7 @@ export default function HomePage() {
       <Navbar />
 
       {/* Main Content */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-12 space-y-10">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-12 space-y-10 motion-stagger">
         {/* Hero Section */}
         <div className="space-y-3 border-b-5 border-black pb-8">
           <div className="inline-block px-2.5 py-0.5 bg-black text-[#FFE500] font-mono text-xs font-bold">
@@ -22,7 +23,7 @@ export default function HomePage() {
 
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-black leading-tight">
             {t('heroHeadline1')} <br className="hidden sm:inline" />
-            <span className="bg-[#FFE500] px-1 inline-block">
+            <span className="bg-[#FFE500] px-1 inline-block motion-highlight">
               {t('heroHeadline2')}
             </span>
           </h1>
@@ -31,6 +32,8 @@ export default function HomePage() {
             {t('heroDescription')}
           </p>
         </div>
+
+        <MyEvents />
 
         {/* Create Event Form */}
         <CreateEventForm />

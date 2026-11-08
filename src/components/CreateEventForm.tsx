@@ -3,8 +3,26 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { EVENT_CATEGORIES, EventCategory, TimeGranularity } from '@/types';
-import { formatLocalizedDate, formatDateToISO } from '@/lib/timeUtils';
+import { formatLocalizedDateRange, formatDateToISO } from '@/lib/timeUtils';
+import { markAdminLinkPending, storeAdminKey } from '@/lib/adminAccess';
 import { useI18n } from '@/lib/i18n';
+
+// `days` is added to the start date, so the inclusive count is days + 1.
+// 1 year = +365 => 366 inclusive days, the API's LIMITS.maxRangeDays cap.
+const RANGE_PRESETS = [
+  { days: 14, labelKey: 'rangePreset2Weeks' },
+  { days: 30, labelKey: 'rangePreset1Month' },
+  { days: 60, labelKey: 'rangePreset2Months' },
+  { days: 365, labelKey: 'rangePreset1Year' },
+] as const;
+
+const DEFAULT_RANGE_DAYS = 365;
+
+function isoDaysFromToday(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return formatDateToISO(d);
+}
 
 export default function CreateEventForm() {
   const router = useRouter();
@@ -16,13 +34,9 @@ export default function CreateEventForm() {
   const [category, setCategory] = useState<EventCategory>('hangout');
   const [granularity, setGranularity] = useState<TimeGranularity>('day');
 
-  // Date Range (default: 30 days from today)
-  const [startDate, setStartDate] = useState<string>(() => formatDateToISO(new Date()));
-  const [endDate, setEndDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return formatDateToISO(d);
-  });
+  // Date Range (default: the 1-year preset)
+  const [startDate, setStartDate] = useState<string>(() => isoDaysFromToday(0));
+  const [endDate, setEndDate] = useState<string>(() => isoDaysFromToday(DEFAULT_RANGE_DAYS));
 
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('22:00');
@@ -41,16 +55,19 @@ export default function CreateEventForm() {
 
   const formattedRange = useMemo(() => {
     if (!startDate || !endDate) return '';
-    return `${formatLocalizedDate(startDate, lang, 'chip')} - ${formatLocalizedDate(endDate, lang, 'chip')}`;
+    return formatLocalizedDateRange(startDate, endDate, lang);
   }, [startDate, endDate, lang]);
 
   const setPresetRange = (days: number) => {
-    const today = new Date();
-    const future = new Date(today);
-    future.setDate(today.getDate() + days);
-    setStartDate(formatDateToISO(today));
-    setEndDate(formatDateToISO(future));
+    setStartDate(isoDaysFromToday(0));
+    setEndDate(isoDaysFromToday(days));
   };
+
+  // Derived from the dates so the highlight can never disagree with them.
+  const activePreset = RANGE_PRESETS.find(
+    p => startDate === isoDaysFromToday(0) && endDate === isoDaysFromToday(p.days)
+  );
+  const activePresetPrefix = activePreset ? `${t(activePreset.labelKey)} • ` : '';
 
   const getCategoryLabel = (id: EventCategory) => {
     switch (id) {
@@ -103,8 +120,9 @@ export default function CreateEventForm() {
         throw new Error(data.error || 'Failed to create event');
       }
 
-      if (typeof window !== 'undefined' && data.adminKey) {
-        localStorage.setItem(`wanwang_admin_${data.event.slug}`, data.adminKey);
+      if (data.adminKey) {
+        storeAdminKey(data.event.slug, data.adminKey);
+        markAdminLinkPending(data.event.slug);
       }
 
       router.push(`/e/${data.event.slug}`);
@@ -166,7 +184,7 @@ export default function CreateEventForm() {
                   onClick={() => setCategory(cat.id)}
                   className={`px-3 py-2 border-2 border-black text-xs font-semibold text-left transition-none ${
                     isSelected
-                      ? 'bg-black text-[#FFE500]'
+                      ? 'bg-black text-[#FFE500] motion-pop'
                       : 'bg-white text-black hover:bg-[#F0F0F0]'
                   }`}
                 >
@@ -220,7 +238,7 @@ export default function CreateEventForm() {
           </div>
           {totalDays > 0 && (
             <span className="font-mono text-xs uppercase px-2 py-1 bg-black text-[#FFE500] font-bold shrink-0 self-start sm:self-center">
-              {t('rangeDaysCount', { count: totalDays, range: formattedRange })}
+              {activePresetPrefix}{t('rangeDaysCount', { count: totalDays, range: formattedRange })}
             </span>
           )}
         </div>
@@ -228,34 +246,24 @@ export default function CreateEventForm() {
         {/* Shortcuts for Range */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold text-black mr-1">{t('shortcutsLabel')}</span>
-          <button
-            type="button"
-            onClick={() => setPresetRange(14)}
-            className="px-3 py-1.5 bg-white hover:bg-black hover:text-[#FFE500] text-black border-2 border-black text-xs font-bold transition-none cursor-pointer"
-          >
-            {t('rangePreset2Weeks')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPresetRange(30)}
-            className="px-3 py-1.5 bg-white hover:bg-black hover:text-[#FFE500] text-black border-2 border-black text-xs font-bold transition-none cursor-pointer"
-          >
-            {t('rangePreset1Month')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPresetRange(60)}
-            className="px-3 py-1.5 bg-white hover:bg-black hover:text-[#FFE500] text-black border-2 border-black text-xs font-bold transition-none cursor-pointer"
-          >
-            {t('rangePreset2Months')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPresetRange(365)}
-            className="px-3 py-1.5 bg-black text-[#FFE500] hover:bg-white hover:text-black border-2 border-black text-xs font-bold transition-none cursor-pointer"
-          >
-            {t('rangePresetUnlimited')}
-          </button>
+          {RANGE_PRESETS.map(preset => {
+            const isActive = activePreset?.days === preset.days;
+            return (
+              <button
+                key={preset.days}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setPresetRange(preset.days)}
+                className={`px-3 py-1.5 border-2 border-black text-xs font-bold transition-none cursor-pointer ${
+                  isActive
+                    ? 'bg-black text-[#FFE500] motion-pop'
+                    : 'bg-white text-black hover:bg-black hover:text-[#FFE500]'
+                }`}
+              >
+                {t(preset.labelKey)}
+              </button>
+            );
+          })}
         </div>
 
         {/* Custom Start & End Date Inputs */}
@@ -298,7 +306,7 @@ export default function CreateEventForm() {
               <span className="mx-1.5 font-sans font-bold">→</span>
               <span className="font-mono font-bold">{endDate}</span>
               <span className="ml-2 font-mono text-[#525252] font-semibold">
-                ({totalDays} {lang === 'th' ? 'วัน' : 'days'})
+                ({activePresetPrefix}{totalDays} {lang === 'th' ? 'วัน' : 'days'})
               </span>
             </div>
           </div>
@@ -332,7 +340,7 @@ export default function CreateEventForm() {
               onClick={() => setGranularity('day')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'day'
-                  ? 'bg-[#FFE500] text-black font-extrabold'
+                  ? 'bg-[#FFE500] text-black font-extrabold motion-pop'
                   : 'bg-white text-black hover:bg-[#F0F0F0]'
               }`}
             >
@@ -343,7 +351,7 @@ export default function CreateEventForm() {
               onClick={() => setGranularity('daypart')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'daypart'
-                  ? 'bg-[#FFE500] text-black font-extrabold'
+                  ? 'bg-[#FFE500] text-black font-extrabold motion-pop'
                   : 'bg-white text-black hover:bg-[#F0F0F0]'
               }`}
             >
@@ -354,7 +362,7 @@ export default function CreateEventForm() {
               onClick={() => setGranularity('hour')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'hour'
-                  ? 'bg-[#FFE500] text-black font-extrabold'
+                  ? 'bg-[#FFE500] text-black font-extrabold motion-pop'
                   : 'bg-white text-black hover:bg-[#F0F0F0]'
               }`}
             >
@@ -433,7 +441,7 @@ export default function CreateEventForm() {
 
       {/* Error Message */}
       {errorMsg && (
-        <div className="p-3 bg-white border-3 border-black text-black font-mono text-xs bg-[#FFE500]">
+        <div className="p-3 bg-white border-3 border-black text-black font-mono text-xs bg-[#FFE500] motion-shake">
           [ERROR] {errorMsg}
         </div>
       )}

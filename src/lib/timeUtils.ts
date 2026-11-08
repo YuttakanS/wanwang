@@ -416,6 +416,12 @@ export function findBestTimeMatches(
   return finalMatches;
 }
 
+// Date range label; includes the year when the range crosses into another year.
+export function formatLocalizedDateRange(start: string, end: string, lang: Language = 'th'): string {
+  const format = start.slice(0, 4) === end.slice(0, 4) ? 'chip' : 'weekday';
+  return `${formatLocalizedDate(start, lang, format)} - ${formatLocalizedDate(end, lang, format)}`;
+}
+
 // Generate Line Share Message Localized
 export function generateLineShareMessage(
   event: WanWangEvent,

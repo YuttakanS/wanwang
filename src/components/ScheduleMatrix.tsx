@@ -86,17 +86,20 @@ export default function ScheduleMatrix({
     if (typeof window !== 'undefined') {
       const storedToken = localStorage.getItem(`wanwang_token_${event.slug}`);
       const storedId = localStorage.getItem(`wanwang_pid_${event.slug}`);
-      if (storedToken && storedId) {
-        const found = participants.find(p => p.id === storedId);
-        if (found) {
-          setCurrentParticipantId(found.id);
-          setEditToken(storedToken);
-          setParticipantName(found.name);
-          setParticipantNote(found.note || '');
-          setMySelectedSlots(found.availability || found.availableDates || []);
-          // If already participated, switch to heatmap tab by default
-          setActiveTab('heatmap');
-        }
+      const found = storedToken && storedId ? participants.find(p => p.id === storedId) : undefined;
+      if (found) {
+        setCurrentParticipantId(found.id);
+        setEditToken(storedToken);
+        setParticipantName(found.name);
+        setParticipantNote(found.note || '');
+        setMySelectedSlots(found.availability || found.availableDates || []);
+        // If already participated, switch to heatmap tab by default
+        setActiveTab('heatmap');
+      } else {
+        // My entry is gone, so the next save must create a new one. Sending the old
+        // id would be rejected as an update to someone else's data.
+        setCurrentParticipantId(null);
+        setEditToken(null);
       }
     }
   }, [event.slug, participants]);
@@ -385,7 +388,7 @@ export default function ScheduleMatrix({
           TAB 1: VOTE MODE
           ========================================================================= */}
       {activeTab === 'vote' && (
-        <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5">
+        <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5 motion-enter">
           {event.isClosed ? (
             <div className="p-4 bg-[#F0F0F0] border-3 border-black text-black font-bold text-sm text-center">
               {t('votingClosedAlert')}
@@ -651,14 +654,14 @@ export default function ScheduleMatrix({
 
               {/* Error Message */}
               {errorMsg && (
-                <div className="p-3 bg-[#FFE500] border-3 border-black text-black font-mono text-xs">
+                <div className="p-3 bg-[#FFE500] border-3 border-black text-black font-mono text-xs motion-shake">
                   [ERROR] {errorMsg}
                 </div>
               )}
 
               {/* Success Notification */}
               {saveSuccess && (
-                <div className="p-3 bg-[#F0F0F0] border-3 border-black text-black font-mono text-xs font-bold">
+                <div className="p-3 bg-[#F0F0F0] border-3 border-black text-black font-mono text-xs font-bold motion-pop">
                   [SUCCESS] {t('saveSuccessMsg')}
                 </div>
               )}
@@ -686,7 +689,7 @@ export default function ScheduleMatrix({
           TAB 2: GROUP HEATMAP MATRIX
           ========================================================================= */}
       {activeTab === 'heatmap' && (
-        <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5">
+        <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5 motion-enter">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-3 border-black pb-3">
             <div>
               <h3 className="text-lg font-bold text-black">
@@ -933,7 +936,7 @@ export default function ScheduleMatrix({
 
               {/* Inspector Popover / Card for Clicked Slot */}
               {activeSlotInfo && (
-                <div className="p-4 bg-black text-white border-3 border-black font-sans text-xs space-y-3">
+                <div className="p-4 bg-black text-white border-3 border-black font-sans text-xs space-y-3 motion-enter">
                   <div className="flex items-center justify-between border-b-2 border-white/40 pb-2">
                     <span className="font-bold text-white text-sm">
                       {granularity === 'day' ? (

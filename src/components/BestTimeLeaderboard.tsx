@@ -96,7 +96,7 @@ export default function BestTimeLeaderboard({
       </div>
 
       {pinError && (
-        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs">
+        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">
           [ERROR] {pinError}
         </div>
       )}
