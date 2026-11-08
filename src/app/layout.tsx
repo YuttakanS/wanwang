@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
 
+// A prerendered page has no per-request nonce, so the CSP in middleware would block its scripts.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "วันว่าง // WanWang",
   description: "ระบบหาเวลานัดตรงกันง่ายๆ ในไม่กี่วินาที ไม่ต้องสมัครสมาชิก",
