@@ -3,33 +3,113 @@
 @tailwind utilities;
 
 :root {
-  --background: #020617;
-  --foreground: #f8fafc;
+  --background: #FFFFFF;
+  --foreground: #000000;
+}
+
+* {
+  border-radius: 0px !important;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Prompt", sans-serif;
+  color: #000000;
+  background-color: #FFFFFF;
+  font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbars */
+/* Headings in IBM Plex Sans Thai with bold weights */
+h1, h2, h3, h4 {
+  font-family: 'IBM Plex Sans Thai', sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* High-contrast placeholder >= 4.5:1 against #F0F0F0 */
+::placeholder {
+  color: #525252 !important;
+  opacity: 1 !important;
+}
+
+/* Primary Brutalist Button with Hard Shadow */
+.btn-primary-raw {
+  background-color: #FFE500;
+  color: #000000;
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0 #000000;
+  font-weight: 700;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary-raw:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000;
+}
+
+.btn-primary-raw:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 #000000;
+}
+
+.btn-primary-raw:disabled {
+  background-color: #F5F5F5;
+  color: #888888;
+  border-color: #CCCCCC;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Secondary Brutalist Button */
+.btn-secondary-raw {
+  background-color: #FFFFFF;
+  color: #000000;
+  border: 3px solid #000000;
+  font-weight: 600;
+  transition: background-color 0.1s ease, color 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-secondary-raw:hover:not(:disabled) {
+  background-color: #000000;
+  color: #FFFFFF;
+}
+
+/* Hyperlinks strictly #0000FF */
+a.raw-link {
+  color: #0000FF;
+  text-decoration: underline;
+}
+
+a.raw-link:hover {
+  background-color: #000000;
+  color: #FFFFFF;
+}
+
+/* Selection: Full Color Inversion */
+::selection {
+  background-color: #000000;
+  color: #FFE500;
+}
+
+/* Stark Brutalist Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #FFFFFF;
+  border-left: 2px solid #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #000000;
 }

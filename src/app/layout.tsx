@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { I18nProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "🍻 วันว่าง - โหวตวันว่างหาตี้ทริป",
-  description: "ช่วยกันลงวันว่างด่วนๆ หาเสาร์-อาทิตย์ที่คนพร้อมสุดแล้วล็อคคิวเปิดตี้ทริปกันเลย!",
-  openGraph: {
-    title: "🍻 วันว่าง - โหวตวันว่าง",
-    description: "ช่วยกันลงวันว่างด่วนๆ หาเสาร์-อาทิตย์ที่คนพร้อมสุดแล้วล็อคคิวเปิดตี้!",
-    type: "website",
-  },
+  title: "วันว่าง // WanWang",
+  description: "ระบบหาเวลานัดตรงกันง่ายๆ ในไม่กี่วินาที ไม่ต้องสมัครสมาชิก",
 };
 
 export default function RootLayout({
@@ -23,12 +19,14 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased bg-slate-950 text-slate-100 min-h-screen">
-        {children}
+      <body className="bg-white text-black min-h-screen">
+        <I18nProvider>
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

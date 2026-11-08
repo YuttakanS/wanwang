@@ -1,156 +1,74 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import Header from '@/components/Header';
-import QuickShare from '@/components/QuickShare';
-import BestDatesLeaderboard from '@/components/BestDatesLeaderboard';
-import HeatmapCalendar from '@/components/HeatmapCalendar';
-import AvailabilityForm from '@/components/AvailabilityForm';
-import ParticipantsList from '@/components/ParticipantsList';
-import { Participant } from '@/types';
+import React from 'react';
+import Navbar from '@/components/Navbar';
+import CreateEventForm from '@/components/CreateEventForm';
+import { useI18n } from '@/lib/i18n';
 
-export default function Home() {
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
-
-  const formRef = useRef<HTMLDivElement>(null);
-  const summaryRef = useRef<HTMLDivElement>(null);
-  const rosterRef = useRef<HTMLDivElement>(null);
-
-  const fetchParticipants = async () => {
-    try {
-      const res = await fetch('/api/participants');
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setParticipants(data.data);
-      }
-    } catch (err) {
-      console.error('Failed to load participants', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchParticipants();
-  }, []);
-
-  const handleFormSuccess = (participant: Participant) => {
-    // Refresh data
-    fetchParticipants();
-    setEditingParticipant(null);
-    // Smooth scroll to leaderboard after submission
-    if (summaryRef.current) {
-      summaryRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const handleEdit = (p: Participant) => {
-    setEditingParticipant(p);
-    if (formRef.current) {
-      formRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      const res = await fetch(`/api/participants?id=${id}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (data.success) {
-        setParticipants(data.data);
-      }
-    } catch (err) {
-      console.error('Failed to delete participant', err);
-    }
-  };
-
-  const handleClearAll = async () => {
-    if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลทั้งหมด?')) {
-      try {
-        const res = await fetch('/api/participants', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'clear' }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          setParticipants([]);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  };
+export default function HomePage() {
+  const { t } = useI18n();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-white">
-      {/* Hero Header */}
-      <Header
-        participants={participants}
-        onScrollToForm={() => formRef.current?.scrollIntoView({ behavior: 'smooth' })}
-        onScrollToSummary={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth' })}
-        onScrollToRoster={() => rosterRef.current?.scrollIntoView({ behavior: 'smooth' })}
-      />
+    <div className="min-h-screen bg-white text-black flex flex-col">
+      <Navbar />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
-        {/* Quick Share to LINE Banner */}
-        <QuickShare participants={participants} />
+      {/* Main Content */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-12 space-y-10">
+        {/* Hero Section */}
+        <div className="space-y-3 border-b-5 border-black pb-8">
+          <div className="inline-block px-2.5 py-0.5 bg-black text-[#FFE500] font-mono text-xs font-bold">
+            {t('heroBadge')}
+          </div>
 
-        {/* Section 1: Top Dates Leaderboard */}
-        <div ref={summaryRef} className="scroll-mt-6">
-          <BestDatesLeaderboard
-            participants={participants}
-            onSelectDate={date => {
-              setSelectedDate(date);
-              // scroll to calendar heatmap
-              const el = document.getElementById('heatmap-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-          />
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-black leading-tight">
+            {t('heroHeadline1')} <br className="hidden sm:inline" />
+            <span className="bg-[#FFE500] px-1 inline-block">
+              {t('heroHeadline2')}
+            </span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-black max-w-xl leading-relaxed">
+            {t('heroDescription')}
+          </p>
         </div>
 
-        {/* Section 2: Heatmap Calendar */}
-        <div id="heatmap-section" className="scroll-mt-6">
-          <HeatmapCalendar
-            participants={participants}
-            selectedDate={selectedDate}
-            onSelectDate={date => setSelectedDate(date)}
-          />
-        </div>
+        {/* Create Event Form */}
+        <CreateEventForm />
 
-        {/* Section 3: Availability Form */}
-        <div ref={formRef} className="scroll-mt-6">
-          <AvailabilityForm
-            onSuccess={handleFormSuccess}
-            editingParticipant={editingParticipant}
-            onCancelEdit={() => setEditingParticipant(null)}
-          />
-        </div>
+        {/* Feature Highlights Grid */}
+        <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white border-3 border-black p-4 space-y-1.5">
+            <div className="font-bold text-sm text-black">
+              1. {t('feat1Title')}
+            </div>
+            <p className="text-xs text-[#525252] leading-relaxed">
+              {t('feat1Desc')}
+            </p>
+          </div>
 
-        {/* Section 4: Squad Roster List */}
-        <div ref={rosterRef} className="scroll-mt-6">
-          <ParticipantsList
-            participants={participants}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onClearAll={handleClearAll}
-          />
+          <div className="bg-white border-3 border-black p-4 space-y-1.5">
+            <div className="font-bold text-sm text-black">
+              2. {t('feat2Title')}
+            </div>
+            <p className="text-xs text-[#525252] leading-relaxed">
+              {t('feat2Desc')}
+            </p>
+          </div>
+
+          <div className="bg-white border-3 border-black p-4 space-y-1.5">
+            <div className="font-bold text-sm text-black">
+              3. {t('feat3Title')}
+            </div>
+            <p className="text-xs text-[#525252] leading-relaxed">
+              {t('feat3Desc')}
+            </p>
+          </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="mt-16 py-8 border-t border-slate-900 bg-slate-950/80 text-center text-xs text-slate-500 px-4">
-        <p className="font-medium text-slate-400">
-          🍻 ทริปวันว่าง • รวมพลคนคอแข็ง
-        </p>
-        <p className="mt-1 text-slate-600">
-          สร้างขึ้นเพื่อหาคิวว่างตรงกันของแก๊งเพื่อน • รองรับมือถือและเปิดใน LINE ได้ 100%
-        </p>
+      <footer className="border-t-3 border-black py-6 text-center font-mono text-xs text-[#525252] mt-12 bg-white">
+        <p>{t('footerText')}</p>
       </footer>
     </div>
   );

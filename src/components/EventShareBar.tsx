@@ -1,0 +1,171 @@
+'use client';
+
+import React, { useState } from 'react';
+import { WanWangEvent, Participant } from '@/types';
+import { generateLineShareMessage } from '@/lib/timeUtils';
+import { useI18n } from '@/lib/i18n';
+
+interface EventShareBarProps {
+  event: WanWangEvent;
+  participants: Participant[];
+  isAdmin: boolean;
+  onEventUpdated: () => void;
+}
+
+export default function EventShareBar({
+  event,
+  participants,
+  isAdmin,
+  onEventUpdated,
+}: EventShareBarProps) {
+  const { lang, t } = useI18n();
+
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
+  const [copiedAdminKey, setCopiedAdminKey] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const getEventUrl = () => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/e/${event.slug}`;
+    }
+    return `https://wanwang.me/e/${event.slug}`;
+  };
+
+  const handleCopyLink = async () => {
+    const url = getEventUrl();
+    await navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopySummaryText = async () => {
+    const url = getEventUrl();
+    const text = generateLineShareMessage(event, participants, url, lang);
+    await navigator.clipboard.writeText(text);
+    setCopiedText(true);
+    setTimeout(() => setCopiedText(false), 2000);
+  };
+
+  const handleShareToLine = () => {
+    const url = getEventUrl();
+    const message = generateLineShareMessage(event, participants, url, lang);
+
+    if (navigator.share) {
+      navigator.share({
+        title: `วันว่าง: ${event.title}`,
+        text: message,
+        url: url,
+      }).catch(() => {
+        window.open(`https://line.me/R/msg/text/?${encodeURIComponent(message)}`, '_blank');
+      });
+    } else {
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(message)}`, '_blank');
+    }
+  };
+
+  const handleCopyAdminKey = async () => {
+    const adminKey = typeof window !== 'undefined'
+      ? localStorage.getItem(`wanwang_admin_${event.slug}`) || event.adminKey
+      : event.adminKey;
+
+    if (adminKey) {
+      await navigator.clipboard.writeText(adminKey);
+      setCopiedAdminKey(true);
+      setTimeout(() => setCopiedAdminKey(false), 2000);
+    }
+  };
+
+  const handleToggleClosed = async () => {
+    const adminKey = typeof window !== 'undefined'
+      ? localStorage.getItem(`wanwang_admin_${event.slug}`) || event.adminKey
+      : event.adminKey;
+
+    if (!adminKey) return;
+    setIsUpdating(true);
+
+    try {
+      await fetch(`/api/events/${event.slug}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminKey,
+        },
+        body: JSON.stringify({
+          isClosed: !event.isClosed,
+        }),
+      });
+      onEventUpdated();
+    } catch (err) {
+      console.error('Update status failed:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border-3 border-black p-4 space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Share buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* LINE Share: Primary Button with Accent Yellow and Hard Shadow */}
+          <button
+            type="button"
+            onClick={handleShareToLine}
+            className="btn-primary-raw px-4 py-2 text-xs sm:text-sm font-bold"
+          >
+            {t('shareLineBtn')}
+          </button>
+
+          {/* Copy Summary Text */}
+          <button
+            type="button"
+            onClick={handleCopySummaryText}
+            className="btn-secondary-raw px-3 py-2 text-xs font-semibold"
+          >
+            {copiedText ? t('copySummaryDone') : t('copySummaryBtn')}
+          </button>
+
+          {/* Copy Link Only */}
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="btn-secondary-raw px-3 py-2 text-xs font-semibold"
+          >
+            {copiedLink ? t('copyLinkDone') : t('copyLinkBtn')}
+          </button>
+        </div>
+
+        {/* Organizer / Admin secret UX */}
+        {isAdmin && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0 border-t-2 sm:border-t-0 border-black">
+            <span className="font-mono text-xs font-bold px-2 py-1 bg-[#F0F0F0] border-2 border-black text-black">
+              {t('adminVerifiedBadge')}
+            </span>
+
+            <button
+              type="button"
+              onClick={handleCopyAdminKey}
+              className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
+            >
+              {copiedAdminKey ? t('copyAdminKeyDone') : t('copyAdminKeyBtn')}
+            </button>
+
+            <button
+              type="button"
+              disabled={isUpdating}
+              onClick={handleToggleClosed}
+              className={`px-2.5 py-1 font-mono text-xs font-bold border-2 border-black transition-none ${
+                event.isClosed
+                  ? 'bg-[#FFE500] text-black hover:bg-black hover:text-[#FFE500]'
+                  : 'bg-black text-white hover:bg-white hover:text-black'
+              }`}
+            >
+              {event.isClosed ? t('reopenVotingBtn') : t('closeVotingBtn')}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
