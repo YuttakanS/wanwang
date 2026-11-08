@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminEventSummaries } from '@/lib/db';
+import { rateLimit } from '@/lib/rateLimit';
 import { MAX_ADMIN_LOOKUP } from '@/types';
 
 // POST rather than GET so admin keys stay out of URLs and request logs.
 export async function POST(req: NextRequest) {
   try {
+    const limited = await rateLimit(req, 'lookup');
+    if (limited) return limited;
+
     const raw = await req.text();
     if (raw.length > 20_000) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 });

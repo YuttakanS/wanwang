@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rotateAdminKey } from '@/lib/db';
+import { rateLimit } from '@/lib/rateLimit';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const limited = await rateLimit(req, 'admin');
+    if (limited) return limited;
+
     const { slug } = await params;
     const currentKey = req.headers.get('x-admin-key');
     if (!currentKey) {

@@ -5,6 +5,7 @@ import {
   deleteEvent,
   getParticipantsByEventId,
 } from '@/lib/db';
+import { rateLimit } from '@/lib/rateLimit';
 import { safeEqual, validateEventPatch, ValidationError } from '@/lib/validation';
 
 export async function GET(
@@ -12,6 +13,9 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const limited = await rateLimit(req, 'read');
+    if (limited) return limited;
+
     const { slug } = await params;
     const event = await getEventBySlug(slug);
 
@@ -48,6 +52,9 @@ export async function PATCH(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const limited = await rateLimit(req, 'admin');
+    if (limited) return limited;
+
     const { slug } = await params;
     const adminKey = req.headers.get('x-admin-key');
 
@@ -104,6 +111,9 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const limited = await rateLimit(req, 'admin');
+    if (limited) return limited;
+
     const { slug } = await params;
     const adminKey = req.headers.get('x-admin-key');
     if (!adminKey) {

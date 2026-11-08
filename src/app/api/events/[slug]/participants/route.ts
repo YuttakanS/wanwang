@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEventBySlug, upsertParticipant, deleteParticipant } from '@/lib/db';
+import { rateLimit } from '@/lib/rateLimit';
 import { safeEqual, validateParticipantInput, ValidationError } from '@/lib/validation';
 
 export async function POST(
@@ -7,6 +8,9 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const limited = await rateLimit(req, 'vote');
+    if (limited) return limited;
+
     const { slug } = await params;
     const event = await getEventBySlug(slug);
 
@@ -51,6 +55,9 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const limited = await rateLimit(req, 'vote');
+    if (limited) return limited;
+
     const { slug } = await params;
     const event = await getEventBySlug(slug);
 

@@ -92,6 +92,55 @@ DROP POLICY IF EXISTS "Owner delete participants" ON participants;
 REVOKE ALL ON events FROM anon, authenticated;
 REVOKE ALL ON participants FROM anon, authenticated;
 
--- 6. Optional retention (enable pg_cron first): delete events older than 180 days
+-- 6. Rate limiting: fixed-window counter per key, shared across serverless instances.
+--    Keys hold a keyed hash of the client IP, never the raw address.
+CREATE TABLE IF NOT EXISTS rate_limits (
+    key TEXT PRIMARY KEY,
+    count INTEGER NOT NULL,
+    reset_at TIMESTAMPTZ NOT NULL
+);
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON rate_limits FROM anon, authenticated;
+GRANT ALL ON rate_limits TO service_role;
+
+-- Returns 0 if allowed, otherwise the seconds to wait.
+CREATE OR REPLACE FUNCTION check_rate_limit(p_key TEXT, p_limit INTEGER, p_window_seconds INTEGER)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+    v_count INTEGER;
+    v_reset TIMESTAMPTZ;
+BEGIN
+    INSERT INTO public.rate_limits AS r (key, count, reset_at)
+    VALUES (p_key, 1, now() + make_interval(secs => p_window_seconds))
+    ON CONFLICT (key) DO UPDATE SET
+        count = CASE WHEN r.reset_at <= now() THEN 1 ELSE r.count + 1 END,
+        reset_at = CASE WHEN r.reset_at <= now() THEN EXCLUDED.reset_at ELSE r.reset_at END
+    RETURNING r.count, r.reset_at INTO v_count, v_reset;
+
+    -- Sweep expired rows now and then, so this needs no pg_cron.
+    IF random() < 0.01 THEN
+        DELETE FROM public.rate_limits
+        WHERE key IN (
+            SELECT l.key FROM public.rate_limits l
+            WHERE l.reset_at <= now()
+            FOR UPDATE SKIP LOCKED
+        );
+    END IF;
+
+    IF v_count <= p_limit THEN
+        RETURN 0;
+    END IF;
+    RETURN GREATEST(1, CEIL(EXTRACT(EPOCH FROM v_reset - now()))::INTEGER);
+END;
+$$;
+
+-- Supabase exposes public functions over PostgREST, so lock this to the server.
+REVOKE ALL ON FUNCTION check_rate_limit(TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION check_rate_limit(TEXT, INTEGER, INTEGER) TO service_role;
+
+-- 7. Optional retention (enable pg_cron first): delete events older than 180 days
 -- SELECT cron.schedule('wanwang-cleanup', '0 3 * * *',
 --   $$DELETE FROM events WHERE created_at < NOW() - INTERVAL '180 days'$$);
