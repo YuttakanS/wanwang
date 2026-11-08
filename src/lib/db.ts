@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { WanWangEvent, Participant, AdminEventSummary } from '@/types';
 import { supabase, useSupabase } from './supabaseClient';
-import { safeEqual } from './validation';
+import { hashAdminKey, safeEqual, verifyAdminKey } from './validation';
 import { generateDatesInRange, formatDateToISO } from './timeUtils';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -58,6 +58,10 @@ async function writeLocalParticipants(participants: Participant[]): Promise<void
   await fs.writeFile(PARTICIPANTS_FILE, JSON.stringify(participants, null, 2), 'utf-8');
 }
 
+/**
+ * Only the hash of an admin key is stored. getEventBySlug returns that hash as
+ * adminKey; functions that were handed the plaintext key return it unchanged.
+ */
 export async function createEvent(
   params: Omit<WanWangEvent, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<WanWangEvent> {
@@ -86,6 +90,7 @@ export async function createEvent(
   const newEvent: WanWangEvent = {
     ...params,
     id,
+    adminKey: hashAdminKey(params.adminKey),
     dateRangeStart,
     dateRangeEnd,
     durationDays: params.durationDays || 1,
@@ -141,7 +146,7 @@ export async function createEvent(
       startTime: data.start_time || '09:00',
       endTime: data.end_time || '22:00',
       slotInterval: data.slot_interval || 60,
-      adminKey: data.admin_key,
+      adminKey: params.adminKey,
       isClosed: data.is_closed,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -151,7 +156,7 @@ export async function createEvent(
   const events = await readLocalEvents();
   events.push(newEvent);
   await writeLocalEvents(events);
-  return newEvent;
+  return { ...newEvent, adminKey: params.adminKey };
 }
 
 export async function getEventBySlug(slug: string): Promise<WanWangEvent | null> {
@@ -228,7 +233,7 @@ export async function updateEvent(
       .eq('slug', slug)
       .single();
 
-    if (!existing || !safeEqual(existing.admin_key, adminKey)) {
+    if (!existing || !verifyAdminKey(adminKey, existing.admin_key)) {
       throw new Error('UNAUTHORIZED');
     }
 
@@ -291,7 +296,7 @@ export async function updateEvent(
       startTime: data.start_time || '09:00',
       endTime: data.end_time || '22:00',
       slotInterval: data.slot_interval || 60,
-      adminKey: data.admin_key,
+      adminKey,
       isClosed: data.is_closed,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -299,7 +304,7 @@ export async function updateEvent(
   }
 
   const events = await readLocalEvents();
-  const index = events.findIndex(e => (e.slug === slug || e.id === slug) && safeEqual(e.adminKey, adminKey));
+  const index = events.findIndex(e => (e.slug === slug || e.id === slug) && verifyAdminKey(adminKey, e.adminKey));
   if (index === -1) return null;
 
   const existingEvent = events[index];
@@ -345,7 +350,7 @@ export async function updateEvent(
     updatedAt: now,
   };
   await writeLocalEvents(events);
-  return events[index];
+  return { ...events[index], adminKey };
 }
 
 export async function getParticipantsByEventId(eventId: string): Promise<Participant[]> {
@@ -520,6 +525,7 @@ export async function deleteParticipant(
 /** Replaces the admin key, invalidating the old key and every link built from it. */
 export async function rotateAdminKey(slug: string, currentKey: string): Promise<string | null> {
   const newKey = crypto.randomBytes(16).toString('hex');
+  const newHash = hashAdminKey(newKey);
   const now = new Date().toISOString();
 
   if (useSupabase() && supabase) {
@@ -528,12 +534,12 @@ export async function rotateAdminKey(slug: string, currentKey: string): Promise<
       .select('id, admin_key')
       .eq('slug', slug)
       .maybeSingle();
-    if (!existing || !safeEqual(existing.admin_key, currentKey)) return null;
+    if (!existing || !verifyAdminKey(currentKey, existing.admin_key)) return null;
 
     // Matching the old key too means two simultaneous rotations cannot both win.
     const { data, error } = await supabase
       .from('events')
-      .update({ admin_key: newKey, updated_at: now })
+      .update({ admin_key: newHash, updated_at: now })
       .eq('id', existing.id)
       .eq('admin_key', existing.admin_key)
       .select('id')
@@ -543,9 +549,9 @@ export async function rotateAdminKey(slug: string, currentKey: string): Promise<
   }
 
   const events = await readLocalEvents();
-  const index = events.findIndex(e => e.slug === slug && safeEqual(e.adminKey, currentKey));
+  const index = events.findIndex(e => e.slug === slug && verifyAdminKey(currentKey, e.adminKey));
   if (index === -1) return null;
-  events[index] = { ...events[index], adminKey: newKey, updatedAt: now };
+  events[index] = { ...events[index], adminKey: newHash, updatedAt: now };
   await writeLocalEvents(events);
   return newKey;
 }
@@ -565,7 +571,7 @@ export async function getAdminEventSummaries(
     if (error) throw new Error(error.message);
 
     return (data || [])
-      .filter(e => safeEqual(e.admin_key, keyBySlug.get(e.slug)))
+      .filter(e => verifyAdminKey(keyBySlug.get(e.slug), e.admin_key))
       .map(e => ({
         slug: e.slug,
         title: e.title,
@@ -577,7 +583,7 @@ export async function getAdminEventSummaries(
 
   const [events, participants] = await Promise.all([readLocalEvents(), readLocalParticipants()]);
   return events
-    .filter(e => safeEqual(e.adminKey, keyBySlug.get(e.slug)))
+    .filter(e => verifyAdminKey(keyBySlug.get(e.slug), e.adminKey))
     .map(e => ({
       slug: e.slug,
       title: e.title,
@@ -594,13 +600,13 @@ export async function deleteEvent(slug: string, adminKey: string): Promise<boole
       .select('id, admin_key')
       .eq('slug', slug)
       .maybeSingle();
-    if (!existing || !safeEqual(existing.admin_key, adminKey)) return false;
+    if (!existing || !verifyAdminKey(adminKey, existing.admin_key)) return false;
     const { error } = await supabase.from('events').delete().eq('id', existing.id);
     return !error;
   }
 
   const events = await readLocalEvents();
-  const found = events.find(e => e.slug === slug && safeEqual(e.adminKey, adminKey));
+  const found = events.find(e => e.slug === slug && verifyAdminKey(adminKey, e.adminKey));
   if (!found) return false;
   await writeLocalEvents(events.filter(e => e.id !== found.id));
   const participants = await readLocalParticipants();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEventBySlug, upsertParticipant, deleteParticipant } from '@/lib/db';
 import { rateLimit } from '@/lib/rateLimit';
-import { safeEqual, validateParticipantInput, ValidationError } from '@/lib/validation';
+import { validateParticipantInput, ValidationError, verifyAdminKey } from '@/lib/validation';
 
 export async function POST(
   req: NextRequest,
@@ -70,7 +70,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Missing participant id' }, { status: 400 });
     }
 
-    const asAdmin = safeEqual(req.headers.get('x-admin-key'), event.adminKey);
+    const asAdmin = verifyAdminKey(req.headers.get('x-admin-key'), event.adminKey);
     const editToken = req.headers.get('x-edit-token') || undefined;
 
     const success = await deleteParticipant(event.id, participantId, { asAdmin, editToken });

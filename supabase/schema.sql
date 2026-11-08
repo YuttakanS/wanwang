@@ -141,6 +141,14 @@ $$;
 REVOKE ALL ON FUNCTION check_rate_limit(TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION check_rate_limit(TEXT, INTEGER, INTEGER) TO service_role;
 
--- 7. Optional retention (enable pg_cron first): delete events older than 180 days
+-- 7. Store admin keys as SHA-256 hex. One-way: plaintext keys in this table cannot be recovered.
+--    Keys already held by browsers and admin links keep working. Re-running skips hashed rows.
+ALTER TABLE events DROP CONSTRAINT IF EXISTS events_admin_key_hashed;
+UPDATE events
+SET admin_key = encode(sha256(convert_to(admin_key, 'UTF8')), 'hex')
+WHERE admin_key !~ '^[0-9a-f]{64}$';
+ALTER TABLE events ADD CONSTRAINT events_admin_key_hashed CHECK (admin_key ~ '^[0-9a-f]{64}$');
+
+-- 8. Optional retention (enable pg_cron first): delete events older than 180 days
 -- SELECT cron.schedule('wanwang-cleanup', '0 3 * * *',
 --   $$DELETE FROM events WHERE created_at < NOW() - INTERVAL '180 days'$$);

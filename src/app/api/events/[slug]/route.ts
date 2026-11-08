@@ -6,7 +6,7 @@ import {
   getParticipantsByEventId,
 } from '@/lib/db';
 import { rateLimit } from '@/lib/rateLimit';
-import { safeEqual, validateEventPatch, ValidationError } from '@/lib/validation';
+import { safeEqual, validateEventPatch, ValidationError, verifyAdminKey } from '@/lib/validation';
 
 export async function GET(
   req: NextRequest,
@@ -25,8 +25,9 @@ export async function GET(
 
     const participants = await getParticipantsByEventId(event.id);
 
-    const { adminKey, ...publicEvent } = event;
-    const isAdmin = safeEqual(req.headers.get('x-admin-key'), adminKey);
+    const { adminKey: adminKeyHash, ...publicEvent } = event;
+    const presentedKey = req.headers.get('x-admin-key');
+    const isAdmin = verifyAdminKey(presentedKey, adminKeyHash);
     const myToken = req.headers.get('x-edit-token');
 
     // Never expose other people's edit tokens.
@@ -37,7 +38,8 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      event: isAdmin ? event : publicEvent,
+      // Echo the key the caller proved they hold; the stored hash never leaves the server.
+      event: isAdmin ? { ...publicEvent, adminKey: presentedKey } : publicEvent,
       isAdmin,
       participants: publicParticipants,
     });
