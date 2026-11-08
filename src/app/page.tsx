@@ -4,6 +4,7 @@ import React from 'react';
 import Navbar from '@/components/Navbar';
 import CreateEventForm from '@/components/CreateEventForm';
 import MyEvents from '@/components/MyEvents';
+import SiteFooter from '@/components/SiteFooter';
 import { useI18n } from '@/lib/i18n';
 
 export default function HomePage() {
@@ -70,9 +71,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t-3 border-black py-6 text-center font-mono text-xs text-[#525252] mt-12 bg-white">
-        <p>{t('footerText')}</p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

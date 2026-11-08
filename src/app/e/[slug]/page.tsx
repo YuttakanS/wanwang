@@ -8,6 +8,7 @@ import EventShareBar from '@/components/EventShareBar';
 import ParticipantsRoster from '@/components/ParticipantsRoster';
 import AdminLinkNotice from '@/components/AdminLinkNotice';
 import StatusPage from '@/components/StatusPage';
+import SiteFooter from '@/components/SiteFooter';
 import {
   clearAdminLinkPending,
   getStoredAdminKey,
@@ -296,9 +297,7 @@ export default function EventDetailPage({
       </main>
 
       {/* Footer */}
-      <footer className="border-t-3 border-black py-6 text-center font-mono text-xs text-[#525252] mt-12 bg-white">
-        <p>{t('footerText')}</p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

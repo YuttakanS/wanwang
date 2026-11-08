@@ -156,6 +156,41 @@ SET edit_token = encode(sha256(convert_to(edit_token, 'UTF8')), 'hex')
 WHERE edit_token !~ '^[0-9a-f]{64}$';
 ALTER TABLE participants ADD CONSTRAINT participants_edit_token_hashed CHECK (edit_token ~ '^[0-9a-f]{64}$');
 
--- 9. Optional retention (enable pg_cron first): delete events older than 180 days
--- SELECT cron.schedule('wanwang-cleanup', '0 3 * * *',
---   $$DELETE FROM events WHERE created_at < NOW() - INTERVAL '180 days'$$);
+-- 9. Retention: delete events 90 days after their last date, votes included (ON DELETE CASCADE).
+--    Counted from the last date, not creation: a 1-year event must survive until it has happened.
+--    created_at protects a new event whose dates are already in the past.
+--    src/lib/privacyContent.ts promises this period, so change them together.
+CREATE OR REPLACE FUNCTION purge_expired_events()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+    v_deleted INTEGER;
+BEGIN
+    DELETE FROM public.events e
+    WHERE GREATEST(
+        e.created_at::date,
+        CASE WHEN e.dates ->> -1 ~ '^\d{4}-\d{2}-\d{2}$' THEN (e.dates ->> -1)::date END
+    ) < CURRENT_DATE - 90;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+
+    DELETE FROM public.rate_limits WHERE reset_at <= now();
+
+    RETURN v_deleted;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION purge_expired_events() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION purge_expired_events() TO service_role;
+
+-- Runs daily at 03:00 UTC. Scheduling under the same name replaces the job, so re-running is safe.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron') THEN
+        CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
+        PERFORM cron.schedule('wanwang-cleanup', '0 3 * * *', 'SELECT public.purge_expired_events()');
+    ELSE
+        RAISE WARNING 'pg_cron is not available: purge_expired_events() must be scheduled another way';
+    END IF;
+END $$;

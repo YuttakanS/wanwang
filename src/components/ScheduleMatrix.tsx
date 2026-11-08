@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import {
   WanWangEvent,
   Participant,
@@ -431,6 +432,14 @@ export default function ScheduleMatrix({
                   />
                 </div>
               </div>
+
+              {/* New tab: following this link must not lose what was typed. */}
+              <p className="text-xs text-[#525252]">
+                {t('voteVisibilityNote')}{' '}
+                <Link href="/privacy" target="_blank" rel="noopener" className="underline hover:text-black">
+                  {t('privacyLink')}
+                </Link>
+              </p>
 
               {/* Instructions & Shortcuts */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-[#F0F0F0] p-3 border-2 border-black">

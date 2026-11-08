@@ -242,6 +242,9 @@ export const translations: Record<Language, Translations> = {
 
     // Footer
     footerText: 'วันว่าง // ระบบนัดหมายที่ตรงไปตรงมาและรวดเร็ว',
+    privacyLink: 'นโยบายความเป็นส่วนตัว',
+    voteVisibilityNote: 'ชื่อ โน้ต และเวลาที่เลือกจะแสดงให้ทุกคนที่มีลิงก์เห็น',
+    createVisibilityNote: 'รายละเอียดนัดจะแสดงให้ทุกคนที่มีลิงก์เห็น และระบบจะลบนัดอัตโนมัติ 90 วันหลังวันสุดท้าย',
     notFoundTitle: 'ไม่พบกิจกรรมนี้',
     notFoundDesc: 'ลิงก์กิจกรรมอาจไม่ถูกต้อง หรือกิจกรรมถูกลบไปแล้ว',
     returnHomeBtn: 'กลับหน้าหลัก',
@@ -485,6 +488,9 @@ export const translations: Record<Language, Translations> = {
 
     // Footer
     footerText: 'WanWang // Straightforward group scheduling interface',
+    privacyLink: 'Privacy Notice',
+    voteVisibilityNote: 'Your name, note, and chosen times are visible to anyone with the link.',
+    createVisibilityNote: 'Event details are visible to anyone with the link. Events are deleted automatically 90 days after their last date.',
     notFoundTitle: 'Event not found',
     notFoundDesc: 'The link might be broken or this event was removed.',
     returnHomeBtn: 'Return to home',

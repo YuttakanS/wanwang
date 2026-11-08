@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EVENT_CATEGORIES, EventCategory, MAX_EVENT_SLOTS, TimeGranularity } from '@/types';
 import { countEventSlots, formatLocalizedDateRange, formatDateToISO } from '@/lib/timeUtils';
@@ -443,6 +444,14 @@ export default function CreateEventForm() {
           </div>
         )}
       </div>
+
+      {/* New tab: following this link must not lose what was typed. */}
+      <p className="text-xs text-[#525252]">
+        {t('createVisibilityNote')}{' '}
+        <Link href="/privacy" target="_blank" rel="noopener" className="underline hover:text-black">
+          {t('privacyLink')}
+        </Link>
+      </p>
 
       {/* Error Message */}
       {errorMsg && (
