@@ -42,6 +42,8 @@ export default function ScheduleMatrix({
   const [participantName, setParticipantName] = useState('');
   const [participantNote, setParticipantNote] = useState('');
   const [mySelectedSlots, setMySelectedSlots] = useState<string[]>([]);
+  // Every cell checks this on every render, so it must not scan an array.
+  const selectedSet = useMemo(() => new Set(mySelectedSlots), [mySelectedSlots]);
   const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null);
   const [editToken, setEditToken] = useState<string | null>(null);
 
@@ -112,7 +114,7 @@ export default function ScheduleMatrix({
 
   const handleSlotMouseDown = (slotId: string) => {
     isMouseDownRef.current = true;
-    if (mySelectedSlots.includes(slotId)) {
+    if (selectedSet.has(slotId)) {
       dragModeRef.current = 'remove';
       setMySelectedSlots(prev => prev.filter(id => id !== slotId));
     } else {
@@ -123,9 +125,9 @@ export default function ScheduleMatrix({
 
   const handleSlotMouseEnter = (slotId: string) => {
     if (!isMouseDownRef.current) return;
-    if (dragModeRef.current === 'add' && !mySelectedSlots.includes(slotId)) {
+    if (dragModeRef.current === 'add' && !selectedSet.has(slotId)) {
       setMySelectedSlots(prev => [...prev, slotId]);
-    } else if (dragModeRef.current === 'remove' && mySelectedSlots.includes(slotId)) {
+    } else if (dragModeRef.current === 'remove' && selectedSet.has(slotId)) {
       setMySelectedSlots(prev => prev.filter(id => id !== slotId));
     }
   };
@@ -136,9 +138,9 @@ export default function ScheduleMatrix({
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
     if (target) {
       const slotId = target.getAttribute('data-slot-id');
-      if (slotId && dragModeRef.current === 'add' && !mySelectedSlots.includes(slotId)) {
+      if (slotId && dragModeRef.current === 'add' && !selectedSet.has(slotId)) {
         setMySelectedSlots(prev => [...prev, slotId]);
-      } else if (slotId && dragModeRef.current === 'remove' && mySelectedSlots.includes(slotId)) {
+      } else if (slotId && dragModeRef.current === 'remove' && selectedSet.has(slotId)) {
         setMySelectedSlots(prev => prev.filter(id => id !== slotId));
       }
     }
@@ -513,7 +515,7 @@ export default function ScheduleMatrix({
                   >
                     {calendarDays.map((d, index) => {
                       const isDisabled = !d.isInRange || d.isPast;
-                      const isSelected = mySelectedSlots.includes(d.dateStr);
+                      const isSelected = selectedSet.has(d.dateStr);
 
                       if (isDisabled) {
                         return (
@@ -569,7 +571,7 @@ export default function ScheduleMatrix({
 
                         {(['morning', 'afternoon', 'evening', 'night'] as DayPartId[]).map(part => {
                           const slotId = `${dateStr}T${part}`;
-                          const isSelected = mySelectedSlots.includes(slotId);
+                          const isSelected = selectedSet.has(slotId);
                           return (
                             <button
                               key={slotId}
@@ -627,7 +629,7 @@ export default function ScheduleMatrix({
 
                         {event.dates.map(dateStr => {
                           const slotId = `${dateStr}T${time}`;
-                          const isSelected = mySelectedSlots.includes(slotId);
+                          const isSelected = selectedSet.has(slotId);
 
                           return (
                             <div

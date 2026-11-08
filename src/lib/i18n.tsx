@@ -134,6 +134,7 @@ export const translations: Record<Language, Translations> = {
     // Form Action
     formErrorTitle: 'กรุณาตั้งชื่อนัดก่อนดำเนินต่อ',
     formErrorDates: 'กรุณาเลือกวันที่อย่างน้อย 1 วัน',
+    formErrorTooManySlots: 'ช่วงเวลากว้างเกินไป ลองลดจำนวนวัน ลดช่วงชั่วโมง หรือเลือกทุก 60 นาที',
     submitCreating: 'กำลังสร้างนัด...',
     submitBtn: 'สร้างนัดเลย & รับลิงก์ส่งเพื่อน ->',
     formFooterNote: 'ไม่ต้องสมัครสมาชิก • ไม่เก็บคุกกี้ติดตาม • แชร์ให้เพื่อนได้ทันที',
@@ -376,6 +377,7 @@ export const translations: Record<Language, Translations> = {
     // Form Action
     formErrorTitle: 'Event title is required',
     formErrorDates: 'Please select at least 1 date',
+    formErrorTooManySlots: 'This range has too many time slots. Try fewer days, fewer hours, or a 60-minute interval.',
     submitCreating: 'Creating event...',
     submitBtn: 'Create event & get link ->',
     formFooterNote: 'No sign up required • No tracking cookies • Instant link generation',

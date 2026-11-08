@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { EVENT_CATEGORIES, EventCategory, TimeGranularity } from '@/types';
-import { formatLocalizedDateRange, formatDateToISO } from '@/lib/timeUtils';
+import { EVENT_CATEGORIES, EventCategory, MAX_EVENT_SLOTS, TimeGranularity } from '@/types';
+import { countEventSlots, formatLocalizedDateRange, formatDateToISO } from '@/lib/timeUtils';
 import { markAdminLinkPending, storeAdminKey } from '@/lib/adminAccess';
 import { useI18n } from '@/lib/i18n';
 
@@ -91,6 +91,11 @@ export default function CreateEventForm() {
 
     if (!startDate || !endDate || startDate > endDate) {
       setErrorMsg(lang === 'th' ? 'กรุณาระบุช่วงวันที่ให้ถูกต้อง' : 'Please provide a valid date range');
+      return;
+    }
+
+    if (countEventSlots(granularity, totalDays, startTime, endTime, slotInterval) > MAX_EVENT_SLOTS) {
+      setErrorMsg(t('formErrorTooManySlots'));
       return;
     }
 

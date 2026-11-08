@@ -111,6 +111,9 @@ export interface Participant {
   updatedAt: string;
 }
 
+/** Max slots per event and per vote. "Select all" must fit, so events above this are refused. */
+export const MAX_EVENT_SLOTS = 10000;
+
 /** Max events per POST /api/events/lookup; the client splits larger lists. */
 export const MAX_ADMIN_LOOKUP = 50;
 

@@ -149,6 +149,18 @@ export function generateDayTimeSlots(startTime: string, endTime: string, interva
   return times;
 }
 
+export function countEventSlots(
+  granularity: TimeGranularity,
+  days: number,
+  startTime: string,
+  endTime: string,
+  slotInterval: number
+): number {
+  if (granularity === 'day') return days;
+  if (granularity === 'daypart') return days * 4;
+  return days * generateDayTimeSlots(startTime, endTime, slotInterval).length;
+}
+
 export function generateAllEventSlots(event: WanWangEvent): TimeSlot[] {
   const granularity = event.granularity || 'hour';
 
@@ -191,6 +203,14 @@ export function generateAllEventSlots(event: WanWangEvent): TimeSlot[] {
   return slots;
 }
 
+/**
+ * Availability is checked once per slot per participant. A year-long event has
+ * thousands of slots, and scanning an array for each check froze the page.
+ */
+function availabilitySets(participants: Participant[]): Map<Participant, Set<string>> {
+  return new Map(participants.map(p => [p, new Set(p.availability || p.availableDates || [])]));
+}
+
 export function computeHeatmap(
   slots: TimeSlot[],
   participants: Participant[],
@@ -198,16 +218,17 @@ export function computeHeatmap(
 ): Record<string, SlotHeatmapInfo> {
   const total = participants.length;
   const result: Record<string, SlotHeatmapInfo> = {};
+  const sets = availabilitySets(participants);
 
   for (const slot of slots) {
     const availableNames: string[] = [];
     const unavailableNames: string[] = [];
 
     for (const p of participants) {
-      const pSlots = p.availability || p.availableDates || [];
+      const pSlots = sets.get(p)!;
       const isAvailable = (granularity === 'day')
-        ? (pSlots.includes(slot.id) || pSlots.includes(slot.date))
-        : pSlots.includes(slot.id);
+        ? (pSlots.has(slot.id) || pSlots.has(slot.date))
+        : pSlots.has(slot.id);
 
       if (isAvailable) {
         availableNames.push(p.name);
@@ -245,22 +266,24 @@ export function findBestTimeMatches(
   const granularity = event.granularity || 'hour';
   const total = participants.length;
   const candidateMatches: BestTimeMatch[] = [];
+  const sets = availabilitySets(participants);
+  const missingFrom = (availableNames: string[]) => {
+    const available = new Set(availableNames);
+    return participants.filter(p => !available.has(p.name)).map(p => p.name);
+  };
+  // Building a formatter is slow, and a year-long event produces thousands of candidates.
+  const weekdayFormat = new Intl.DateTimeFormat(lang === 'th' ? 'th-TH' : 'en-US', { weekday: 'short' });
 
   if (granularity === 'day') {
     for (const date of event.dates) {
       const [year, month, day] = date.split('-').map(Number);
       const dateObj = new Date(year, month - 1, day);
-      const availableParticipants = participants.filter(p => {
-        const pSlots = p.availability || p.availableDates || [];
-        return pSlots.includes(date);
-      });
+      const availableParticipants = participants.filter(p => sets.get(p)!.has(date));
 
       if (availableParticipants.length > 0) {
         const availableCount = availableParticipants.length;
         const availableNames = availableParticipants.map(p => p.name);
-        const missingNames = participants
-          .filter(p => !availableNames.includes(p.name))
-          .map(p => p.name);
+        const missingNames = missingFrom(availableNames);
 
         candidateMatches.push({
           id: `${date}_day`,
@@ -274,9 +297,7 @@ export function findBestTimeMatches(
           percentage: Math.round((availableCount / total) * 100),
           availableNames,
           missingNames,
-          dayOfWeekThai: new Intl.DateTimeFormat(lang === 'th' ? 'th-TH' : 'en-US', {
-            weekday: 'short',
-          }).format(dateObj),
+          dayOfWeekThai: weekdayFormat.format(dateObj),
           formattedThai: formatLocalizedDate(date, lang, 'chip'),
           dayPartLabel: lang === 'th' ? 'ทั้งวัน' : 'All day',
         });
@@ -305,17 +326,12 @@ export function findBestTimeMatches(
 
       for (const dp of dayParts) {
         const slotId = `${date}T${dp.id}`;
-        const availableParticipants = participants.filter(p => {
-          const pSlots = p.availability || p.availableDates || [];
-          return pSlots.includes(slotId);
-        });
+        const availableParticipants = participants.filter(p => sets.get(p)!.has(slotId));
 
         if (availableParticipants.length > 0) {
           const availableCount = availableParticipants.length;
           const availableNames = availableParticipants.map(p => p.name);
-          const missingNames = participants
-            .filter(p => !availableNames.includes(p.name))
-            .map(p => p.name);
+          const missingNames = missingFrom(availableNames);
 
           candidateMatches.push({
             id: `${date}_${dp.id}`,
@@ -329,9 +345,7 @@ export function findBestTimeMatches(
             percentage: Math.round((availableCount / total) * 100),
             availableNames,
             missingNames,
-            dayOfWeekThai: new Intl.DateTimeFormat(lang === 'th' ? 'th-TH' : 'en-US', {
-              weekday: 'short',
-            }).format(dateObj),
+            dayOfWeekThai: weekdayFormat.format(dateObj),
             formattedThai: formatLocalizedDate(date, lang, 'chip'),
             dayPartLabel: lang === 'th' ? dp.labelTh : dp.labelEn,
           });
@@ -362,16 +376,14 @@ export function findBestTimeMatches(
         const endTime = minutesToTime(endMinutes);
 
         const availableParticipants = participants.filter(p => {
-          const pSlots = p.availability || p.availableDates || [];
-          return blockSlotIds.every(slotId => pSlots.includes(slotId) || pSlots.includes(date));
+          const pSlots = sets.get(p)!;
+          return blockSlotIds.every(slotId => pSlots.has(slotId) || pSlots.has(date));
         });
 
         if (availableParticipants.length > 0) {
           const availableCount = availableParticipants.length;
           const availableNames = availableParticipants.map(p => p.name);
-          const missingNames = participants
-            .filter(p => !availableNames.includes(p.name))
-            .map(p => p.name);
+          const missingNames = missingFrom(availableNames);
 
           candidateMatches.push({
             id: `${date}_${startTime}_${endTime}`,
@@ -385,9 +397,7 @@ export function findBestTimeMatches(
             percentage: Math.round((availableCount / total) * 100),
             availableNames,
             missingNames,
-            dayOfWeekThai: new Intl.DateTimeFormat(lang === 'th' ? 'th-TH' : 'en-US', {
-              weekday: 'short',
-            }).format(dateObj),
+            dayOfWeekThai: weekdayFormat.format(dateObj),
             formattedThai: formatLocalizedDate(date, lang, 'chip'),
           });
         }

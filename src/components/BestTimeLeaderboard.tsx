@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { WanWangEvent, Participant } from '@/types';
 import { findBestTimeMatches, formatLocalizedDate } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
@@ -26,10 +26,13 @@ export default function BestTimeLeaderboard({
   const [isPinning, setIsPinning] = useState(false);
   const [pinError, setPinError] = useState('');
 
-  if (participants.length === 0) return null;
-
   // Retrieve matches sorted by available count descending
-  const bestMatches = findBestTimeMatches(event, participants, 6, lang);
+  const bestMatches = useMemo(
+    () => findBestTimeMatches(event, participants, 6, lang),
+    [event, participants, lang]
+  );
+
+  if (participants.length === 0) return null;
   if (bestMatches.length === 0) return null;
 
   const total = participants.length;

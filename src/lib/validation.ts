@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { EVENT_CATEGORIES, EventCategory, TimeGranularity, WanWangEvent } from '@/types';
-import { generateAllEventSlots } from './timeUtils';
+import { EVENT_CATEGORIES, EventCategory, MAX_EVENT_SLOTS, TimeGranularity, WanWangEvent } from '@/types';
+import { countEventSlots, generateAllEventSlots } from './timeUtils';
 
 export const LIMITS = {
   title: 100,
@@ -9,7 +9,7 @@ export const LIMITS = {
   name: 50,
   note: 300,
   maxRangeDays: 366,
-  maxSlots: 10000,
+  maxSlots: MAX_EVENT_SLOTS,
 } as const;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -111,6 +111,10 @@ export function validateEventInput(body: Record<string, unknown>): ValidEventInp
 
   const slotInterval = Number(body.slotInterval ?? 60);
   if (slotInterval !== 30 && slotInterval !== 60) throw new ValidationError('Invalid slot interval');
+
+  if (countEventSlots(g, rangeDays(start, end), startTime, endTime, slotInterval) > LIMITS.maxSlots) {
+    throw new ValidationError(`Too many time slots (max ${LIMITS.maxSlots})`);
+  }
 
   return {
     title,
