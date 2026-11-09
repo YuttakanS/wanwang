@@ -4,10 +4,8 @@ import {
   TimeSlot,
   SlotHeatmapInfo,
   BestTimeMatch,
-  EVENT_CATEGORIES,
   TimeGranularity,
   DayPartId,
-  DAY_PARTS,
 } from '@/types';
 import { Language } from './i18n';
 

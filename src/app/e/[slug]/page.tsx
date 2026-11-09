@@ -17,7 +17,7 @@ import {
   storeAdminKey,
   takeAdminKeyFromHash,
 } from '@/lib/adminAccess';
-import { WanWangEvent, Participant, EVENT_CATEGORIES, EventCategory } from '@/types';
+import { WanWangEvent, Participant, EventCategory } from '@/types';
 import { formatLocalizedDate, formatLocalizedDateRange } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
 
@@ -282,7 +282,6 @@ export default function EventDetailPage({
         <ScheduleMatrix
           event={event}
           participants={participants}
-          isAdmin={isAdmin}
           onParticipantSaved={fetchEventData}
           highlightSlotIds={highlightSlotIds}
         />

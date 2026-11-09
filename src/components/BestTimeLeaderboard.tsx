@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { WanWangEvent, Participant } from '@/types';
-import { findBestTimeMatches, formatLocalizedDate } from '@/lib/timeUtils';
+import { findBestTimeMatches } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
 
 interface BestTimeLeaderboardProps {

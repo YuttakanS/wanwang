@@ -17,7 +17,7 @@ export const supabase = isSupabaseConfigured
   : null;
 
 /** True = use Supabase. In production, missing config is a hard error (no file fallback). */
-export function useSupabase(): boolean {
+export function shouldUseSupabase(): boolean {
   if (isSupabaseConfigured) return true;
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Database is not configured');

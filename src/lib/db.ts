@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { WanWangEvent, Participant, AdminEventSummary } from '@/types';
-import { supabase, useSupabase } from './supabaseClient';
+import { supabase, shouldUseSupabase } from './supabaseClient';
 import { hashSecret, verifySecret } from './validation';
 import { generateDatesInRange, formatDateToISO } from './timeUtils';
 
@@ -104,7 +104,7 @@ export async function createEvent(
     updatedAt: now,
   };
 
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     const { data, error } = await supabase
       .from('events')
       .insert({
@@ -160,7 +160,7 @@ export async function createEvent(
 }
 
 export async function getEventBySlug(slug: string): Promise<WanWangEvent | null> {
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -226,7 +226,7 @@ export async function updateEvent(
 ): Promise<WanWangEvent | null> {
   const now = new Date().toISOString();
 
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     const { data: existing } = await supabase
       .from('events')
       .select('id, admin_key, granularity, dates')
@@ -355,7 +355,7 @@ export async function updateEvent(
 
 /** editToken here is the stored hash. Never send it to a client. */
 export async function getParticipantsByEventId(eventId: string): Promise<Participant[]> {
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     const { data, error } = await supabase
       .from('participants')
       .select('*')
@@ -396,7 +396,7 @@ export async function upsertParticipant(
 ): Promise<Participant> {
   const now = new Date().toISOString();
 
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     if (data.id) {
       if (!data.editToken) throw new Error('FORBIDDEN');
       const { data: updated, error } = await supabase
@@ -496,7 +496,7 @@ export async function deleteParticipant(
 ): Promise<boolean> {
   if (!auth.asAdmin && !auth.editToken) return false;
 
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     let query = supabase
       .from('participants')
       .delete()
@@ -531,7 +531,7 @@ export async function rotateAdminKey(slug: string, currentKey: string): Promise<
   const newHash = hashSecret(newKey);
   const now = new Date().toISOString();
 
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     const { data: existing } = await supabase
       .from('events')
       .select('id, admin_key')
@@ -566,7 +566,7 @@ export async function getAdminEventSummaries(
   if (items.length === 0) return [];
   const keyBySlug = new Map(items.map(i => [i.slug, i.adminKey]));
 
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     const { data, error } = await supabase
       .from('events')
       .select('slug, title, is_closed, created_at, admin_key, participants(count)')
@@ -597,7 +597,7 @@ export async function getAdminEventSummaries(
 }
 
 export async function deleteEvent(slug: string, adminKey: string): Promise<boolean> {
-  if (useSupabase() && supabase) {
+  if (shouldUseSupabase() && supabase) {
     const { data: existing } = await supabase
       .from('events')
       .select('id, admin_key')

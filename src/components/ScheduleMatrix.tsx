@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   WanWangEvent,
   Participant,
-  TimeSlot,
   SlotHeatmapInfo,
   DayPartId,
 } from '@/types';
@@ -16,7 +15,6 @@ import {
   formatLocalizedDate,
   formatDateToISO,
   isWeekend,
-  timeToMinutes,
   getWeekdayHeaders,
 } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
@@ -25,7 +23,6 @@ interface ScheduleMatrixProps {
   event: WanWangEvent;
   participants: Participant[];
   onParticipantSaved: () => void;
-  isAdmin: boolean;
   highlightSlotIds?: string[];
 }
 
@@ -33,7 +30,6 @@ export default function ScheduleMatrix({
   event,
   participants,
   onParticipantSaved,
-  isAdmin,
   highlightSlotIds = [],
 }: ScheduleMatrixProps) {
   const { lang, t } = useI18n();
@@ -184,20 +180,6 @@ export default function ScheduleMatrix({
     }
   };
 
-  const selectEvenings = () => {
-    if (granularity === 'daypart') {
-      const eveningSlots = allSlots
-        .filter(s => s.time === 'evening' || s.time === 'night')
-        .map(s => s.id);
-      setMySelectedSlots(Array.from(new Set([...mySelectedSlots, ...eveningSlots])));
-    } else if (granularity === 'hour') {
-      const eveningSlots = allSlots
-        .filter(s => timeToMinutes(s.time) >= 18 * 60)
-        .map(s => s.id);
-      setMySelectedSlots(Array.from(new Set([...mySelectedSlots, ...eveningSlots])));
-    }
-  };
-
   const handleSaveAvailability = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -274,9 +256,9 @@ export default function ScheduleMatrix({
   };
 
   // Calendar Day Generation for a given month
-  const getCalendarDaysForMonth = (monthDate: Date) => {
-    const year = monthDate.getFullYear();
-    const month = monthDate.getMonth();
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
@@ -330,9 +312,8 @@ export default function ScheduleMatrix({
     }
 
     return days;
-  };
+  }, [calendarMonth, rangeStart, rangeEnd, todayStr]);
 
-  const calendarDays = useMemo(() => getCalendarDaysForMonth(calendarMonth), [calendarMonth, rangeStart, rangeEnd, todayStr]);
   const weekdayHeaders = getWeekdayHeaders(lang);
 
   const monthYearLabel = formatLocalizedDate(
