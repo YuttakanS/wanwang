@@ -104,10 +104,11 @@ export function validateEventInput(body: Record<string, unknown>): ValidEventInp
 
   const { start, end } = validateRange(body.dateRangeStart, body.dateRangeEnd);
 
-  const startTime = (body.startTime ?? '09:00') as string;
-  const endTime = (body.endTime ?? '22:00') as string;
-  const isEnd = (t: string) => TIME_RE.test(t);
-  if (!isEnd(startTime) || !isEnd(endTime) || startTime >= endTime) throw new ValidationError('Invalid time window');
+  const startTime = body.startTime ?? '09:00';
+  const endTime = body.endTime ?? '22:00';
+  // The type check matters: RegExp.test turns ['09:00'] into a matching string.
+  const isTime = (t: unknown): t is string => typeof t === 'string' && TIME_RE.test(t);
+  if (!isTime(startTime) || !isTime(endTime) || startTime >= endTime) throw new ValidationError('Invalid time window');
 
   const slotInterval = Number(body.slotInterval ?? 60);
   if (slotInterval !== 30 && slotInterval !== 60) throw new ValidationError('Invalid slot interval');
