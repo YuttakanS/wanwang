@@ -146,6 +146,8 @@ export const translations: Record<Language, Translations> = {
     metaLocationLabel: 'สถานที่: {loc}',
 
     // Share Bar
+    themeToDark: 'เปลี่ยนเป็นธีมมืด',
+    themeToLight: 'เปลี่ยนเป็นธีมสว่าง',
     shareToggleBtn: 'แชร์ให้เพื่อน',
     manageToggleBtn: 'จัดการกิจกรรม',
     shareNativeBtn: 'แชร์ไปให้เพื่อนคุณเลย!! ->',
@@ -399,6 +401,8 @@ export const translations: Record<Language, Translations> = {
     metaLocationLabel: 'Location: {loc}',
 
     // Share Bar
+    themeToDark: 'Switch to dark theme',
+    themeToLight: 'Switch to light theme',
     shareToggleBtn: 'Share with friends',
     manageToggleBtn: 'Manage event',
     shareNativeBtn: 'Share it with your friends!! ->',

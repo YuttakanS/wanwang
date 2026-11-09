@@ -2,9 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme tokens, stored as RGB so Tailwind opacity classes such as text-ink/30 work. */
 :root {
-  --background: #FFFFFF;
-  --foreground: #000000;
+  color-scheme: light;
+  --surface: 255 255 255;
+  --ink: 0 0 0;
+  --sunken: 240 240 240;
+  --sunken-hover: 232 232 232;
+  --muted: 82 82 82;
+  --faint: 163 163 163;
+  --line-soft: 204 204 204;
+  --accent: 255 229 0;
+  --on-ink-accent: 255 229 0;
+  --shadow-color: 0 0 0;
+  --link: 0 0 255;
+  --heat-1: 240 240 240;
+  --on-heat-1: 0 0 0;
+  --heat-2: 204 204 204;
+  --on-heat-2: 0 0 0;
+  --heat-3: 82 82 82;
+  --on-heat-3: 255 255 255;
+}
+
+/* The dark values appear twice: following the system, and chosen with the toggle. CSS cannot share them. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --surface: 17 17 17;
+    --ink: 245 245 245;
+    --sunken: 38 38 38;
+    --sunken-hover: 51 51 51;
+    --muted: 179 179 179;
+    --faint: 115 115 115;
+    --line-soft: 82 82 82;
+    --on-ink-accent: 0 0 0;
+    --shadow-color: 245 245 245;
+    --link: 138 170 255;
+    --heat-1: 51 51 51;
+    --on-heat-1: 245 245 245;
+    --heat-2: 102 102 102;
+    --on-heat-2: 255 255 255;
+    --heat-3: 179 179 179;
+    --on-heat-3: 0 0 0;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: 17 17 17;
+  --ink: 245 245 245;
+  --sunken: 38 38 38;
+  --sunken-hover: 51 51 51;
+  --muted: 179 179 179;
+  --faint: 115 115 115;
+  --line-soft: 82 82 82;
+  --on-ink-accent: 0 0 0;
+  --shadow-color: 245 245 245;
+  --link: 138 170 255;
+  --heat-1: 51 51 51;
+  --on-heat-1: 245 245 245;
+  --heat-2: 102 102 102;
+  --on-heat-2: 255 255 255;
+  --heat-3: 179 179 179;
+  --on-heat-3: 0 0 0;
+}
+
+/* Yellow stays yellow in both themes, so anything on it keeps the light theme's dark text. */
+.bg-accent,
+.hover\:bg-accent:hover,
+.group:hover .group-hover\:bg-accent {
+  --surface: 255 255 255;
+  --ink: 0 0 0;
+  --muted: 82 82 82;
+  --on-ink-accent: 255 229 0;
+  /* Text inherits a computed colour, not these variables, so set it here too. */
+  color: rgb(var(--ink));
 }
 
 * {
@@ -37,8 +109,8 @@ input[type='date']::-webkit-date-and-time-value {
 }
 
 body {
-  color: #000000;
-  background-color: #FFFFFF;
+  color: rgb(var(--ink));
+  background-color: rgb(var(--surface));
   font-family: var(--font-plex-thai), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
@@ -53,18 +125,18 @@ h1, h2, h3, h4 {
   line-height: 1.25;
 }
 
-/* High-contrast placeholder >= 4.5:1 against #F0F0F0 */
+/* High-contrast placeholder >= 4.5:1 against the sunken field colour */
 ::placeholder {
-  color: #525252 !important;
+  color: rgb(var(--muted)) !important;
   opacity: 1 !important;
 }
 
 /* Primary Brutalist Button with Hard Shadow */
 .btn-primary-raw {
-  background-color: #FFE500;
+  background-color: rgb(var(--accent));
   color: #000000;
   border: 3px solid #000000;
-  box-shadow: 4px 4px 0 #000000;
+  box-shadow: 4px 4px 0 rgb(var(--shadow-color));
   font-weight: 700;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
   display: inline-flex;
@@ -74,27 +146,27 @@ h1, h2, h3, h4 {
 
 .btn-primary-raw:hover:not(:disabled) {
   transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 #000000;
+  box-shadow: 6px 6px 0 rgb(var(--shadow-color));
 }
 
 .btn-primary-raw:active:not(:disabled) {
   transform: translate(4px, 4px);
-  box-shadow: 0 0 0 #000000;
+  box-shadow: 0 0 0 rgb(var(--shadow-color));
 }
 
 .btn-primary-raw:disabled {
-  background-color: #F5F5F5;
-  color: #888888;
-  border-color: #CCCCCC;
+  background-color: rgb(var(--sunken));
+  color: rgb(var(--faint));
+  border-color: rgb(var(--line-soft));
   box-shadow: none;
   cursor: not-allowed;
 }
 
 /* Secondary Brutalist Button */
 .btn-secondary-raw {
-  background-color: #FFFFFF;
-  color: #000000;
-  border: 3px solid #000000;
+  background-color: rgb(var(--surface));
+  color: rgb(var(--ink));
+  border: 3px solid rgb(var(--ink));
   font-weight: 600;
   transition: background-color 0.1s ease, color 0.1s ease;
   display: inline-flex;
@@ -103,8 +175,8 @@ h1, h2, h3, h4 {
 }
 
 .btn-secondary-raw:hover:not(:disabled) {
-  background-color: #000000;
-  color: #FFFFFF;
+  background-color: rgb(var(--ink));
+  color: rgb(var(--surface));
 }
 
 /* ==========================================================================
@@ -199,21 +271,21 @@ button:not(.btn-primary-raw):active:not(:disabled) {
   }
 }
 
-/* Hyperlinks strictly #0000FF */
+/* Hyperlinks: pure blue in light, a lighter blue that stays readable in dark */
 a.raw-link {
-  color: #0000FF;
+  color: rgb(var(--link));
   text-decoration: underline;
 }
 
 a.raw-link:hover {
-  background-color: #000000;
-  color: #FFFFFF;
+  background-color: rgb(var(--ink));
+  color: rgb(var(--surface));
 }
 
 /* Selection: Full Color Inversion */
 ::selection {
-  background-color: #000000;
-  color: #FFE500;
+  background-color: rgb(var(--ink));
+  color: rgb(var(--on-ink-accent));
 }
 
 /* Stark Brutalist Scrollbars */
@@ -223,10 +295,10 @@ a.raw-link:hover {
 }
 
 ::-webkit-scrollbar-track {
-  background: #FFFFFF;
-  border-left: 2px solid #000000;
+  background: rgb(var(--surface));
+  border-left: 2px solid rgb(var(--ink));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #000000;
+  background: rgb(var(--ink));
 }

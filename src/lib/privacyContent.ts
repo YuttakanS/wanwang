@@ -60,7 +60,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'ข้อมูลในเบราว์เซอร์ของคุณ',
         paragraphs: [
-          'เราไม่ใช้คุกกี้ แต่เก็บรหัสผู้ดูแล รหัสแก้ไข ภาษาที่เลือก และรายการนัดที่ซ่อนไว้ใน localStorage และ sessionStorage ของเบราว์เซอร์ เพื่อให้คุณกลับมาแก้ไขได้',
+          'เราไม่ใช้คุกกี้ แต่เก็บรหัสผู้ดูแล รหัสแก้ไข ภาษาและธีมที่เลือก และรายการนัดที่ซ่อนไว้ใน localStorage และ sessionStorage ของเบราว์เซอร์ เพื่อให้คุณกลับมาแก้ไขได้',
           'หากล้างข้อมูลเบราว์เซอร์ คุณอาจแก้ไขคำตอบเดิมไม่ได้ และต้องใช้ลิงก์ผู้ดูแลเพื่อเข้าจัดการนัดอีกครั้ง',
         ],
       },
@@ -120,7 +120,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'Data in your browser',
         paragraphs: [
-          'We do not use cookies. Admin keys, edit tokens, your language, and hidden events are kept in your browser’s localStorage and sessionStorage so you can come back and make changes.',
+          'We do not use cookies. Admin keys, edit tokens, your language and theme, and hidden events are kept in your browser’s localStorage and sessionStorage so you can come back and make changes.',
           'If you clear your browser data, you may lose the ability to edit your response, and you will need the admin link to manage your event again.',
         ],
       },

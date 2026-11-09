@@ -2,24 +2,26 @@
 
 import React from 'react';
 import Link from 'next/link';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useI18n } from '@/lib/i18n';
 
 export default function Navbar() {
   const { lang, setLang, t } = useI18n();
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b-3 border-black">
+    <header className="sticky top-0 z-50 bg-surface border-b-3 border-ink">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
         {/* Logo & Brand */}
-        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-          <div className="w-9 h-9 bg-black text-white flex items-center justify-center font-bold text-lg border-2 border-black group-hover:bg-[#FFE500] group-hover:text-black transition-colors">
+        <Link href="/" aria-label={t('appName')} className="flex items-center gap-2.5 group shrink-0">
+          <div className="w-9 h-9 bg-ink text-surface flex items-center justify-center font-bold text-lg border-2 border-ink group-hover:bg-accent group-hover:text-ink transition-colors">
             ว
           </div>
-          <div className="flex flex-col justify-center">
-            <span className="font-bold text-lg text-black tracking-tight leading-tight">
+          {/* The logo alone has to do on small phones, or the actions run off the screen. */}
+          <div className="hidden min-[400px]:flex flex-col justify-center">
+            <span className="font-bold text-lg text-ink tracking-tight leading-tight">
               {t('appName')}
             </span>
-            <span className="text-[11px] text-[#525252] leading-none hidden sm:inline">
+            <span className="text-[11px] text-muted leading-none hidden sm:inline">
               {t('appSubtitle')}
             </span>
           </div>
@@ -28,31 +30,33 @@ export default function Navbar() {
         {/* Right Actions: Lang Switcher [ ENG // TH ] + Create Button */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Language Switcher Toggle: [ ENG // TH ] */}
-          <div className="inline-flex border-3 border-black bg-white" role="group" aria-label="Language selection">
+          <div className="inline-flex border-3 border-ink bg-surface" role="group" aria-label="Language selection">
             <button
               type="button"
               onClick={() => setLang('en')}
               className={`px-2.5 sm:px-3 py-1 font-mono text-xs font-bold transition-none ${
                 lang === 'en'
-                  ? 'bg-black text-white'
-                  : 'bg-white text-black hover:bg-[#F0F0F0]'
+                  ? 'bg-ink text-surface'
+                  : 'bg-surface text-ink hover:bg-sunken'
               }`}
             >
               ENG
             </button>
-            <div className="w-[2px] bg-black" />
+            <div className="w-[2px] bg-ink" />
             <button
               type="button"
               onClick={() => setLang('th')}
               className={`px-2.5 sm:px-3 py-1 font-mono text-xs font-bold transition-none ${
                 lang === 'th'
-                  ? 'bg-black text-white'
-                  : 'bg-white text-black hover:bg-[#F0F0F0]'
+                  ? 'bg-ink text-surface'
+                  : 'bg-surface text-ink hover:bg-sunken'
               }`}
             >
               TH
             </button>
           </div>
+
+          <ThemeToggle />
 
           {/* Primary Create Button */}
           <Link

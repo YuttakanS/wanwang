@@ -76,24 +76,24 @@ export default function MyEvents() {
   if (events.length === 0 && hiddenCount === 0) return null;
 
   return (
-    <section className="bg-white border-3 border-black p-5 sm:p-6 space-y-3 motion-enter">
-      <div className="border-b-3 border-black pb-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-black leading-tight">
+    <section className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-3 motion-enter">
+      <div className="border-b-3 border-ink pb-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
           {t('myEventsTitle')}
         </h2>
-        <p className="text-sm text-[#525252] mt-0.5">{t('myEventsSubtitle')}</p>
+        <p className="text-sm text-muted mt-0.5">{t('myEventsSubtitle')}</p>
       </div>
 
       {events.length > 0 && (
-        <ul className="divide-y-3 divide-black">
+        <ul className="divide-y-3 divide-ink">
           {events.map(event => (
             <li key={event.slug} className="py-3 flex items-center justify-between gap-3">
               <Link
                 href={`/e/${encodeURIComponent(event.slug)}`}
                 className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-1 hover:underline"
               >
-                <span className="font-bold text-base text-black break-words min-w-0">{event.title}</span>
-                <span className="font-mono text-xs text-[#525252] shrink-0">
+                <span className="font-bold text-base text-ink break-words min-w-0">{event.title}</span>
+                <span className="font-mono text-xs text-muted shrink-0">
                   {t('myEventsResponses', { count: event.participantCount })}
                   {event.isClosed && ` • ${t('votingClosedBadge')}`}
                 </span>
@@ -102,7 +102,7 @@ export default function MyEvents() {
                 type="button"
                 onClick={() => handleHide(event.slug)}
                 aria-label={t('myEventsHideLabel', { title: event.title })}
-                className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs shrink-0 cursor-pointer transition-none"
+                className="px-2 py-1 bg-surface hover:bg-ink hover:text-surface border-2 border-ink font-mono text-xs shrink-0 cursor-pointer transition-none"
               >
                 {t('myEventsHideBtn')}
               </button>
@@ -115,7 +115,7 @@ export default function MyEvents() {
         <button
           type="button"
           onClick={handleShowHidden}
-          className="text-xs text-black underline cursor-pointer"
+          className="text-xs text-ink underline cursor-pointer"
         >
           {t('myEventsShowHidden', { count: hiddenCount })}
         </button>

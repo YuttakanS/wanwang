@@ -20,20 +20,27 @@ export default {
     },
     boxShadow: {
       none: 'none',
-      hard: '4px 4px 0 #000000',
-      'hard-lg': '6px 6px 0 #000000',
+      hard: '4px 4px 0 rgb(var(--shadow-color))',
+      'hard-lg': '6px 6px 0 rgb(var(--shadow-color))',
     },
     extend: {
+      // Values for both themes are in globals.css.
       colors: {
-        raw: {
-          black: '#000000',
-          white: '#FFFFFF',
-          yellow: '#FFE500', // Single Accent Yellow
-          sunken: '#F0F0F0',
-          hover: '#E8E8E8',
-          border: '#CCCCCC',
-          muted: '#525252',
-        },
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        ink: 'rgb(var(--ink) / <alpha-value>)',
+        sunken: 'rgb(var(--sunken) / <alpha-value>)',
+        'sunken-hover': 'rgb(var(--sunken-hover) / <alpha-value>)',
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        faint: 'rgb(var(--faint) / <alpha-value>)',
+        'line-soft': 'rgb(var(--line-soft) / <alpha-value>)',
+        accent: 'rgb(var(--accent) / <alpha-value>)',
+        'on-ink-accent': 'rgb(var(--on-ink-accent) / <alpha-value>)',
+        'heat-1': 'rgb(var(--heat-1) / <alpha-value>)',
+        'on-heat-1': 'rgb(var(--on-heat-1) / <alpha-value>)',
+        'heat-2': 'rgb(var(--heat-2) / <alpha-value>)',
+        'on-heat-2': 'rgb(var(--on-heat-2) / <alpha-value>)',
+        'heat-3': 'rgb(var(--heat-3) / <alpha-value>)',
+        'on-heat-3': 'rgb(var(--on-heat-3) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['var(--font-plex-thai)', 'sans-serif'],

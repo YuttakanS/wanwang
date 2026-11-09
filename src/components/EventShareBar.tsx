@@ -187,7 +187,7 @@ export default function EventShareBar({
   };
 
   return (
-    <div className="border-t-3 border-black pt-4 space-y-3">
+    <div className="border-t-3 border-ink pt-4 space-y-3">
       {/* Collapsed by default so people opening the link reach the voting form straight away. */}
       <div className="flex flex-wrap items-center gap-2">
         <button
@@ -267,14 +267,14 @@ export default function EventShareBar({
       {/* Organizer / Admin secret UX */}
       {isAdmin && openPanel === 'admin' && (
         <div id={adminPanelId} className="flex flex-wrap items-center gap-2 motion-enter">
-          <span className="font-mono text-xs font-bold px-2 py-1 bg-[#F0F0F0] border-2 border-black text-black">
+          <span className="font-mono text-xs font-bold px-2 py-1 bg-sunken border-2 border-ink text-ink">
             {t('adminVerifiedBadge')}
           </span>
 
           <button
             type="button"
             onClick={handleCopyAdminLink}
-            className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
+            className="px-2 py-1 bg-surface hover:bg-ink hover:text-surface border-2 border-ink font-mono text-xs transition-none"
           >
             {copiedAdminLink ? t('copyAdminLinkDone') : t('copyAdminLinkBtn')}
           </button>
@@ -283,7 +283,7 @@ export default function EventShareBar({
             type="button"
             disabled={isUpdating}
             onClick={() => setConfirmingRotate(true)}
-            className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
+            className="px-2 py-1 bg-surface hover:bg-ink hover:text-surface border-2 border-ink font-mono text-xs transition-none"
           >
             {t('rotateAdminBtn')}
           </button>
@@ -292,10 +292,10 @@ export default function EventShareBar({
             type="button"
             disabled={isUpdating}
             onClick={handleToggleClosed}
-            className={`px-2.5 py-1 font-mono text-xs font-bold border-2 border-black transition-none ${
+            className={`px-2.5 py-1 font-mono text-xs font-bold border-2 border-ink transition-none ${
               event.isClosed
-                ? 'bg-[#FFE500] text-black hover:bg-black hover:text-[#FFE500]'
-                : 'bg-black text-white hover:bg-white hover:text-black'
+                ? 'bg-accent text-ink hover:bg-ink hover:text-on-ink-accent'
+                : 'bg-ink text-surface hover:bg-surface hover:text-ink'
             }`}
           >
             {event.isClosed ? t('reopenVotingBtn') : t('closeVotingBtn')}
@@ -305,7 +305,7 @@ export default function EventShareBar({
             type="button"
             disabled={isUpdating}
             onClick={() => setConfirmingDelete(true)}
-            className="px-2.5 py-1 font-mono text-xs font-bold border-2 border-black bg-[#FF0000] text-white hover:bg-black hover:text-[#FF0000] transition-none"
+            className="px-2.5 py-1 font-mono text-xs font-bold border-2 border-black bg-[#D00000] text-white hover:bg-black hover:text-[#FF0000] transition-none"
           >
             {t('deleteEventBtn')}
           </button>
@@ -313,7 +313,7 @@ export default function EventShareBar({
       )}
 
       {manualCopy && (
-        <div className="p-3 bg-[#FFE500] border-2 border-black text-black space-y-2 motion-shake">
+        <div className="p-3 bg-accent border-2 border-ink text-ink space-y-2 motion-shake">
           <p role="alert" className="font-mono text-xs">
             [ERROR] {t('copyManualNotice')}
           </p>
@@ -325,7 +325,7 @@ export default function EventShareBar({
             rows={manualCopy.text.includes('\n') ? 6 : 2}
             value={manualCopy.text}
             onFocus={e => e.target.select()}
-            className="w-full px-3 py-2 bg-white border-2 border-black text-black font-mono text-xs focus:outline-none focus:ring-2 focus:ring-black"
+            className="w-full px-3 py-2 bg-surface border-2 border-ink text-ink font-mono text-xs focus:outline-none focus:ring-2 focus:ring-ink"
           />
           <button
             type="button"
@@ -338,13 +338,13 @@ export default function EventShareBar({
       )}
 
       {rotateFailed && (
-        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">
+        <div className="p-3 bg-accent border-2 border-ink text-ink font-mono text-xs motion-shake">
           [ERROR] {t('rotateAdminFailed')}
         </div>
       )}
 
       {deleteFailed && (
-        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">
+        <div className="p-3 bg-accent border-2 border-ink text-ink font-mono text-xs motion-shake">
           [ERROR] {t('deleteEventFailed')}
         </div>
       )}
