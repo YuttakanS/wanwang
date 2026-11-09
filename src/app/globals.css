@@ -14,7 +14,7 @@
 body {
   color: #000000;
   background-color: #FFFFFF;
-  font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-plex-thai), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.65;
@@ -23,7 +23,7 @@ body {
 
 /* Headings in IBM Plex Sans Thai with bold weights */
 h1, h2, h3, h4 {
-  font-family: 'IBM Plex Sans Thai', sans-serif;
+  font-family: var(--font-plex-thai), sans-serif;
   font-weight: 700;
   line-height: 1.25;
 }

@@ -53,7 +53,6 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'ผู้ให้บริการที่เกี่ยวข้อง',
         paragraphs: [
           'Vercel ให้บริการเว็บและอาจบันทึกข้อมูลการเข้าถึง เช่น IP address ส่วน Supabase ให้บริการฐานข้อมูล',
-          'เบราว์เซอร์ของคุณโหลดฟอนต์จาก Google Fonts ทำให้ Google เห็น IP address ของคุณ',
           'ผู้ให้บริการเหล่านี้อาจเก็บหรือประมวลผลข้อมูลบนเซิร์ฟเวอร์นอกประเทศไทย',
         ],
       },
@@ -113,7 +112,6 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'Service providers',
         paragraphs: [
           'Vercel hosts the site and may log access data such as IP addresses. Supabase hosts the database.',
-          'Your browser loads fonts from Google Fonts, so Google can see your IP address.',
           'These providers may store or process data on servers outside Thailand.',
         ],
       },

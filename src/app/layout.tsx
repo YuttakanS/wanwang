@@ -1,6 +1,22 @@
 import type { Metadata } from "next";
+import { IBM_Plex_Sans_Thai, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
+
+// next/font downloads these at build time and serves them from this origin.
+const plexThai = IBM_Plex_Sans_Thai({
+  subsets: ["thai", "latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-plex-thai",
+  display: "swap",
+});
+
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
+  display: "swap",
+});
 
 // A prerendered page has no per-request nonce, so the CSP in middleware would block its scripts.
 export const dynamic = "force-dynamic";
@@ -16,15 +32,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className="scroll-smooth">
+    <html lang="th" className={`scroll-smooth ${plexThai.variable} ${spaceMono.variable}`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body className="bg-white text-black min-h-screen">
         <I18nProvider>

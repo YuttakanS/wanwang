@@ -36,8 +36,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['"IBM Plex Sans Thai"', 'sans-serif'],
-        mono: ['"Space Mono"', 'monospace'],
+        sans: ['var(--font-plex-thai)', 'sans-serif'],
+        // Space Mono has no Thai glyphs, so Thai text falls through to Plex.
+        mono: ['var(--font-space-mono)', 'var(--font-plex-thai)', 'monospace'],
       },
       borderWidth: {
         '1': '1px',

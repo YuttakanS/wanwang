@@ -10,8 +10,8 @@ function buildCsp(nonce: string): string {
     // Webpack's dev bundles need eval.
     `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ''}`,
     // Next's own pages and React style attributes need inline styles.
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
     "img-src 'self' data:",
     "connect-src 'self'",
     "object-src 'none'",
