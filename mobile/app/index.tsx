@@ -1,19 +1,25 @@
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { buildMonthCells } from '@/lib/monthCells';
 import { formatDateToISO, formatLocalizedDate } from '@/lib/timeUtils';
 import { DayGrid } from '~/components/calendar/DayGrid';
-import { calendarColors } from '~/constants/calendarColors';
+import { NeoButton } from '~/components/neo/NeoButton';
+import { NeoText } from '~/components/neo/NeoText';
+import { borderWidths } from '~/constants/theme';
 import { useSelectionStore } from '~/hooks/useSelectionStore';
+import { useTheme } from '~/hooks/useTheme';
 
 // Temporary screen for testing the calendar on a real phone. Phase 3 replaces it with the real home.
 const RANGE_DAYS = 45;
 
 export default function CalendarTestScreen() {
   const insets = useSafeAreaInsets();
-  const { store, outsideVersion } = useSelectionStore();
+  const router = useRouter();
+  const { colors } = useTheme();
+  const { store, slots, outsideVersion } = useSelectionStore();
   const [dragging, setDragging] = useState(false);
   const [month, setMonth] = useState(() => {
     const now = new Date();
@@ -31,28 +37,26 @@ export default function CalendarTestScreen() {
   const monthId = formatDateToISO(month);
 
   const shiftMonth = (delta: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + delta, 1));
+  const spacerStyle = [styles.spacer, { borderColor: colors.lineSoft }];
 
   return (
     <ScrollView
       scrollEnabled={!dragging}
-      style={styles.screen}
+      style={{ flex: 1, backgroundColor: colors.surface }}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}
     >
-      <Text style={styles.title}>ทดสอบปฏิทิน</Text>
-      <Text style={styles.help}>แตะเพื่อเลือกหรือเอาออก กดค้างแล้วลากเพื่อเลือกหลายวัน เลื่อนจอเริ่มจากบนปฏิทินต้องไม่เลือกวัน</Text>
+      <NeoText variant="title">ทดสอบปฏิทิน</NeoText>
+      <NeoText tone="muted">แตะเพื่อเลือกหรือเอาออก กดค้างแล้วลากเพื่อเลือกหลายวัน เลื่อนจอเริ่มจากบนปฏิทินต้องไม่เลือกวัน</NeoText>
+      {__DEV__ && <NeoButton label="ดูระบบดีไซน์" variant="secondary" size="sm" onPress={() => router.push('/preview')} />}
 
-      <View style={styles.spacer}>
-        <Text style={styles.help}>พื้นที่ว่าง เพื่อให้หน้าเลื่อนได้</Text>
+      <View style={spacerStyle}>
+        <NeoText tone="muted">พื้นที่ว่าง เพื่อให้หน้าเลื่อนได้</NeoText>
       </View>
 
-      <View style={styles.monthRow}>
-        <Pressable accessibilityRole="button" onPress={() => shiftMonth(-1)} style={styles.button}>
-          <Text style={styles.buttonText}>{'<'}</Text>
-        </Pressable>
-        <Text style={styles.monthText}>{formatLocalizedDate(monthId, 'th', 'monthYear')}</Text>
-        <Pressable accessibilityRole="button" onPress={() => shiftMonth(1)} style={styles.button}>
-          <Text style={styles.buttonText}>{'>'}</Text>
-        </Pressable>
+      <View style={styles.row}>
+        <NeoButton label="<" variant="secondary" size="sm" accessibilityLabel="เดือนก่อนหน้า" onPress={() => shiftMonth(-1)} />
+        <NeoText variant="label">{formatLocalizedDate(monthId, 'th', 'monthYear')}</NeoText>
+        <NeoButton label=">" variant="secondary" size="sm" accessibilityLabel="เดือนถัดไป" onPress={() => shiftMonth(1)} />
       </View>
 
       <DayGrid
@@ -64,31 +68,21 @@ export default function CalendarTestScreen() {
         onDraggingChange={setDragging}
       />
 
-      <View style={styles.resultRow}>
-        <Text style={styles.count}>เลือกแล้ว: {store.size} วัน</Text>
-        <Pressable accessibilityRole="button" onPress={() => store.replace([])} style={styles.button}>
-          <Text style={styles.buttonText}>ล้าง</Text>
-        </Pressable>
+      <View style={styles.row}>
+        <NeoText variant="label">เลือกแล้ว: {slots.length} วัน</NeoText>
+        <NeoButton label="ล้าง" variant="secondary" size="sm" onPress={() => store.replace([])} />
       </View>
-      <Text style={styles.help}>{store.toArray().sort().join(', ') || '-'}</Text>
+      <NeoText tone="muted">{[...slots].sort().join(', ') || '-'}</NeoText>
 
-      <View style={styles.spacer}>
-        <Text style={styles.help}>พื้นที่ว่าง เพื่อให้หน้าเลื่อนได้</Text>
+      <View style={spacerStyle}>
+        <NeoText tone="muted">พื้นที่ว่าง เพื่อให้หน้าเลื่อนได้</NeoText>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: calendarColors.surface },
   content: { paddingHorizontal: 16, gap: 12 },
-  title: { fontSize: 24, fontWeight: '700', color: calendarColors.ink },
-  help: { fontSize: 14, color: calendarColors.muted },
-  spacer: { height: 280, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: calendarColors.lineSoft },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  monthText: { fontSize: 16, fontWeight: '700', color: calendarColors.ink },
-  button: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 2, borderColor: calendarColors.ink },
-  buttonText: { fontSize: 14, fontWeight: '700', color: calendarColors.ink },
-  resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  count: { fontSize: 16, fontWeight: '700', color: calendarColors.ink },
+  spacer: { height: 280, justifyContent: 'center', alignItems: 'center', borderWidth: borderWidths.thin },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

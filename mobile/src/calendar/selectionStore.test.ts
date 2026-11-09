@@ -5,7 +5,7 @@ describe('SelectionStore', () => {
   it('adds and removes what a gesture reports', () => {
     const store = new SelectionStore();
     store.applyFromGesture(['a', 'b'], true);
-    expect(store.toArray().sort()).toEqual(['a', 'b']);
+    expect([...store.getSnapshot()].sort()).toEqual(['a', 'b']);
 
     store.applyFromGesture(['a'], false);
     expect(store.has('a')).toBe(false);
@@ -17,7 +17,7 @@ describe('SelectionStore', () => {
     const store = new SelectionStore();
     store.applyFromGesture(['a', 'a'], true);
     store.applyFromGesture(['a'], true);
-    expect(store.toArray()).toEqual(['a']);
+    expect(store.getSnapshot()).toEqual(['a']);
   });
 
   it('does not make the calendar redraw after a gesture', () => {
@@ -34,7 +34,27 @@ describe('SelectionStore', () => {
     expect(store.getOutsideVersion()).toBe(1);
     store.replace(['b']);
     expect(store.getOutsideVersion()).toBe(2);
-    expect(store.toArray()).toEqual(['b']);
+    expect(store.getSnapshot()).toEqual(['b']);
+  });
+
+  it('gives the same array until the selection changes, then a new one', () => {
+    const store = new SelectionStore();
+    const empty = store.getSnapshot();
+    expect(store.getSnapshot()).toBe(empty);
+
+    store.applyFromGesture(['a'], true);
+    const afterGesture = store.getSnapshot();
+    expect(afterGesture).not.toBe(empty);
+    expect(afterGesture).toEqual(['a']);
+
+    store.applyFromGesture(['a'], true);
+    expect(store.getSnapshot()).toBe(afterGesture);
+
+    store.toggle('b');
+    expect(store.getSnapshot()).toEqual(['a', 'b']);
+    store.replace([]);
+    expect(store.getSnapshot()).toEqual([]);
+    expect(afterGesture).toEqual(['a']);
   });
 
   it('toggle turns a slot on, then off', () => {

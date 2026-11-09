@@ -12,5 +12,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // Vitest empties CSS files by default. theme.test.ts compares its tokens with this one.
+    css: { include: [/globals\.css/] },
   },
 });
