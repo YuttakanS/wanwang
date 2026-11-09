@@ -47,6 +47,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         paragraphs: [
           'ระบบลบนัดและข้อมูลการลงเวลาทั้งหมดของนัดนั้นโดยอัตโนมัติ 90 วันหลังวันสุดท้ายของนัด หรือ 90 วันหลังวันที่สร้างนัด แล้วแต่ว่าวันใดมาทีหลัง',
           'ค่า hash ของ IP หมดอายุภายในไม่เกิน 1 ชั่วโมง และถูกล้างออกอย่างน้อยวันละครั้ง ข้อมูลสำรองของผู้ให้บริการอาจคงอยู่ต่ออีกระยะหนึ่ง',
+          'เมื่อแชร์ลิงก์นัดในแอปแชทหรือบริการภายนอก บริการนั้นอาจดึงชื่อนัดไปแสดงเป็นตัวอย่างลิงก์ และอาจเก็บไว้ต่อหลังจากนัดถูกลบแล้ว เราไม่สามารถลบข้อมูลในส่วนนั้นได้',
         ],
       },
       {
@@ -106,6 +107,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         paragraphs: [
           'An event and all its responses are deleted automatically 90 days after its last date, or 90 days after it was created, whichever is later.',
           'IP hashes expire within 1 hour and are cleared at least once a day. Our providers’ backups may keep data for a further period.',
+          'When an event link is shared in a chat app or other outside service, that service may fetch the event title to show a link preview and may keep it after the event is deleted. We cannot delete data held there.',
         ],
       },
       {
