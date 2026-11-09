@@ -7,31 +7,51 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    borderRadius: {
+      none: '0px',
+      DEFAULT: '0px',
+      sm: '0px',
+      md: '0px',
+      lg: '0px',
+      xl: '0px',
+      '2xl': '0px',
+      '3xl': '0px',
+      full: '0px',
+    },
+    boxShadow: {
+      none: 'none',
+      hard: '4px 4px 0 #000000',
+      'hard-lg': '6px 6px 0 #000000',
+    },
     extend: {
       colors: {
-        pool: {
-          50: '#ecfeff',
-          100: '#cffafe',
-          200: '#a5f3fc',
-          300: '#67e8f9',
-          400: '#22d3ee',
-          500: '#06b6d4',
-          600: '#0891b2',
-          700: '#0e7490',
-          800: '#155e75',
-          900: '#164e63',
-          950: '#083344',
+        raw: {
+          black: '#000000',
+          white: '#FFFFFF',
+          yellow: '#FFE500', // Single Accent Yellow
+          sunken: '#F0F0F0',
+          hover: '#E8E8E8',
+          border: '#CCCCCC',
+          muted: '#525252',
         },
-        party: {
-          pink: '#ec4899',
-          purple: '#8b5cf6',
-          amber: '#f59e0b',
-          emerald: '#10b981',
-          coral: '#ff6b6b'
-        }
       },
       fontFamily: {
-        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Prompt', 'sans-serif'],
+        sans: ['var(--font-plex-thai)', 'sans-serif'],
+        // Space Mono has no Thai glyphs, so Thai text falls through to Plex.
+        mono: ['var(--font-space-mono)', 'var(--font-plex-thai)', 'monospace'],
+      },
+      borderWidth: {
+        '1': '1px',
+        '2': '2px',
+        '3': '3px',
+        '5': '5px',
+      },
+      letterSpacing: {
+        raw: '1px',
+        chip: '0.5px',
+      },
+      lineHeight: {
+        thai: '1.65',
       },
     },
   },

@@ -3,33 +3,205 @@
 @tailwind utilities;
 
 :root {
-  --background: #020617;
-  --foreground: #f8fafc;
+  --background: #FFFFFF;
+  --foreground: #000000;
+}
+
+* {
+  border-radius: 0px !important;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Prompt", sans-serif;
+  color: #000000;
+  background-color: #FFFFFF;
+  font-family: var(--font-plex-thai), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbars */
+/* Headings in IBM Plex Sans Thai with bold weights */
+h1, h2, h3, h4 {
+  font-family: var(--font-plex-thai), sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* High-contrast placeholder >= 4.5:1 against #F0F0F0 */
+::placeholder {
+  color: #525252 !important;
+  opacity: 1 !important;
+}
+
+/* Primary Brutalist Button with Hard Shadow */
+.btn-primary-raw {
+  background-color: #FFE500;
+  color: #000000;
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0 #000000;
+  font-weight: 700;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary-raw:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000000;
+}
+
+.btn-primary-raw:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 #000000;
+}
+
+.btn-primary-raw:disabled {
+  background-color: #F5F5F5;
+  color: #888888;
+  border-color: #CCCCCC;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Secondary Brutalist Button */
+.btn-secondary-raw {
+  background-color: #FFFFFF;
+  color: #000000;
+  border: 3px solid #000000;
+  font-weight: 600;
+  transition: background-color 0.1s ease, color 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-secondary-raw:hover:not(:disabled) {
+  background-color: #000000;
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
+   Motion (web-motion-design skill, constrained by RawBlock in design.md)
+   Only transform/opacity are animated. Colors still invert instantly and no
+   soft shadows or glows are added. Slot cells are divs, so they stay
+   unanimated and drag-select on large ranges stays fast.
+   ========================================================================== */
+:root {
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Squash & stretch on press. Specificity beats Tailwind's .transition-none. */
+button:not(.btn-primary-raw):not(.btn-secondary-raw) {
+  transition: transform 120ms var(--ease-standard);
+}
+
+button.btn-secondary-raw {
+  transition: background-color 0.1s ease, color 0.1s ease, transform 120ms var(--ease-standard);
+}
+
+button:not(.btn-primary-raw):active:not(:disabled) {
+  transform: scale(0.96, 1.04);
+}
+
+/* Staging: page sections arrive in reading order. `backwards` leaves no
+   transform behind once finished, so sticky headers and stacking are unaffected. */
+@keyframes motion-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.motion-stagger > *,
+.motion-enter {
+  animation: motion-rise 240ms var(--ease-enter) backwards;
+}
+
+.motion-stagger > :nth-child(2) { animation-delay: 60ms; }
+.motion-stagger > :nth-child(3) { animation-delay: 120ms; }
+.motion-stagger > :nth-child(4) { animation-delay: 180ms; }
+.motion-stagger > :nth-child(n + 5) { animation-delay: 240ms; }
+
+@keyframes motion-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.motion-fade {
+  animation: motion-fade 160ms var(--ease-enter) backwards;
+}
+
+/* Exaggeration: overshoot when something becomes selected or appears. */
+@keyframes motion-pop {
+  from { transform: scale(0.94); }
+  to { transform: scale(1); }
+}
+
+.motion-pop {
+  animation: motion-pop 180ms var(--ease-overshoot) backwards;
+}
+
+/* Follow through: the headline highlight lands after the hero. */
+.motion-highlight {
+  animation: motion-pop 280ms var(--ease-overshoot) 160ms backwards;
+}
+
+/* Errors shake. */
+@keyframes motion-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  45% { transform: translateX(8px); }
+  70% { transform: translateX(-4px); }
+  85% { transform: translateX(2px); }
+}
+
+.motion-shake {
+  animation: motion-shake 320ms var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  button:not(.btn-primary-raw):active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Hyperlinks strictly #0000FF */
+a.raw-link {
+  color: #0000FF;
+  text-decoration: underline;
+}
+
+a.raw-link:hover {
+  background-color: #000000;
+  color: #FFFFFF;
+}
+
+/* Selection: Full Color Inversion */
+::selection {
+  background-color: #000000;
+  color: #FFE500;
+}
+
+/* Stark Brutalist Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #FFFFFF;
+  border-left: 2px solid #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #000000;
 }
