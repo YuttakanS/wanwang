@@ -58,6 +58,14 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         ],
       },
       {
+        title: 'มาตรการรักษาความปลอดภัย',
+        paragraphs: [
+          'ข้อมูลระหว่างเบราว์เซอร์กับเซิร์ฟเวอร์ส่งผ่าน HTTPS (TLS) และเบราว์เซอร์ถูกบังคับให้ใช้ HTTPS เสมอ',
+          'รหัสผู้ดูแลและรหัสแก้ไขเก็บเป็นค่าแฮช SHA-256 ทางเดียว ไม่สามารถย้อนกลับเป็นรหัสเดิมได้ ค่า hash ของ IP ใช้คีย์ลับในการแฮช',
+          'ตารางในฐานข้อมูลปิดการเข้าถึงด้วยคีย์สาธารณะ ผู้ใช้ทั่วไปจึงอ่านหรือแก้ไขข้อมูลโดยตรงไม่ได้ ข้อมูลเข้าถึงได้ผ่านเซิร์ฟเวอร์ของเราเท่านั้น',
+        ],
+      },
+      {
         title: 'ข้อมูลในเบราว์เซอร์ของคุณ',
         paragraphs: [
           'เราไม่ใช้คุกกี้ แต่เก็บรหัสผู้ดูแล รหัสแก้ไข ภาษาและธีมที่เลือก และรายการนัดที่ซ่อนไว้ใน localStorage และ sessionStorage ของเบราว์เซอร์ เพื่อให้คุณกลับมาแก้ไขได้',
@@ -67,7 +75,8 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'สิทธิ์ของคุณ',
         paragraphs: [
-          'คุณลบคำตอบของตัวเองได้จากเบราว์เซอร์เดิม ผู้สร้างนัดลบคำตอบของทุกคนหรือลบทั้งนัดได้',
+          'วิธีใช้สิทธิ์ในทางปฏิบัติ: ผู้สร้างนัดแก้ไขหรือลบนัดได้ทันทีผ่านลิงก์จัดการสำหรับผู้ดูแล (Admin Link) และลบคำตอบของทุกคนได้',
+          'ผู้เข้าร่วมแก้ไขหรือถอนคำตอบของตัวเองได้ทันทีผ่านเบราว์เซอร์เดิม หากล้างข้อมูลเบราว์เซอร์แล้ว ให้ส่งอีเมลมาที่ wanwang.help@gmail.com พร้อมชื่อนัดและชื่อที่ใช้ลงเวลา เราจะดำเนินการลบข้อมูลภายใน 30 วันตามที่กฎหมายกำหนด',
           'ตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล คุณมีสิทธิ์ขอเข้าถึง แก้ไข หรือลบข้อมูล คัดค้านการประมวลผล และร้องเรียนต่อสำนักงานคณะกรรมการคุ้มครองข้อมูลส่วนบุคคล',
         ],
       },
@@ -118,6 +127,14 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         ],
       },
       {
+        title: 'Security measures',
+        paragraphs: [
+          'Data travels between your browser and our servers over HTTPS (TLS), and the browser is told to use HTTPS only.',
+          'Admin keys and edit tokens are stored as one-way SHA-256 hashes, so the original values cannot be recovered from the database. IP hashes use a secret key.',
+          'Database tables block access made with the public API key, so visitors cannot read or change the data directly. Data is reached only through our servers.',
+        ],
+      },
+      {
         title: 'Data in your browser',
         paragraphs: [
           'We do not use cookies. Admin keys, edit tokens, your language and theme, and hidden events are kept in your browser’s localStorage and sessionStorage so you can come back and make changes.',
@@ -127,7 +144,8 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'Your rights',
         paragraphs: [
-          'You can delete your own response from the browser you used. An event’s creator can delete any response or the whole event.',
+          'In practice: an event’s creator can edit or delete the event at any time through the admin link, and can delete any response.',
+          'Participants can edit or withdraw their own response at any time from the same browser. If you have cleared your browser data, email wanwang.help@gmail.com with the event name and the name you used to respond. We will delete the data within 30 days, as the law requires.',
           'Under Thailand’s Personal Data Protection Act, you may request access to, correction of, or deletion of your data, object to processing, and complain to the Personal Data Protection Committee.',
         ],
       },
