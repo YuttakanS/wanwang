@@ -1,5 +1,5 @@
 import type { Participant, WanWangEvent } from '@/types';
-import type { Language } from './i18n';
+import type { Language } from './translations';
 import { generateShareMessage } from './timeUtils';
 
 export type ShareTarget = 'line' | 'whatsapp';

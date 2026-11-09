@@ -1,4 +1,4 @@
-import type { Language } from './i18n';
+import type { Language } from './translations';
 
 export interface PrivacySection {
   title: string;

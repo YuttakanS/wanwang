@@ -60,7 +60,7 @@ Schema อยู่ที่ [`supabase/schema.sql`](supabase/schema.sql) รั
 
 แอปเข้าถึงฐานข้อมูลผ่าน API route ด้วย `service_role` key เท่านั้น ส่วน role `anon` และ `authenticated` ถูกตัดสิทธิ์ที่ตาราง
 
-**การลบข้อมูล:** job `wanwang-cleanup` ใน pg_cron รันทุกวันเวลา 03:00 UTC และลบนัดพร้อมคำตอบ 90 วันหลังวันสุดท้ายของนัด หรือ 90 วันหลังวันที่สร้าง แล้วแต่ว่าวันใดมาทีหลัง ถ้าจะเปลี่ยนระยะเวลา ต้องแก้ทั้ง `purge_expired_events()`, `src/lib/privacyContent.ts` และ `createVisibilityNote` ใน `src/lib/i18n.tsx` ซึ่งมีเทสต์ตรวจว่าตรงกัน
+**การลบข้อมูล:** job `wanwang-cleanup` ใน pg_cron รันทุกวันเวลา 03:00 UTC และลบนัดพร้อมคำตอบ 90 วันหลังวันสุดท้ายของนัด หรือ 90 วันหลังวันที่สร้าง แล้วแต่ว่าวันใดมาทีหลัง ถ้าจะเปลี่ยนระยะเวลา ต้องแก้ทั้ง `purge_expired_events()`, `src/lib/privacyContent.ts` และ `createVisibilityNote` ใน `src/lib/translations.ts` ซึ่งมีเทสต์ตรวจว่าตรงกัน
 
 ## ความปลอดภัยและความเป็นส่วนตัว
 

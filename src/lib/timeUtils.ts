@@ -7,7 +7,7 @@ import {
   TimeGranularity,
   DayPartId,
 } from '@/types';
-import { Language } from './i18n';
+import type { Language } from './translations';
 
 export const THAI_SHORT_WEEKDAYS = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 export const EN_SHORT_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
