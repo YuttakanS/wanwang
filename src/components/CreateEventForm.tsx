@@ -142,24 +142,24 @@ export default function CreateEventForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* 1. Event Info Card */}
-      <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5">
-        <div className="border-b-3 border-black pb-3 flex items-center justify-between">
+      <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-5">
+        <div className="border-b-3 border-ink pb-3 flex items-center justify-between">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-black leading-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
               {t('step1Title')}
             </h2>
-            <p className="text-sm text-[#525252] mt-0.5">
+            <p className="text-sm text-muted mt-0.5">
               {t('step1Subtitle')}
             </p>
           </div>
-          <span className="font-mono text-xs uppercase px-2 py-0.5 bg-black text-white shrink-0">
+          <span className="font-mono text-xs uppercase px-2 py-0.5 bg-ink text-surface shrink-0">
             {t('requiredBadge')}
           </span>
         </div>
 
         {/* Title Input */}
         <div>
-          <label className="block text-sm font-bold text-black mb-1">
+          <label className="block text-sm font-bold text-ink mb-1">
             {t('eventNameLabel')}
           </label>
           <input
@@ -168,16 +168,16 @@ export default function CreateEventForm() {
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder={t('eventNamePlaceholder')}
-            className="w-full px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-sans text-sm focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none"
+            className="w-full px-3 py-2.5 bg-sunken hover:bg-sunken-hover border-3 border-ink text-ink font-sans text-sm focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink transition-none"
           />
-          <p className="text-xs text-[#525252] mt-1">
+          <p className="text-xs text-muted mt-1">
             {t('eventNameHelper')}
           </p>
         </div>
 
         {/* Category Selector */}
         <div>
-          <label className="block text-sm font-bold text-black mb-1.5">
+          <label className="block text-sm font-bold text-ink mb-1.5">
             {t('categoryLabel')}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -188,10 +188,10 @@ export default function CreateEventForm() {
                   key={cat.id}
                   type="button"
                   onClick={() => setCategory(cat.id)}
-                  className={`px-3 py-2 border-2 border-black text-xs font-semibold text-left transition-none ${
+                  className={`px-3 py-2 border-2 border-ink text-xs font-semibold text-left transition-none ${
                     isSelected
-                      ? 'bg-black text-[#FFE500] motion-pop'
-                      : 'bg-white text-black hover:bg-[#F0F0F0]'
+                      ? 'bg-ink text-on-ink-accent motion-pop'
+                      : 'bg-surface text-ink hover:bg-sunken'
                   }`}
                 >
                   {getCategoryLabel(cat.id)}
@@ -204,7 +204,7 @@ export default function CreateEventForm() {
         {/* Location & Description */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-bold text-black mb-1">
+            <label className="block text-sm font-bold text-ink mb-1">
               {t('locationLabel')}
             </label>
             <input
@@ -212,12 +212,12 @@ export default function CreateEventForm() {
               value={location}
               onChange={e => setLocation(e.target.value)}
               placeholder={t('locationPlaceholder')}
-              className="w-full px-3 py-2 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-sans text-xs focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none"
+              className="w-full px-3 py-2 bg-sunken hover:bg-sunken-hover border-3 border-ink text-ink font-sans text-xs focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink transition-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-black mb-1">
+            <label className="block text-sm font-bold text-ink mb-1">
               {t('notesLabel')}
             </label>
             <input
@@ -225,25 +225,25 @@ export default function CreateEventForm() {
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder={t('notesPlaceholder')}
-              className="w-full px-3 py-2 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-sans text-xs focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none"
+              className="w-full px-3 py-2 bg-sunken hover:bg-sunken-hover border-3 border-ink text-ink font-sans text-xs focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink transition-none"
             />
           </div>
         </div>
       </div>
 
       {/* 2. Date Range Configuration Card */}
-      <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5">
-        <div className="border-b-3 border-black pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-5">
+        <div className="border-b-3 border-ink pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-black leading-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
               {t('step2RangeTitle')}
             </h2>
-            <p className="text-sm text-[#525252] mt-0.5">
+            <p className="text-sm text-muted mt-0.5">
               {t('step2RangeSubtitle')}
             </p>
           </div>
           {totalDays > 0 && (
-            <span className="font-mono text-xs uppercase px-2 py-1 bg-black text-[#FFE500] font-bold shrink-0 self-start sm:self-center">
+            <span className="font-mono text-xs uppercase px-2 py-1 bg-ink text-on-ink-accent font-bold max-w-full self-start sm:self-center">
               {activePresetPrefix}{t('rangeDaysCount', { count: totalDays, range: formattedRange })}
             </span>
           )}
@@ -251,7 +251,7 @@ export default function CreateEventForm() {
 
         {/* Shortcuts for Range */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-black mr-1">{t('shortcutsLabel')}</span>
+          <span className="text-xs font-bold text-ink mr-1">{t('shortcutsLabel')}</span>
           {RANGE_PRESETS.map(preset => {
             const isActive = activePreset?.days === preset.days;
             return (
@@ -260,10 +260,10 @@ export default function CreateEventForm() {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setPresetRange(preset.days)}
-                className={`px-3 py-1.5 border-2 border-black text-xs font-bold transition-none cursor-pointer ${
+                className={`px-3 py-1.5 border-2 border-ink text-xs font-bold transition-none cursor-pointer ${
                   isActive
-                    ? 'bg-black text-[#FFE500] motion-pop'
-                    : 'bg-white text-black hover:bg-black hover:text-[#FFE500]'
+                    ? 'bg-ink text-on-ink-accent motion-pop'
+                    : 'bg-surface text-ink hover:bg-ink hover:text-on-ink-accent'
                 }`}
               >
                 {t(preset.labelKey)}
@@ -274,8 +274,8 @@ export default function CreateEventForm() {
 
         {/* Custom Start & End Date Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          <div>
-            <label className="block text-xs font-bold text-black mb-1">
+          <div className="min-w-0 max-w-full">
+            <label className="block text-xs font-bold text-ink mb-1">
               {t('rangeStartLabel')}
             </label>
             <input
@@ -283,12 +283,12 @@ export default function CreateEventForm() {
               required
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="w-full px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-mono text-sm focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none cursor-pointer"
+              className="block w-full max-w-full min-w-0 box-border px-3 py-2.5 bg-sunken hover:bg-sunken-hover border-3 border-ink text-ink font-mono text-sm focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink transition-none cursor-pointer"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-black mb-1">
+          <div className="min-w-0 max-w-full">
+            <label className="block text-xs font-bold text-ink mb-1">
               {t('rangeEndLabel')}
             </label>
             <input
@@ -297,21 +297,21 @@ export default function CreateEventForm() {
               min={startDate}
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
-              className="w-full px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-mono text-sm focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none cursor-pointer"
+              className="block w-full max-w-full min-w-0 box-border px-3 py-2.5 bg-sunken hover:bg-sunken-hover border-3 border-ink text-ink font-mono text-sm focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink transition-none cursor-pointer"
             />
           </div>
         </div>
 
         {/* Active Window Summary Chip */}
         {totalDays > 0 && (
-          <div className="inline-flex items-stretch bg-white border-2 border-black overflow-hidden select-none">
-            <div className="w-[6px] bg-[#FFE500] shrink-0" />
-            <div className="flex items-center px-3 py-1.5 text-xs text-black">
+          <div className="inline-flex max-w-full items-stretch bg-surface border-2 border-ink overflow-hidden select-none">
+            <div className="w-[6px] bg-accent shrink-0" />
+            <div className="flex flex-wrap items-center min-w-0 px-3 py-1.5 text-xs text-ink">
               <span className="font-bold mr-1">{t('rangeSummaryLabel')}</span>
               <span className="font-mono font-bold">{startDate}</span>
               <span className="mx-1.5 font-sans font-bold">→</span>
               <span className="font-mono font-bold">{endDate}</span>
-              <span className="ml-2 font-mono text-[#525252] font-semibold">
+              <span className="ml-2 font-mono text-muted font-semibold">
                 ({activePresetPrefix}{totalDays} {lang === 'th' ? 'วัน' : 'days'})
               </span>
             </div>
@@ -320,34 +320,34 @@ export default function CreateEventForm() {
       </div>
 
       {/* 3. Time Window Configuration Card */}
-      <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-4">
-        <div className="border-b-3 border-black pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-4">
+        <div className="border-b-3 border-ink pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-black leading-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
               {t('step3Title')}
             </h2>
-            <p className="text-sm text-[#525252] mt-0.5">
+            <p className="text-sm text-muted mt-0.5">
               {t('step3Subtitle')}
             </p>
           </div>
-          <span className="font-mono text-xs uppercase px-2 py-1 bg-black text-white shrink-0 self-start sm:self-center">
+          <span className="font-mono text-xs uppercase px-2 py-1 bg-ink text-surface shrink-0 self-start sm:self-center">
             {granularity === 'day' ? t('granularityDay') : granularity === 'daypart' ? t('granularityDaypart') : t('granularityHour')}
           </span>
         </div>
 
         {/* Segmented Control (3 options, border-2 border-black, active = #FFE500) */}
         <div>
-          <label className="block text-xs font-bold text-black mb-1.5">
+          <label className="block text-xs font-bold text-ink mb-1.5">
             {t('granularityLabel')}
           </label>
-          <div className="grid grid-cols-3 border-2 border-black divide-x-2 divide-black bg-white select-none">
+          <div className="grid grid-cols-3 border-2 border-ink divide-x-2 divide-ink bg-surface select-none">
             <button
               type="button"
               onClick={() => setGranularity('day')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'day'
-                  ? 'bg-[#FFE500] text-black font-extrabold motion-pop'
-                  : 'bg-white text-black hover:bg-[#F0F0F0]'
+                  ? 'bg-accent text-ink font-extrabold motion-pop'
+                  : 'bg-surface text-ink hover:bg-sunken'
               }`}
             >
               {t('granularityDay')}
@@ -357,8 +357,8 @@ export default function CreateEventForm() {
               onClick={() => setGranularity('daypart')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'daypart'
-                  ? 'bg-[#FFE500] text-black font-extrabold motion-pop'
-                  : 'bg-white text-black hover:bg-[#F0F0F0]'
+                  ? 'bg-accent text-ink font-extrabold motion-pop'
+                  : 'bg-surface text-ink hover:bg-sunken'
               }`}
             >
               {t('granularityDaypart')}
@@ -368,8 +368,8 @@ export default function CreateEventForm() {
               onClick={() => setGranularity('hour')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'hour'
-                  ? 'bg-[#FFE500] text-black font-extrabold motion-pop'
-                  : 'bg-white text-black hover:bg-[#F0F0F0]'
+                  ? 'bg-accent text-ink font-extrabold motion-pop'
+                  : 'bg-surface text-ink hover:bg-sunken'
               }`}
             >
               {t('granularityHour')}
@@ -377,7 +377,7 @@ export default function CreateEventForm() {
           </div>
 
           {/* Description under control */}
-          <div className="mt-2 p-3 bg-[#F0F0F0] border-2 border-black font-sans text-xs text-black">
+          <div className="mt-2 p-3 bg-sunken border-2 border-ink font-sans text-xs text-ink">
             {granularity === 'day' && t('granularityDayDesc')}
             {granularity === 'daypart' && t('granularityDaypartDesc')}
             {granularity === 'hour' && t('granularityHourDesc')}
@@ -386,15 +386,15 @@ export default function CreateEventForm() {
 
         {/* Hourly Dropdowns (Shown ONLY for hour mode) */}
         {granularity === 'hour' && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t-2 border-black">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t-2 border-ink">
             <div>
-              <label className="block text-xs font-bold text-black mb-1">
+              <label className="block text-xs font-bold text-ink mb-1">
                 {t('startHourLabel')}
               </label>
               <select
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 bg-[#F0F0F0] border-3 border-black text-black font-mono text-xs focus:outline-none focus:border-black transition-none"
+                className="w-full px-3 py-2 bg-sunken border-3 border-ink text-ink font-mono text-xs focus:outline-none focus:border-ink transition-none"
               >
                 {Array.from({ length: 24 }).map((_, i) => {
                   const val = `${String(i).padStart(2, '0')}:00`;
@@ -408,13 +408,13 @@ export default function CreateEventForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-black mb-1">
+              <label className="block text-xs font-bold text-ink mb-1">
                 {t('endHourLabel')}
               </label>
               <select
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 bg-[#F0F0F0] border-3 border-black text-black font-mono text-xs focus:outline-none focus:border-black transition-none"
+                className="w-full px-3 py-2 bg-sunken border-3 border-ink text-ink font-mono text-xs focus:outline-none focus:border-ink transition-none"
               >
                 {Array.from({ length: 24 }).map((_, i) => {
                   const hour = i + 1;
@@ -429,13 +429,13 @@ export default function CreateEventForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-black mb-1">
+              <label className="block text-xs font-bold text-ink mb-1">
                 {t('intervalLabel')}
               </label>
               <select
                 value={slotInterval}
                 onChange={e => setSlotInterval(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-[#F0F0F0] border-3 border-black text-black font-mono text-xs focus:outline-none focus:border-black transition-none"
+                className="w-full px-3 py-2 bg-sunken border-3 border-ink text-ink font-mono text-xs focus:outline-none focus:border-ink transition-none"
               >
                 <option value={60}>{t('interval60')}</option>
                 <option value={30}>{t('interval30')}</option>
@@ -446,16 +446,16 @@ export default function CreateEventForm() {
       </div>
 
       {/* New tab: following this link must not lose what was typed. */}
-      <p className="text-xs text-[#525252]">
+      <p className="text-xs text-muted">
         {t('createVisibilityNote')}{' '}
-        <Link href="/privacy" target="_blank" rel="noopener" className="underline hover:text-black">
+        <Link href="/privacy" target="_blank" rel="noopener" className="underline hover:text-ink">
           {t('privacyLink')}
         </Link>
       </p>
 
       {/* Error Message */}
       {errorMsg && (
-        <div className="p-3 bg-white border-3 border-black text-black font-mono text-xs bg-[#FFE500] motion-shake">
+        <div className="p-3 bg-surface border-3 border-ink text-ink font-mono text-xs bg-accent motion-shake">
           [ERROR] {errorMsg}
         </div>
       )}
@@ -469,7 +469,7 @@ export default function CreateEventForm() {
         >
           {isLoading ? t('submitCreating') : t('submitBtn')}
         </button>
-        <p className="text-xs text-[#525252] mt-2">
+        <p className="text-xs text-muted mt-2">
           {t('formFooterNote')}
         </p>
       </div>

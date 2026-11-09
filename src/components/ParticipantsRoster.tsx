@@ -72,14 +72,14 @@ export default function ParticipantsRoster({
   };
 
   return (
-    <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-4">
-      <div className="border-b-3 border-black pb-3 flex items-center justify-between">
-        <h3 className="text-xl font-bold text-black">
+    <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-4">
+      <div className="border-b-3 border-ink pb-3 flex items-center justify-between">
+        <h3 className="text-xl font-bold text-ink">
           {t('rosterTitle', { count: participants.length })}
         </h3>
       </div>
 
-      <div className="divide-y-3 divide-black">
+      <div className="divide-y-3 divide-ink">
         {participants.map(p => {
           const isMyEntry = Boolean(p.isMine);
           const canDelete = isMyEntry || isAdmin;
@@ -89,26 +89,26 @@ export default function ParticipantsRoster({
             <div
               key={p.id}
               className={`py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
-                isMyEntry ? 'bg-[#FFE500]/20 px-3' : 'px-1'
+                isMyEntry ? 'bg-accent/20 px-3' : 'px-1'
               }`}
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-base text-black">
+                  <span className="font-bold text-base text-ink">
                     {p.name}
                   </span>
                   {isMyEntry && (
-                    <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 bg-black text-white font-bold">
+                    <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 bg-ink text-surface font-bold">
                       {t('youTag')}
                     </span>
                   )}
-                  <span className="font-mono text-xs text-[#525252]">
+                  <span className="font-mono text-xs text-muted">
                     {t('slotsLogged', { count })}
                   </span>
                 </div>
 
                 {p.note && (
-                  <p className="font-mono text-xs text-[#525252] mt-0.5">
+                  <p className="font-mono text-xs text-muted mt-0.5">
                     {p.note}
                   </p>
                 )}
@@ -118,7 +118,7 @@ export default function ParticipantsRoster({
                 <button
                   type="button"
                   onClick={() => setPendingDelete(p)}
-                  className="px-2.5 py-1 bg-white hover:bg-black hover:text-white text-black border-2 border-black font-mono text-xs self-start sm:self-center transition-none font-bold"
+                  className="px-2.5 py-1 bg-surface hover:bg-ink hover:text-surface text-ink border-2 border-ink font-mono text-xs self-start sm:self-center transition-none font-bold"
                 >
                   {t('deleteBtn')}
                 </button>
@@ -129,7 +129,7 @@ export default function ParticipantsRoster({
       </div>
 
       {deleteFailed && (
-        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">
+        <div className="p-3 bg-accent border-2 border-ink text-ink font-mono text-xs motion-shake">
           [ERROR] {t('deleteParticipantFailed')}
         </div>
       )}

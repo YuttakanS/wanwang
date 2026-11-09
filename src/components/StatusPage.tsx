@@ -16,12 +16,12 @@ export default function StatusPage({ title, description, onRetry }: StatusPagePr
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-surface text-ink">
       <Navbar />
       <main className="max-w-md mx-auto py-20 px-4 text-center">
-        <div className="border-3 border-black p-6 bg-white space-y-3">
+        <div className="border-3 border-ink p-6 bg-surface space-y-3">
           <h1 className="text-xl font-bold">{title}</h1>
-          <p className="text-xs text-[#525252]">{description}</p>
+          <p className="text-xs text-muted">{description}</p>
           <div className="flex flex-wrap items-center justify-center gap-2">
             {onRetry && (
               <button type="button" onClick={onRetry} className="btn-primary-raw px-4 py-2 text-xs">

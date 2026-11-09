@@ -132,8 +132,8 @@ export default function EventDetailPage({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white text-black flex flex-col items-center justify-center p-4 font-mono text-sm">
-        <div className="border-3 border-black p-6 bg-white font-bold">
+      <div className="min-h-screen bg-surface text-ink flex flex-col items-center justify-center p-4 font-mono text-sm">
+        <div className="border-3 border-ink p-6 bg-surface font-bold">
           LOADING...
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function EventDetailPage({
     : '';
 
   return (
-    <div className="min-h-screen bg-white text-black flex flex-col">
+    <div className="min-h-screen bg-surface text-ink flex flex-col">
       <Navbar />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 space-y-6 motion-stagger">
@@ -187,58 +187,58 @@ export default function EventDetailPage({
         )}
 
         {adminLinkInvalid && (
-          <div className="p-3 bg-[#FFE500] border-3 border-black text-black font-mono text-xs motion-shake">
+          <div className="p-3 bg-accent border-3 border-ink text-ink font-mono text-xs motion-shake">
             [ERROR] {t('adminLinkInvalidMsg')}
           </div>
         )}
 
         {/* Pinned Confirmed Date Banner */}
         {event.confirmedDate && (
-          <div className="bg-[#FFE500] border-4 border-black p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[4px_4px_0_#000]">
+          <div className="bg-accent border-4 border-ink p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[4px_4px_0_rgb(var(--shadow-color))]">
             <div className="flex items-center gap-3">
               <span className="text-2xl sm:text-3xl">📌</span>
               <div>
-                <span className="font-mono text-xs uppercase font-extrabold block text-black tracking-wider">
+                <span className="font-mono text-xs uppercase font-extrabold block text-ink tracking-wider">
                   {t('pinnedBannerTitle')}
                 </span>
-                <span className="font-bold text-lg sm:text-xl text-black">
+                <span className="font-bold text-lg sm:text-xl text-ink">
                   {formatLocalizedDate(event.confirmedDate, lang, 'chip')} {event.granularity === 'day' ? `(${t('allDayLabel')})` : ''}
                 </span>
               </div>
             </div>
-            <span className="font-mono text-xs uppercase px-3 py-1 bg-black text-[#FFE500] font-extrabold border-2 border-black self-start sm:self-center">
+            <span className="font-mono text-xs uppercase px-3 py-1 bg-ink text-on-ink-accent font-extrabold border-2 border-ink self-start sm:self-center">
               {t('pinnedBadge')}
             </span>
           </div>
         )}
 
         {/* Event Header Banner (RawBlock 5px Border Card) */}
-        <div className="bg-white border-5 border-black p-5 sm:p-6 space-y-4">
+        <div className="bg-surface border-5 border-ink p-5 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs uppercase px-2.5 py-1 border-2 border-black bg-black text-[#FFE500] font-bold">
+            <span className="font-mono text-xs uppercase px-2.5 py-1 border-2 border-ink bg-ink text-on-ink-accent font-bold">
               {catLabel}
             </span>
 
             {event.isClosed && (
-              <span className="font-mono text-xs uppercase px-2.5 py-1 border-2 border-black bg-white text-black font-bold">
+              <span className="font-mono text-xs uppercase px-2.5 py-1 border-2 border-ink bg-surface text-ink font-bold">
                 {t('votingClosedBadge')}
               </span>
             )}
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-black leading-tight">
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-ink leading-tight">
               {event.title}
             </h1>
             {event.description && (
-              <p className="text-sm sm:text-base text-[#525252] max-w-2xl pt-1">
+              <p className="text-sm sm:text-base text-muted max-w-2xl pt-1">
                 {event.description}
               </p>
             )}
           </div>
 
           {/* Metas */}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-5 pt-3 font-mono text-xs text-black border-t-3 border-black font-bold">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-5 pt-3 font-mono text-xs text-ink border-t-3 border-ink font-bold">
             <div>
               {t('metaDatesLabel', { count: event.dates.length, range: dateRangeStr })}
             </div>
@@ -257,26 +257,15 @@ export default function EventDetailPage({
               </div>
             )}
           </div>
+
+          <EventShareBar
+            event={event}
+            participants={participants}
+            isAdmin={isAdmin}
+            onEventUpdated={fetchEventData}
+            onAdminKeyRotated={handleAdminKeyRotated}
+          />
         </div>
-
-        {/* 1-Click Share & LINE Bar */}
-        <EventShareBar
-          event={event}
-          participants={participants}
-          isAdmin={isAdmin}
-          onEventUpdated={fetchEventData}
-          onAdminKeyRotated={handleAdminKeyRotated}
-        />
-
-        {/* Top Matches Leaderboard */}
-        <BestTimeLeaderboard
-          event={event}
-          participants={participants}
-          isAdmin={isAdmin}
-          onEventUpdated={fetchEventData}
-          onSelectMatch={slotIds => setHighlightSlotIds(slotIds)}
-          selectedSlotIds={highlightSlotIds}
-        />
 
         {/* Interactive Schedule Matrix & Voting */}
         <ScheduleMatrix
@@ -284,6 +273,16 @@ export default function EventDetailPage({
           participants={participants}
           onParticipantSaved={fetchEventData}
           highlightSlotIds={highlightSlotIds}
+        />
+
+        {/* Top Matches Leaderboard. A new array each time, so choosing a match again still scrolls to it. */}
+        <BestTimeLeaderboard
+          event={event}
+          participants={participants}
+          isAdmin={isAdmin}
+          onEventUpdated={fetchEventData}
+          onSelectMatch={slotIds => setHighlightSlotIds([...slotIds])}
+          selectedSlotIds={highlightSlotIds}
         />
 
         {/* Participants Roster */}

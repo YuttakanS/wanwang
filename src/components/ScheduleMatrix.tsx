@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useSlotDragSelect } from '@/components/useSlotDragSelect';
 import {
   WanWangEvent,
   Participant,
@@ -43,9 +44,6 @@ export default function ScheduleMatrix({
   const selectedSet = useMemo(() => new Set(mySelectedSlots), [mySelectedSlots]);
   const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null);
   const [editToken, setEditToken] = useState<string | null>(null);
-
-  const isMouseDownRef = useRef(false);
-  const dragModeRef = useRef<'add' | 'remove'>('add');
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -109,47 +107,15 @@ export default function ScheduleMatrix({
     );
   };
 
-  const handleSlotMouseDown = (slotId: string) => {
-    isMouseDownRef.current = true;
-    if (selectedSet.has(slotId)) {
-      dragModeRef.current = 'remove';
-      setMySelectedSlots(prev => prev.filter(id => id !== slotId));
-    } else {
-      dragModeRef.current = 'add';
-      setMySelectedSlots(prev => [...prev, slotId]);
-    }
-  };
+  const slotGridHandlers = useSlotDragSelect(mySelectedSlots, setMySelectedSlots);
 
-  const handleSlotMouseEnter = (slotId: string) => {
-    if (!isMouseDownRef.current) return;
-    if (dragModeRef.current === 'add' && !selectedSet.has(slotId)) {
-      setMySelectedSlots(prev => [...prev, slotId]);
-    } else if (dragModeRef.current === 'remove' && selectedSet.has(slotId)) {
-      setMySelectedSlots(prev => prev.filter(id => id !== slotId));
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    if (!touch) return;
-    const target = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (target) {
-      const slotId = target.getAttribute('data-slot-id');
-      if (slotId && dragModeRef.current === 'add' && !selectedSet.has(slotId)) {
-        setMySelectedSlots(prev => [...prev, slotId]);
-      } else if (slotId && dragModeRef.current === 'remove' && selectedSet.has(slotId)) {
-        setMySelectedSlots(prev => prev.filter(id => id !== slotId));
-      }
-    }
-  };
-
+  // The best-times list sits below this grid, so bring the highlighted slots into view.
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const handleMouseUp = () => {
-      isMouseDownRef.current = false;
-    };
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, []);
+    if (highlightSlotIds.length === 0) return;
+    setActiveTab('heatmap');
+    rootRef.current?.scrollIntoView({ block: 'start' });
+  }, [highlightSlotIds]);
 
   // Filter valid selectable dates (within range and not in past)
   const validSelectableDates = useMemo(() => {
@@ -240,19 +206,19 @@ export default function ScheduleMatrix({
   // Density palette: Black/White/Gray + Accent Yellow for 100% full match
   const getDensityStyle = (percentage: number, count: number) => {
     if (count === 0 || percentage === 0) {
-      return 'bg-white text-black/30 border-black';
+      return 'bg-surface text-ink/60 border-ink';
     }
     if (percentage <= 25) {
-      return 'bg-[#F0F0F0] text-black border-black font-mono';
+      return 'bg-heat-1 text-on-heat-1 border-ink font-mono';
     }
     if (percentage <= 50) {
-      return 'bg-[#CCCCCC] text-black border-black font-mono font-bold';
+      return 'bg-heat-2 text-on-heat-2 border-ink font-mono font-bold';
     }
     if (percentage <= 75) {
-      return 'bg-[#525252] text-white border-black font-mono font-bold';
+      return 'bg-heat-3 text-on-heat-3 border-ink font-mono font-bold';
     }
     // 100% Full Consensus: Single Accent Yellow #FFE500
-    return 'bg-[#FFE500] text-black border-black font-mono font-extrabold';
+    return 'bg-accent text-ink border-ink font-mono font-extrabold';
   };
 
   // Calendar Day Generation for a given month
@@ -323,17 +289,17 @@ export default function ScheduleMatrix({
   );
 
   return (
-    <div className="space-y-6">
+    <div ref={rootRef} className="space-y-6 scroll-mt-20">
       {/* Dual Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 sm:p-3 border-3 border-black">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-2.5 sm:p-3 border-3 border-ink">
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('vote')}
-            className={`px-3 sm:px-4 py-2 border-3 border-black text-xs font-bold transition-none cursor-pointer ${
+            className={`px-3 sm:px-4 py-2 border-3 border-ink text-xs font-bold transition-none cursor-pointer ${
               activeTab === 'vote'
-                ? 'bg-black text-white'
-                : 'bg-white text-black hover:bg-[#F0F0F0]'
+                ? 'bg-ink text-surface'
+                : 'bg-surface text-ink hover:bg-sunken'
             }`}
           >
             {t('tabVote', { count: mySelectedSlots.length })}
@@ -342,10 +308,10 @@ export default function ScheduleMatrix({
           <button
             type="button"
             onClick={() => setActiveTab('heatmap')}
-            className={`px-3 sm:px-4 py-2 border-3 border-black text-xs font-bold transition-none cursor-pointer ${
+            className={`px-3 sm:px-4 py-2 border-3 border-ink text-xs font-bold transition-none cursor-pointer ${
               activeTab === 'heatmap'
-                ? 'bg-black text-white'
-                : 'bg-white text-black hover:bg-[#F0F0F0]'
+                ? 'bg-ink text-surface'
+                : 'bg-surface text-ink hover:bg-sunken'
             }`}
           >
             {t('tabHeatmap', { count: participants.length })}
@@ -354,14 +320,14 @@ export default function ScheduleMatrix({
 
         {/* Legend */}
         {activeTab === 'heatmap' && (
-          <div className="flex items-center gap-2 font-mono text-xs text-black">
+          <div className="flex items-center gap-2 font-mono text-xs text-ink">
             <span>{t('densityZero')}</span>
             <div className="flex items-center">
-              <span className="w-3.5 h-3.5 bg-white border-2 border-black inline-block" />
-              <span className="w-3.5 h-3.5 bg-[#F0F0F0] border-2 border-black inline-block" />
-              <span className="w-3.5 h-3.5 bg-[#CCCCCC] border-2 border-black inline-block" />
-              <span className="w-3.5 h-3.5 bg-[#525252] border-2 border-black inline-block" />
-              <span className="w-3.5 h-3.5 bg-[#FFE500] border-2 border-black inline-block" />
+              <span className="w-3.5 h-3.5 bg-surface border-2 border-ink inline-block" />
+              <span className="w-3.5 h-3.5 bg-heat-1 border-2 border-ink inline-block" />
+              <span className="w-3.5 h-3.5 bg-heat-2 border-2 border-ink inline-block" />
+              <span className="w-3.5 h-3.5 bg-heat-3 border-2 border-ink inline-block" />
+              <span className="w-3.5 h-3.5 bg-accent border-2 border-ink inline-block" />
             </div>
             <span>{t('densityAll')}</span>
           </div>
@@ -372,17 +338,17 @@ export default function ScheduleMatrix({
           TAB 1: VOTE MODE
           ========================================================================= */}
       {activeTab === 'vote' && (
-        <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5 motion-enter">
+        <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-5 motion-enter">
           {event.isClosed ? (
-            <div className="p-4 bg-[#F0F0F0] border-3 border-black text-black font-bold text-sm text-center">
+            <div className="p-4 bg-sunken border-3 border-ink text-ink font-bold text-sm text-center">
               {t('votingClosedAlert')}
             </div>
           ) : (
             <form onSubmit={handleSaveAvailability} className="space-y-5">
               {/* Display Name Input */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b-3 border-black pb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b-3 border-ink pb-4">
                 <div>
-                  <label className="block text-sm font-bold text-black mb-1">
+                  <label className="block text-sm font-bold text-ink mb-1">
                     {t('yourNameLabel')}
                   </label>
                   <input
@@ -391,17 +357,17 @@ export default function ScheduleMatrix({
                     value={participantName}
                     onChange={e => setParticipantName(e.target.value)}
                     placeholder={t('yourNamePlaceholder')}
-                    className="w-full px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-sans text-sm focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none"
+                    className="w-full px-3 py-2.5 bg-sunken hover:bg-sunken-hover border-3 border-ink text-ink font-sans text-sm focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink transition-none"
                   />
                   {currentParticipantId && (
-                    <p className="text-xs text-black font-semibold mt-1">
+                    <p className="text-xs text-ink font-semibold mt-1">
                       {t('editResponseNote')}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-black mb-1">
+                  <label className="block text-sm font-bold text-ink mb-1">
                     {t('yourNoteLabel')}
                   </label>
                   <input
@@ -409,22 +375,22 @@ export default function ScheduleMatrix({
                     value={participantNote}
                     onChange={e => setParticipantNote(e.target.value)}
                     placeholder={t('yourNotePlaceholder')}
-                    className="w-full px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-sans text-xs focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none"
+                    className="w-full px-3 py-2.5 bg-sunken hover:bg-sunken-hover border-3 border-ink text-ink font-sans text-xs focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink transition-none"
                   />
                 </div>
               </div>
 
               {/* New tab: following this link must not lose what was typed. */}
-              <p className="text-xs text-[#525252]">
+              <p className="text-xs text-muted">
                 {t('voteVisibilityNote')}{' '}
-                <Link href="/privacy" target="_blank" rel="noopener" className="underline hover:text-black">
+                <Link href="/privacy" target="_blank" rel="noopener" className="underline hover:text-ink">
                   {t('privacyLink')}
                 </Link>
               </p>
 
               {/* Instructions & Shortcuts */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-[#F0F0F0] p-3 border-2 border-black">
-                <span className="text-xs font-bold text-black">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-sunken p-3 border-2 border-ink">
+                <span className="text-xs font-bold text-ink">
                   {granularity === 'day'
                     ? t('voteCalendarPrompt')
                     : granularity === 'daypart'
@@ -436,14 +402,14 @@ export default function ScheduleMatrix({
                   <button
                     type="button"
                     onClick={selectWeekends}
-                    className="px-2.5 py-1 bg-white hover:bg-black hover:text-[#FFE500] text-black border-2 border-black transition-none font-bold cursor-pointer"
+                    className="px-2.5 py-1 bg-surface hover:bg-ink hover:text-on-ink-accent text-ink border-2 border-ink transition-none font-bold cursor-pointer"
                   >
                     {t('shortcutWeekendsOnly')}
                   </button>
                   <button
                     type="button"
                     onClick={selectAll}
-                    className="px-2.5 py-1 bg-white hover:bg-black hover:text-white text-black border-2 border-black transition-none font-bold cursor-pointer"
+                    className="px-2.5 py-1 bg-surface hover:bg-ink hover:text-surface text-ink border-2 border-ink transition-none font-bold cursor-pointer"
                   >
                     {t('btnSelectAll')}
                   </button>
@@ -451,7 +417,7 @@ export default function ScheduleMatrix({
                     <button
                       type="button"
                       onClick={clearAll}
-                      className="px-2.5 py-1 bg-white text-black hover:bg-black hover:text-white border-2 border-black transition-none font-bold cursor-pointer"
+                      className="px-2.5 py-1 bg-surface text-ink hover:bg-ink hover:text-surface border-2 border-ink transition-none font-bold cursor-pointer"
                     >
                       {t('shortcutClearSelection')}
                     </button>
@@ -461,24 +427,24 @@ export default function ScheduleMatrix({
 
               {/* Mode 1: Day Voting Calendar Grid with Tap & Drag */}
               {granularity === 'day' && (
-                <div className="bg-white p-3 sm:p-5 border-3 border-black max-w-lg mx-auto">
+                <div className="bg-surface p-3 sm:p-5 border-3 border-ink max-w-lg mx-auto">
                   {/* Month Navigation */}
-                  <div className="flex items-center justify-between mb-3 border-b-2 border-black pb-2">
-                    <span className="font-bold text-sm text-black">
+                  <div className="flex items-center justify-between mb-3 border-b-2 border-ink pb-2">
+                    <span className="font-bold text-sm text-ink">
                       {monthYearLabel}
                     </span>
                     <div className="flex items-center gap-1 font-mono text-xs">
                       <button
                         type="button"
                         onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
-                        className="px-2 py-0.5 border-2 border-black hover:bg-black hover:text-white transition-none cursor-pointer"
+                        className="px-2 py-0.5 border-2 border-ink hover:bg-ink hover:text-surface transition-none cursor-pointer"
                       >
                         {t('prevMonthBtn')}
                       </button>
                       <button
                         type="button"
                         onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
-                        className="px-2 py-0.5 border-2 border-black hover:bg-black hover:text-white transition-none cursor-pointer"
+                        className="px-2 py-0.5 border-2 border-ink hover:bg-ink hover:text-surface transition-none cursor-pointer"
                       >
                         {t('nextMonthBtn')}
                       </button>
@@ -486,11 +452,11 @@ export default function ScheduleMatrix({
                   </div>
 
                   {/* Weekday headers: Sunday first */}
-                  <div className="grid grid-cols-7 gap-1 text-center mb-1 font-mono text-xs font-bold border-b-2 border-black pb-1">
+                  <div className="grid grid-cols-7 gap-1 text-center mb-1 font-mono text-xs font-bold border-b-2 border-ink pb-1">
                     {weekdayHeaders.map((day, idx) => (
                       <div
                         key={`${day}-${idx}`}
-                        className={idx === 0 || idx === 6 ? 'text-black font-extrabold' : 'text-[#525252]'}
+                        className={idx === 0 || idx === 6 ? 'text-ink font-extrabold' : 'text-muted'}
                       >
                         {day}
                       </div>
@@ -499,7 +465,7 @@ export default function ScheduleMatrix({
 
                   {/* Day Grid with Touch & Mouse Drag Support */}
                   <div
-                    onTouchMove={handleTouchMove}
+                    {...slotGridHandlers}
                     style={{ touchAction: 'pan-y' }}
                     className="grid grid-cols-7 gap-1.5 select-none"
                   >
@@ -512,7 +478,7 @@ export default function ScheduleMatrix({
                           <div
                             key={`${d.dateStr}-${index}`}
                             title={d.isPast ? t('pastDateNote') : t('outOfRangeNote')}
-                            className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-[#D4D4D4] bg-[#F5F5F5] text-[#A3A3A3] cursor-not-allowed select-none"
+                            className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-line-soft bg-sunken text-faint cursor-not-allowed select-none"
                           >
                             <span>{d.dayNum}</span>
                           </div>
@@ -523,13 +489,10 @@ export default function ScheduleMatrix({
                         <div
                           key={`${d.dateStr}-${index}`}
                           data-slot-id={d.dateStr}
-                          onMouseDown={() => handleSlotMouseDown(d.dateStr)}
-                          onMouseEnter={() => handleSlotMouseEnter(d.dateStr)}
-                          onTouchStart={() => handleSlotMouseDown(d.dateStr)}
-                          className={`aspect-square flex flex-col items-center justify-center font-mono text-xs font-bold border-2 border-black transition-none cursor-pointer ${
+                          className={`aspect-square flex flex-col items-center justify-center font-mono text-xs font-bold border-2 border-ink transition-none cursor-pointer ${
                             isSelected
-                              ? 'bg-[#FFE500] text-black font-extrabold shadow-[2px_2px_0_#000]'
-                              : 'bg-white hover:bg-[#F0F0F0] text-black'
+                              ? 'bg-accent text-ink font-extrabold shadow-[2px_2px_0_rgb(var(--shadow-color))]'
+                              : 'bg-surface hover:bg-sunken text-ink'
                           }`}
                         >
                           <span className="text-xs sm:text-sm">{d.dayNum}</span>
@@ -543,9 +506,9 @@ export default function ScheduleMatrix({
 
               {/* Mode 2: Daypart Voting Interface (Row per day, 4 buttons) */}
               {granularity === 'daypart' && (
-                <div className="border-3 border-black bg-white overflow-x-auto select-none pb-1">
+                <div className="border-3 border-ink bg-surface overflow-x-auto select-none pb-1">
                   <div className="min-w-[540px]">
-                    <div className="grid grid-cols-5 border-b-3 border-black bg-black text-white font-mono text-xs font-bold p-2 text-center">
+                    <div className="grid grid-cols-5 border-b-3 border-ink bg-ink text-surface font-mono text-xs font-bold p-2 text-center">
                       <div className="text-left pl-2">{t('dateColumnLabel')}</div>
                       <div>{t('partMorning')} <span className="text-[10px] opacity-75">({t('partMorningRange')})</span></div>
                       <div>{t('partAfternoon')} <span className="text-[10px] opacity-75">({t('partAfternoonRange')})</span></div>
@@ -554,8 +517,8 @@ export default function ScheduleMatrix({
                     </div>
 
                     {event.dates.map(dateStr => (
-                      <div key={dateStr} className="grid grid-cols-5 border-b-2 border-black last:border-b-0 items-center">
-                        <div className="p-3 font-bold text-xs text-black border-r-2 border-black bg-[#F0F0F0]">
+                      <div key={dateStr} className="grid grid-cols-5 border-b-2 border-ink last:border-b-0 items-center">
+                        <div className="p-3 font-bold text-xs text-ink border-r-2 border-ink bg-sunken">
                           <div>{formatLocalizedDate(dateStr, lang, 'chip')}</div>
                         </div>
 
@@ -567,14 +530,14 @@ export default function ScheduleMatrix({
                               key={slotId}
                               type="button"
                               onClick={() => handleToggleSlot(slotId)}
-                              className={`h-12 border-r-2 border-black last:border-r-0 flex flex-col items-center justify-center font-mono text-xs transition-none cursor-pointer ${
+                              className={`h-12 border-r-2 border-ink last:border-r-0 flex flex-col items-center justify-center font-mono text-xs transition-none cursor-pointer ${
                                 isSelected
-                                  ? 'bg-[#FFE500] text-black font-extrabold'
-                                  : 'bg-white hover:bg-[#F0F0F0] text-black/30'
+                                  ? 'bg-accent text-ink font-extrabold'
+                                  : 'bg-surface hover:bg-sunken text-ink/30'
                               }`}
                             >
                               {isSelected ? (
-                                <span className="font-bold text-black text-sm">[✓]</span>
+                                <span className="font-bold text-ink text-sm">[✓]</span>
                               ) : (
                                 <span className="text-sm">-</span>
                               )}
@@ -591,19 +554,19 @@ export default function ScheduleMatrix({
               {granularity === 'hour' && (
                 <div className="overflow-x-auto select-none pb-2">
                   <div
-                    onTouchMove={handleTouchMove}
+                    {...slotGridHandlers}
                     style={{ touchAction: 'pan-x' }}
-                    className="min-w-fit inline-block border-3 border-black bg-white"
+                    className="min-w-fit inline-block border-3 border-ink bg-surface"
                   >
                     {/* Header Row: Dates */}
-                    <div className="flex border-b-3 border-black bg-black text-white sticky top-0 z-10 font-mono text-xs font-bold">
-                      <div className="w-20 sm:w-24 shrink-0 p-2 text-center border-r-2 border-white flex items-center justify-center">
+                    <div className="flex border-b-3 border-ink bg-ink text-surface sticky top-0 z-10 font-mono text-xs font-bold">
+                      <div className="w-20 sm:w-24 shrink-0 p-2 text-center border-r-2 border-surface flex items-center justify-center">
                         {t('timeColumnLabel')}
                       </div>
                       {event.dates.map(dateStr => (
                         <div
                           key={dateStr}
-                          className="w-24 sm:w-28 shrink-0 p-2 text-center border-r-2 border-white last:border-r-0"
+                          className="w-24 sm:w-28 shrink-0 p-2 text-center border-r-2 border-surface last:border-r-0"
                         >
                           <div>{formatLocalizedDate(dateStr, lang, 'chip')}</div>
                         </div>
@@ -612,8 +575,8 @@ export default function ScheduleMatrix({
 
                     {/* Body Rows */}
                     {dayTimes.map(time => (
-                      <div key={time} className="flex border-b-2 border-black last:border-b-0">
-                        <div className="w-20 sm:w-24 shrink-0 px-2 py-1.5 text-center font-mono text-xs text-black border-r-2 border-black flex items-center justify-center bg-[#F0F0F0] font-bold">
+                      <div key={time} className="flex border-b-2 border-ink last:border-b-0">
+                        <div className="w-20 sm:w-24 shrink-0 px-2 py-1.5 text-center font-mono text-xs text-ink border-r-2 border-ink flex items-center justify-center bg-sunken font-bold">
                           {time}
                         </div>
 
@@ -625,13 +588,10 @@ export default function ScheduleMatrix({
                             <div
                               key={slotId}
                               data-slot-id={slotId}
-                              onMouseDown={() => handleSlotMouseDown(slotId)}
-                              onMouseEnter={() => handleSlotMouseEnter(slotId)}
-                              onTouchStart={() => handleSlotMouseDown(slotId)}
-                              className={`w-24 sm:w-28 h-8 shrink-0 border-r-2 border-black last:border-r-0 cursor-pointer transition-none flex items-center justify-center font-mono text-xs ${
+                              className={`w-24 sm:w-28 h-8 shrink-0 border-r-2 border-ink last:border-r-0 cursor-pointer transition-none flex items-center justify-center font-mono text-xs ${
                                 isSelected
-                                  ? 'bg-[#FFE500] text-black font-extrabold border-black'
-                                  : 'bg-white hover:bg-[#F0F0F0] text-black/25'
+                                  ? 'bg-accent text-ink font-extrabold border-ink'
+                                  : 'bg-surface hover:bg-sunken text-ink/25'
                               }`}
                             >
                               {isSelected ? '[✓]' : '-'}
@@ -646,21 +606,21 @@ export default function ScheduleMatrix({
 
               {/* Error Message */}
               {errorMsg && (
-                <div className="p-3 bg-[#FFE500] border-3 border-black text-black font-mono text-xs motion-shake">
+                <div className="p-3 bg-accent border-3 border-ink text-ink font-mono text-xs motion-shake">
                   [ERROR] {errorMsg}
                 </div>
               )}
 
               {/* Success Notification */}
               {saveSuccess && (
-                <div className="p-3 bg-[#F0F0F0] border-3 border-black text-black font-mono text-xs font-bold motion-pop">
+                <div className="p-3 bg-sunken border-3 border-ink text-ink font-mono text-xs font-bold motion-pop">
                   [SUCCESS] {t('saveSuccessMsg')}
                 </div>
               )}
 
               {/* Submit Action */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t-3 border-black">
-                <span className="font-mono text-xs text-black font-bold">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t-3 border-ink">
+                <span className="font-mono text-xs text-ink font-bold">
                   {t('selectedDaysCount', { count: mySelectedSlots.length })}
                 </span>
 
@@ -681,27 +641,27 @@ export default function ScheduleMatrix({
           TAB 2: GROUP HEATMAP MATRIX
           ========================================================================= */}
       {activeTab === 'heatmap' && (
-        <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5 motion-enter">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-3 border-black pb-3">
+        <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-5 motion-enter">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-3 border-ink pb-3">
             <div>
-              <h3 className="text-lg font-bold text-black">
+              <h3 className="text-lg font-bold text-ink">
                 {t('inspectTitle')}
               </h3>
-              <p className="text-xs text-[#525252] mt-0.5">
+              <p className="text-xs text-muted mt-0.5">
                 {t('inspectSubtitle')}
               </p>
             </div>
-            <span className="font-mono text-xs uppercase px-2 py-0.5 bg-black text-white font-bold shrink-0">
+            <span className="font-mono text-xs uppercase px-2 py-0.5 bg-ink text-surface font-bold shrink-0">
               {participants.length} RESPONSES
             </span>
           </div>
 
           {participants.length === 0 ? (
-            <div className="py-10 text-center space-y-3 border-2 border-dashed border-black p-5">
-              <h4 className="font-bold text-lg text-black">
+            <div className="py-10 text-center space-y-3 border-2 border-dashed border-ink p-5">
+              <h4 className="font-bold text-lg text-ink">
                 {t('emptyHeatmapTitle')}
               </h4>
-              <p className="text-xs text-[#525252]">
+              <p className="text-xs text-muted">
                 {t('emptyHeatmapDesc')}
               </p>
               <button
@@ -716,24 +676,24 @@ export default function ScheduleMatrix({
             <div className="space-y-4">
               {/* Mode 1: Day Heatmap Calendar Grid with 'N/M' counts */}
               {granularity === 'day' && (
-                <div className="bg-white p-3 sm:p-5 border-3 border-black max-w-lg mx-auto">
+                <div className="bg-surface p-3 sm:p-5 border-3 border-ink max-w-lg mx-auto">
                   {/* Month Navigation */}
-                  <div className="flex items-center justify-between mb-3 border-b-2 border-black pb-2">
-                    <span className="font-bold text-sm text-black">
+                  <div className="flex items-center justify-between mb-3 border-b-2 border-ink pb-2">
+                    <span className="font-bold text-sm text-ink">
                       {monthYearLabel}
                     </span>
                     <div className="flex items-center gap-1 font-mono text-xs">
                       <button
                         type="button"
                         onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
-                        className="px-2 py-0.5 border-2 border-black hover:bg-black hover:text-white transition-none cursor-pointer"
+                        className="px-2 py-0.5 border-2 border-ink hover:bg-ink hover:text-surface transition-none cursor-pointer"
                       >
                         {t('prevMonthBtn')}
                       </button>
                       <button
                         type="button"
                         onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
-                        className="px-2 py-0.5 border-2 border-black hover:bg-black hover:text-white transition-none cursor-pointer"
+                        className="px-2 py-0.5 border-2 border-ink hover:bg-ink hover:text-surface transition-none cursor-pointer"
                       >
                         {t('nextMonthBtn')}
                       </button>
@@ -741,11 +701,11 @@ export default function ScheduleMatrix({
                   </div>
 
                   {/* Weekday headers: Sunday first */}
-                  <div className="grid grid-cols-7 gap-1 text-center mb-1 font-mono text-xs font-bold border-b-2 border-black pb-1">
+                  <div className="grid grid-cols-7 gap-1 text-center mb-1 font-mono text-xs font-bold border-b-2 border-ink pb-1">
                     {weekdayHeaders.map((day, idx) => (
                       <div
                         key={`${day}-${idx}`}
-                        className={idx === 0 || idx === 6 ? 'text-black font-extrabold' : 'text-[#525252]'}
+                        className={idx === 0 || idx === 6 ? 'text-ink font-extrabold' : 'text-muted'}
                       >
                         {day}
                       </div>
@@ -759,7 +719,7 @@ export default function ScheduleMatrix({
                         return (
                           <div
                             key={`${d.dateStr}-${index}`}
-                            className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-[#E5E5E5] bg-[#FAFAFA] text-[#CCCCCC] select-none"
+                            className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-line-soft bg-sunken text-faint select-none"
                           >
                             <span>{d.dayNum}</span>
                           </div>
@@ -785,12 +745,12 @@ export default function ScheduleMatrix({
                         <div
                           key={`${d.dateStr}-${index}`}
                           onClick={() => setActiveSlotInfo(info)}
-                          className={`aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-black transition-none cursor-pointer p-0.5 ${cellStyle} ${
-                            isCurrentActive ? 'ring-3 ring-black z-10' : ''
+                          className={`aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-ink transition-none cursor-pointer p-0.5 ${cellStyle} ${
+                            isCurrentActive ? 'ring-3 ring-ink z-10' : ''
                           }`}
                         >
                           <span className="font-bold text-xs sm:text-sm">{d.dayNum}</span>
-                          <span className={`text-[10px] leading-tight font-extrabold ${isUnanimous ? 'text-black' : ''}`}>
+                          <span className={`text-[10px] leading-tight font-extrabold ${isUnanimous ? 'text-ink' : ''}`}>
                             {info.availableCount}/{info.totalParticipants}
                           </span>
                         </div>
@@ -802,9 +762,9 @@ export default function ScheduleMatrix({
 
               {/* Mode 2: Daypart Heatmap Table */}
               {granularity === 'daypart' && (
-                <div className="border-3 border-black bg-white overflow-x-auto select-none pb-1">
+                <div className="border-3 border-ink bg-surface overflow-x-auto select-none pb-1">
                   <div className="min-w-[540px]">
-                    <div className="grid grid-cols-5 border-b-3 border-black bg-black text-white font-mono text-xs font-bold p-2 text-center">
+                    <div className="grid grid-cols-5 border-b-3 border-ink bg-ink text-surface font-mono text-xs font-bold p-2 text-center">
                       <div className="text-left pl-2">{t('dateColumnLabel')}</div>
                       <div>{t('partMorning')} <span className="text-[10px] opacity-75">({t('partMorningRange')})</span></div>
                       <div>{t('partAfternoon')} <span className="text-[10px] opacity-75">({t('partAfternoonRange')})</span></div>
@@ -813,8 +773,8 @@ export default function ScheduleMatrix({
                     </div>
 
                     {event.dates.map(dateStr => (
-                      <div key={dateStr} className="grid grid-cols-5 border-b-2 border-black last:border-b-0 items-center">
-                        <div className="p-3 font-bold text-xs text-black border-r-2 border-black bg-[#F0F0F0]">
+                      <div key={dateStr} className="grid grid-cols-5 border-b-2 border-ink last:border-b-0 items-center">
+                        <div className="p-3 font-bold text-xs text-ink border-r-2 border-ink bg-sunken">
                           <div>{formatLocalizedDate(dateStr, lang, 'chip')}</div>
                         </div>
 
@@ -838,9 +798,9 @@ export default function ScheduleMatrix({
                             <div
                               key={slotId}
                               onClick={() => setActiveSlotInfo(info)}
-                              className={`h-11 border-r-2 border-black last:border-r-0 cursor-pointer transition-none flex flex-col items-center justify-center font-mono text-xs ${cellStyle} ${
+                              className={`h-11 border-r-2 border-ink last:border-r-0 cursor-pointer transition-none flex flex-col items-center justify-center font-mono text-xs ${cellStyle} ${
                                 isHighlighted ? 'outline-4 outline-black z-20' : ''
-                              } ${isCurrentActive ? 'border-4 border-black' : ''}`}
+                              } ${isCurrentActive ? 'border-4 border-ink' : ''}`}
                             >
                               {info.availableCount > 0 ? (
                                 <span>
@@ -861,16 +821,16 @@ export default function ScheduleMatrix({
               {/* Mode 3: Hourly Matrix Table */}
               {granularity === 'hour' && (
                 <div className="overflow-x-auto select-none pb-2">
-                  <div className="min-w-fit inline-block border-3 border-black bg-white">
+                  <div className="min-w-fit inline-block border-3 border-ink bg-surface">
                     {/* Header Row */}
-                    <div className="flex border-b-3 border-black bg-black text-white sticky top-0 z-10 font-mono text-xs font-bold">
-                      <div className="w-20 sm:w-24 shrink-0 p-2 text-center border-r-2 border-white flex items-center justify-center">
+                    <div className="flex border-b-3 border-ink bg-ink text-surface sticky top-0 z-10 font-mono text-xs font-bold">
+                      <div className="w-20 sm:w-24 shrink-0 p-2 text-center border-r-2 border-surface flex items-center justify-center">
                         {t('timeColumnLabel')}
                       </div>
                       {event.dates.map(dateStr => (
                         <div
                           key={dateStr}
-                          className="w-24 sm:w-28 shrink-0 p-2 text-center border-r-2 border-white last:border-r-0"
+                          className="w-24 sm:w-28 shrink-0 p-2 text-center border-r-2 border-surface last:border-r-0"
                         >
                           <div>{formatLocalizedDate(dateStr, lang, 'chip')}</div>
                         </div>
@@ -879,8 +839,8 @@ export default function ScheduleMatrix({
 
                     {/* Body Rows */}
                     {dayTimes.map(time => (
-                      <div key={time} className="flex border-b-2 border-black last:border-b-0">
-                        <div className="w-20 sm:w-24 shrink-0 px-2 py-1.5 text-center font-mono text-xs text-black border-r-2 border-black flex items-center justify-center bg-[#F0F0F0] font-bold">
+                      <div key={time} className="flex border-b-2 border-ink last:border-b-0">
+                        <div className="w-20 sm:w-24 shrink-0 px-2 py-1.5 text-center font-mono text-xs text-ink border-r-2 border-ink flex items-center justify-center bg-sunken font-bold">
                           {time}
                         </div>
 
@@ -906,9 +866,9 @@ export default function ScheduleMatrix({
                               key={slotId}
                               onClick={() => setActiveSlotInfo(info)}
                               onMouseEnter={() => setActiveSlotInfo(info)}
-                              className={`w-24 sm:w-28 h-8 shrink-0 border-r-2 border-black last:border-r-0 cursor-pointer transition-none flex flex-col items-center justify-center font-mono text-xs ${cellStyle} ${
+                              className={`w-24 sm:w-28 h-8 shrink-0 border-r-2 border-ink last:border-r-0 cursor-pointer transition-none flex flex-col items-center justify-center font-mono text-xs ${cellStyle} ${
                                 isHighlighted ? 'outline-4 outline-black z-20' : ''
-                              } ${isCurrentActive ? 'border-4 border-black' : ''}`}
+                              } ${isCurrentActive ? 'border-4 border-ink' : ''}`}
                             >
                               {info.availableCount > 0 ? (
                                 <span>
@@ -928,9 +888,9 @@ export default function ScheduleMatrix({
 
               {/* Inspector Popover / Card for Clicked Slot */}
               {activeSlotInfo && (
-                <div className="p-4 bg-black text-white border-3 border-black font-sans text-xs space-y-3 motion-enter">
-                  <div className="flex items-center justify-between border-b-2 border-white/40 pb-2">
-                    <span className="font-bold text-white text-sm">
+                <div className="p-4 bg-ink text-surface border-3 border-ink font-sans text-xs space-y-3 motion-enter">
+                  <div className="flex items-center justify-between border-b-2 border-surface/40 pb-2">
+                    <span className="font-bold text-surface text-sm">
                       {granularity === 'day' ? (
                         `${formatLocalizedDate(activeSlotInfo.date, lang, 'chip')} (${t('allDayLabel')})`
                       ) : granularity === 'daypart' ? (
@@ -942,43 +902,43 @@ export default function ScheduleMatrix({
                         })
                       )}
                     </span>
-                    <span className="font-mono font-bold bg-[#FFE500] text-black px-2.5 py-0.5 text-xs">
+                    <span className="font-mono font-bold bg-accent text-ink px-2.5 py-0.5 text-xs">
                       {activeSlotInfo.availableCount}/{activeSlotInfo.totalParticipants} ({activeSlotInfo.percentage}%)
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="font-bold text-[#FFE500] block mb-1.5">
+                      <span className="font-bold text-on-ink-accent block mb-1.5">
                         {t('confirmedFreeLabel', { count: activeSlotInfo.availableNames.length })}
                       </span>
                       {activeSlotInfo.availableNames.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {activeSlotInfo.availableNames.map(name => (
-                            <span key={name} className="px-2 py-0.5 bg-white text-black font-semibold">
+                            <span key={name} className="px-2 py-0.5 bg-surface text-ink font-semibold">
                               {name}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-white/60">{t('noneLabel')}</span>
+                        <span className="text-surface/60">{t('noneLabel')}</span>
                       )}
                     </div>
 
                     <div>
-                      <span className="font-bold text-white/80 block mb-1.5">
+                      <span className="font-bold text-surface/80 block mb-1.5">
                         {t('busyListLabel', { count: activeSlotInfo.unavailableNames.length })}
                       </span>
                       {activeSlotInfo.unavailableNames.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {activeSlotInfo.unavailableNames.map(name => (
-                            <span key={name} className="px-2 py-0.5 bg-[#525252] text-white">
+                            <span key={name} className="px-2 py-0.5 bg-muted text-surface">
                               {name}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-[#FFE500] font-bold">{t('allAvailableLabel')}</span>
+                        <span className="text-on-ink-accent font-bold">{t('allAvailableLabel')}</span>
                       )}
                     </div>
                   </div>

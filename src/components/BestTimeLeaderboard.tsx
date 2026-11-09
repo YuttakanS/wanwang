@@ -75,31 +75,31 @@ export default function BestTimeLeaderboard({
   };
 
   return (
-    <div className="bg-white border-3 border-black p-5 sm:p-6 space-y-5">
+    <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-5">
       {/* Header */}
-      <div className="border-b-3 border-black pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="border-b-3 border-ink pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h3 className="text-xl sm:text-2xl font-bold text-black leading-tight">
+          <h3 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
             {t('leaderboardTitle')}
           </h3>
-          <p className="text-xs text-[#525252] mt-0.5">
+          <p className="text-xs text-muted mt-0.5">
             {t('leaderboardSubtitle')}
           </p>
         </div>
 
         {hasUnanimous ? (
-          <span className="font-mono text-xs font-bold px-3 py-1 bg-[#FFE500] text-black border-2 border-black self-start sm:self-center">
+          <span className="font-mono text-xs font-bold px-3 py-1 bg-accent text-ink border-2 border-ink self-start sm:self-center">
             {t('everyoneFree')}
           </span>
         ) : (
-          <span className="font-mono text-xs font-bold px-3 py-1 bg-[#F0F0F0] text-black border-2 border-black self-start sm:self-center">
+          <span className="font-mono text-xs font-bold px-3 py-1 bg-sunken text-ink border-2 border-ink self-start sm:self-center">
             {t('closestMatch')}
           </span>
         )}
       </div>
 
       {pinError && (
-        <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">
+        <div className="p-3 bg-accent border-2 border-ink text-ink font-mono text-xs motion-shake">
           [ERROR] {pinError}
         </div>
       )}
@@ -115,24 +115,24 @@ export default function BestTimeLeaderboard({
             <div
               key={match.id}
               onClick={() => onSelectMatch?.(match.slotIds)}
-              className={`p-4 bg-white cursor-pointer transition-none space-y-3 relative ${
+              className={`p-4 bg-surface cursor-pointer transition-none space-y-3 relative ${
                 isPinned
-                  ? 'border-5 border-black bg-[#FFE500]/15 ring-2 ring-black'
+                  ? 'border-5 border-ink bg-accent/15 ring-2 ring-ink'
                   : isEveryoneFree
-                  ? 'border-3 border-black bg-[#FFE500]/25'
+                  ? 'border-3 border-ink bg-accent/25'
                   : isSelected
-                  ? 'border-5 border-black bg-[#F0F0F0]'
-                  : 'border-3 border-black hover:bg-[#F0F0F0]'
+                  ? 'border-5 border-ink bg-sunken'
+                  : 'border-3 border-ink hover:bg-sunken'
               }`}
             >
               {/* Card Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-base text-black">
+                  <span className="font-bold text-base text-ink">
                     {t('rankPrefix', { rank: idx + 1 })}
                   </span>
                   {isPinned && (
-                    <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.5 bg-black text-[#FFE500] uppercase">
+                    <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.5 bg-ink text-on-ink-accent uppercase">
                       {t('pinnedBadge')}
                     </span>
                   )}
@@ -140,16 +140,16 @@ export default function BestTimeLeaderboard({
 
                 <div className="flex items-center gap-1">
                   {isEveryoneFree ? (
-                    <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.5 bg-[#FFE500] text-black border-2 border-black">
+                    <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.5 bg-accent text-ink border-2 border-ink">
                       {t('everyoneFree')}
                     </span>
                   ) : idx === 0 ? (
-                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-[#F0F0F0] text-black border-2 border-black">
+                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-sunken text-ink border-2 border-ink">
                       {t('closestMatch')}
                     </span>
                   ) : null}
 
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 border-2 border-black bg-white">
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 border-2 border-ink bg-surface">
                     {t('matchPercent', { percent: match.percentage })}
                   </span>
                 </div>
@@ -157,10 +157,10 @@ export default function BestTimeLeaderboard({
 
               {/* Date & Time Info */}
               <div>
-                <div className="font-bold text-sm sm:text-base text-black">
+                <div className="font-bold text-sm sm:text-base text-ink">
                   {match.formattedThai}
                 </div>
-                <div className="font-mono text-xs text-[#525252] mt-0.5">
+                <div className="font-mono text-xs text-muted mt-0.5">
                   {event.granularity === 'day' ? (
                     t('allDayLabel')
                   ) : event.granularity === 'daypart' ? (
@@ -172,42 +172,42 @@ export default function BestTimeLeaderboard({
               </div>
 
               {/* Progress Bar with Yellow Accent */}
-              <div className="w-full bg-[#F0F0F0] h-2.5 border-2 border-black">
+              <div className="w-full bg-sunken h-2.5 border-2 border-ink">
                 <div
-                  className="bg-[#FFE500] h-full transition-none border-r-2 border-black"
+                  className="bg-accent h-full transition-none border-r-2 border-ink"
                   style={{ width: `${match.percentage}%` }}
                 />
               </div>
 
               {/* Free vs Missing counts */}
-              <div className="flex items-center justify-between font-mono text-xs text-black font-bold">
+              <div className="flex items-center justify-between font-mono text-xs text-ink font-bold">
                 <span>
                   {t('freeCountText', { free: match.availableCount, total: match.totalParticipants })}
                 </span>
                 {match.missingNames.length === 0 ? (
-                  <span className="text-black font-extrabold">[{t('allAvailableLabel')}]</span>
+                  <span className="text-ink font-extrabold">[{t('allAvailableLabel')}]</span>
                 ) : (
-                  <span className="text-[#525252] font-semibold">
+                  <span className="text-muted font-semibold">
                     {t('missingCount', { count: match.missingNames.length })}
                   </span>
                 )}
               </div>
 
               {/* Names breakdown */}
-              <div className="pt-2 border-t-2 border-black text-xs space-y-1">
+              <div className="pt-2 border-t-2 border-ink text-xs space-y-1">
                 <div className="truncate">
-                  <span className="font-bold text-black">{t('availableLabel')}</span> {match.availableNames.join(', ')}
+                  <span className="font-bold text-ink">{t('availableLabel')}</span> {match.availableNames.join(', ')}
                 </div>
                 {match.missingNames.length > 0 && (
-                  <div className="text-[#525252] truncate">
-                    <span className="font-semibold text-black">{t('missingFriendsLabel')}</span> {match.missingNames.join(', ')}
+                  <div className="text-muted truncate">
+                    <span className="font-semibold text-ink">{t('missingFriendsLabel')}</span> {match.missingNames.join(', ')}
                   </div>
                 )}
               </div>
 
               {/* Admin "ปักวันนี้" Button */}
               {isAdmin && (
-                <div className="pt-2 border-t-2 border-black flex justify-end">
+                <div className="pt-2 border-t-2 border-ink flex justify-end">
                   <button
                     type="button"
                     disabled={isPinning}
@@ -215,10 +215,10 @@ export default function BestTimeLeaderboard({
                       e.stopPropagation();
                       handleTogglePinDate(match.date);
                     }}
-                    className={`px-3 py-1.5 border-2 border-black text-xs font-bold font-mono transition-none cursor-pointer ${
+                    className={`px-3 py-1.5 border-2 border-ink text-xs font-bold font-mono transition-none cursor-pointer ${
                       isPinned
-                        ? 'bg-black text-[#FFE500] hover:bg-[#FFE500] hover:text-black'
-                        : 'bg-[#FFE500] text-black hover:bg-black hover:text-[#FFE500] shadow-[2px_2px_0_#000]'
+                        ? 'bg-ink text-on-ink-accent hover:bg-accent hover:text-ink'
+                        : 'bg-accent text-ink hover:bg-ink hover:text-on-ink-accent shadow-[2px_2px_0_rgb(var(--shadow-color))]'
                     }`}
                   >
                     {isPinned ? `✓ ${t('unpinThisDate')}` : `📌 ${t('pinThisDate')}`}

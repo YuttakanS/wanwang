@@ -1,7 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Thai, Space_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
+import ZoomLock from "@/components/ZoomLock";
 import { I18nProvider } from "@/lib/i18n";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { OPEN_GRAPH_BASE, SITE_DESCRIPTION, SITE_TITLE, TWITTER_BASE } from "@/lib/siteMetadata";
 
 // next/font downloads these at build time and serves them from this origin.
@@ -22,6 +25,18 @@ const spaceMono = Space_Mono({
 // A prerendered page has no per-request nonce, so the CSP in middleware would block its scripts.
 export const dynamic = "force-dynamic";
 
+// Zooming is off by request. iOS ignores these values, see ZoomLock and touch-action in globals.css.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#111111" },
+  ],
+};
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 export const metadata: Metadata = {
@@ -33,17 +48,23 @@ export const metadata: Metadata = {
   twitter: { ...TWITTER_BASE, title: SITE_TITLE, description: SITE_DESCRIPTION },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // middleware.ts passes its CSP on this request header, so the inline script can carry its nonce.
+  const csp = (await headers()).get("content-security-policy");
+  const nonce = csp?.match(/'nonce-([^']+)'/)?.[1];
+
   return (
-    <html lang="th" className={`scroll-smooth ${plexThai.variable} ${spaceMono.variable}`}>
+    // The init script sets data-theme before React loads, which React would otherwise report.
+    <html lang="th" className={`scroll-smooth ${plexThai.variable} ${spaceMono.variable}`} suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="bg-white text-black min-h-screen">
+      <body className="bg-surface text-ink min-h-screen">
+        <ZoomLock />
         <I18nProvider>
           {children}
         </I18nProvider>
