@@ -6,6 +6,7 @@ export class SelectionStore {
   private listeners = new Set<Listener>();
   private version = 0;
   private outsideVersion = 0;
+  private snapshot: readonly string[] | null = null;
 
   has(slotId: string): boolean {
     return this.slots.has(slotId);
@@ -15,9 +16,8 @@ export class SelectionStore {
     return this.slots.size;
   }
 
-  toArray(): string[] {
-    return [...this.slots];
-  }
+  /** The same array until the selection changes, so React can compare it and cache what it renders. */
+  getSnapshot = (): readonly string[] => (this.snapshot ??= [...this.slots]);
 
   /**
    * Receives what a gesture already drew on the UI thread. It leaves outsideVersion alone so the
@@ -59,6 +59,7 @@ export class SelectionStore {
   getOutsideVersion = (): number => this.outsideVersion;
 
   private notify(): void {
+    this.snapshot = null;
     this.version++;
     for (const listener of this.listeners) listener();
   }

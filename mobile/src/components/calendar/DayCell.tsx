@@ -2,8 +2,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { isCellSet } from '~/calendar/cellMask';
 import type { SelectionStore } from '~/calendar/selectionStore';
-import { calendarColors } from '~/constants/calendarColors';
+import { fonts } from '~/constants/fonts';
+import { borderWidths, ON_ACCENT } from '~/constants/theme';
 import { useIsSlotSelected } from '~/hooks/useSelectionStore';
+import { useTheme } from '~/hooks/useTheme';
 
 interface Position {
   left: number;
@@ -24,12 +26,19 @@ interface DayCellProps {
 
 export function DayCell({ index, slotId, dayNumber, label, position, store, maskLow, maskHigh }: DayCellProps) {
   const isSelected = useIsSlotSelected(store, slotId);
+  const { accent, ink, surface } = useTheme().colors;
 
   // Redraws from the UI thread during a drag, without a React render per cell.
   const cellStyle = useAnimatedStyle(() => {
     const selected = isCellSet(maskLow.get(), maskHigh.get(), index);
-    return { backgroundColor: selected ? calendarColors.accent : calendarColors.surface };
+    return {
+      backgroundColor: selected ? accent : surface,
+      borderColor: selected ? ON_ACCENT : ink,
+    };
   });
+  const dayStyle = useAnimatedStyle(() => ({
+    color: isCellSet(maskLow.get(), maskHigh.get(), index) ? ON_ACCENT : ink,
+  }));
   const checkStyle = useAnimatedStyle(() => ({
     opacity: isCellSet(maskLow.get(), maskHigh.get(), index) ? 1 : 0,
   }));
@@ -43,9 +52,9 @@ export function DayCell({ index, slotId, dayNumber, label, position, store, mask
       onAccessibilityTap={() => store.toggle(slotId)}
       style={[styles.cell, position, { width: position.size, height: position.size }, cellStyle]}
     >
-      <Text style={styles.day} maxFontSizeMultiplier={1.3}>
+      <Animated.Text style={[styles.day, dayStyle]} maxFontSizeMultiplier={1.3}>
         {dayNumber}
-      </Text>
+      </Animated.Text>
       <Animated.Text style={[styles.check, checkStyle]} maxFontSizeMultiplier={1.3}>
         ✓
       </Animated.Text>
@@ -59,13 +68,18 @@ interface DisabledDayCellProps {
 }
 
 export function DisabledDayCell({ dayNumber, position }: DisabledDayCellProps) {
+  const { colors } = useTheme();
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.cell, styles.disabled, position, { width: position.size, height: position.size }]}
+      style={[
+        styles.cell,
+        position,
+        { width: position.size, height: position.size, borderColor: colors.lineSoft, backgroundColor: colors.sunken },
+      ]}
     >
-      <Text style={styles.disabledDay} maxFontSizeMultiplier={1.3}>
+      <Text style={[styles.disabledDay, { color: colors.faint }]} maxFontSizeMultiplier={1.3}>
         {dayNumber}
       </Text>
     </View>
@@ -77,26 +91,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: calendarColors.ink,
+    borderWidth: borderWidths.thin,
   },
   day: {
+    fontFamily: fonts.monoBold,
     fontSize: 14,
-    fontWeight: '700',
-    color: calendarColors.ink,
   },
+  // Out of the flow, so the hidden mark does not push the number above the disabled cells' numbers.
   check: {
+    position: 'absolute',
+    bottom: 1,
     fontSize: 10,
     lineHeight: 12,
     fontWeight: '700',
-    color: calendarColors.ink,
-  },
-  disabled: {
-    borderColor: calendarColors.lineSoft,
-    backgroundColor: calendarColors.sunken,
+    color: ON_ACCENT,
   },
   disabledDay: {
+    fontFamily: fonts.mono,
     fontSize: 14,
-    color: calendarColors.faint,
   },
 });
