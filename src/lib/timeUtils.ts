@@ -432,8 +432,8 @@ export function formatLocalizedDateRange(start: string, end: string, lang: Langu
   return `${formatLocalizedDate(start, lang, format)} - ${formatLocalizedDate(end, lang, format)}`;
 }
 
-// Generate Line Share Message Localized
-export function generateLineShareMessage(
+// Generate Share Message Localized
+export function generateShareMessage(
   event: WanWangEvent,
   participants: Participant[],
   eventUrl: string,

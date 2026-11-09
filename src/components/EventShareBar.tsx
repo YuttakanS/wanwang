@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { WanWangEvent, Participant } from '@/types';
-import { generateLineShareMessage } from '@/lib/timeUtils';
+import { generateShareMessage } from '@/lib/timeUtils';
+import { buildShareUrl, ShareTarget } from '@/lib/shareTargets';
 import { useRouter } from 'next/navigation';
 import { buildAdminLink, forgetEvent, getStoredAdminKey } from '@/lib/adminAccess';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -24,6 +25,11 @@ export default function EventShareBar({
   onAdminKeyRotated,
 }: EventShareBarProps) {
   const { lang, t } = useI18n();
+
+  const [canNativeShare, setCanNativeShare] = useState(false);
+  useEffect(() => {
+    setCanNativeShare(typeof navigator.share === 'function');
+  }, []);
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
@@ -53,27 +59,31 @@ export default function EventShareBar({
 
   const handleCopySummaryText = async () => {
     const url = getEventUrl();
-    const text = generateLineShareMessage(event, participants, url, lang);
+    const text = generateShareMessage(event, participants, url, lang);
     await navigator.clipboard.writeText(text);
     setCopiedText(true);
     setTimeout(() => setCopiedText(false), 2000);
   };
 
-  const handleShareToLine = () => {
+  const handleNativeShare = async () => {
     const url = getEventUrl();
-    const message = generateLineShareMessage(event, participants, url, lang);
 
-    if (navigator.share) {
-      navigator.share({
+    try {
+      await navigator.share({
         title: `วันว่าง: ${event.title}`,
-        text: message,
-        url: url,
-      }).catch(() => {
-        window.open(`https://line.me/R/msg/text/?${encodeURIComponent(message)}`, '_blank');
+        text: generateShareMessage(event, participants, url, lang),
+        url,
       });
-    } else {
-      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(message)}`, '_blank');
+    } catch (err) {
+      // AbortError means the user closed the share sheet.
+      if ((err as Error).name !== 'AbortError') console.error('Share failed:', err);
     }
+  };
+
+  // Built on click because the summary scans every slot, which is slow on long events.
+  const handleShareTo = (target: ShareTarget) => {
+    const shareUrl = buildShareUrl(target, event, participants, getEventUrl(), lang);
+    window.open(shareUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleCopyAdminLink = async () => {
@@ -165,13 +175,35 @@ export default function EventShareBar({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Share buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* LINE Share: Primary Button with Accent Yellow and Hard Shadow */}
+          {/* The system share sheet reaches every installed app, including Messenger. */}
+          {canNativeShare && (
+            <button
+              type="button"
+              onClick={handleNativeShare}
+              className="btn-primary-raw px-4 py-2 text-xs sm:text-sm font-bold"
+            >
+              {t('shareNativeBtn')}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={handleShareToLine}
-            className="btn-primary-raw px-4 py-2 text-xs sm:text-sm font-bold"
+            onClick={() => handleShareTo('line')}
+            className={
+              canNativeShare
+                ? 'btn-secondary-raw px-3 py-2 text-xs font-semibold'
+                : 'btn-primary-raw px-4 py-2 text-xs sm:text-sm font-bold'
+            }
           >
             {t('shareLineBtn')}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleShareTo('whatsapp')}
+            className="btn-secondary-raw px-3 py-2 text-xs font-semibold"
+          >
+            {t('shareWhatsappBtn')}
           </button>
 
           {/* Copy Summary Text */}

@@ -146,7 +146,9 @@ export const translations: Record<Language, Translations> = {
     metaLocationLabel: 'สถานที่: {loc}',
 
     // Share Bar
-    shareLineBtn: 'แชร์ไปให้เพื่อนคุณเลย!! ->',
+    shareNativeBtn: 'แชร์ไปให้เพื่อนคุณเลย!! ->',
+    shareLineBtn: 'แชร์ผ่าน LINE',
+    shareWhatsappBtn: 'แชร์ผ่าน WhatsApp',
     copySummaryBtn: 'ก็อปปี้ข้อความสรุป',
     copySummaryDone: '[คัดลอกข้อความแล้ว]',
     copyLinkBtn: 'คัดลอกลิงก์',
@@ -392,7 +394,9 @@ export const translations: Record<Language, Translations> = {
     metaLocationLabel: 'Location: {loc}',
 
     // Share Bar
-    shareLineBtn: 'Share it with your friends!! ->',
+    shareNativeBtn: 'Share it with your friends!! ->',
+    shareLineBtn: 'Share on LINE',
+    shareWhatsappBtn: 'Share on WhatsApp',
     copySummaryBtn: 'Copy summary text',
     copySummaryDone: '[Summary copied]',
     copyLinkBtn: 'Copy link',
