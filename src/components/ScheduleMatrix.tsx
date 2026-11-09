@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSlotDragSelect } from '@/components/useSlotDragSelect';
 import {
   WanWangEvent,
   Participant,
@@ -43,9 +44,6 @@ export default function ScheduleMatrix({
   const selectedSet = useMemo(() => new Set(mySelectedSlots), [mySelectedSlots]);
   const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null);
   const [editToken, setEditToken] = useState<string | null>(null);
-
-  const isMouseDownRef = useRef(false);
-  const dragModeRef = useRef<'add' | 'remove'>('add');
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -109,47 +107,7 @@ export default function ScheduleMatrix({
     );
   };
 
-  const handleSlotMouseDown = (slotId: string) => {
-    isMouseDownRef.current = true;
-    if (selectedSet.has(slotId)) {
-      dragModeRef.current = 'remove';
-      setMySelectedSlots(prev => prev.filter(id => id !== slotId));
-    } else {
-      dragModeRef.current = 'add';
-      setMySelectedSlots(prev => [...prev, slotId]);
-    }
-  };
-
-  const handleSlotMouseEnter = (slotId: string) => {
-    if (!isMouseDownRef.current) return;
-    if (dragModeRef.current === 'add' && !selectedSet.has(slotId)) {
-      setMySelectedSlots(prev => [...prev, slotId]);
-    } else if (dragModeRef.current === 'remove' && selectedSet.has(slotId)) {
-      setMySelectedSlots(prev => prev.filter(id => id !== slotId));
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    if (!touch) return;
-    const target = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (target) {
-      const slotId = target.getAttribute('data-slot-id');
-      if (slotId && dragModeRef.current === 'add' && !selectedSet.has(slotId)) {
-        setMySelectedSlots(prev => [...prev, slotId]);
-      } else if (slotId && dragModeRef.current === 'remove' && selectedSet.has(slotId)) {
-        setMySelectedSlots(prev => prev.filter(id => id !== slotId));
-      }
-    }
-  };
-
-  useEffect(() => {
-    const handleMouseUp = () => {
-      isMouseDownRef.current = false;
-    };
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, []);
+  const slotGridHandlers = useSlotDragSelect(mySelectedSlots, setMySelectedSlots);
 
   // Filter valid selectable dates (within range and not in past)
   const validSelectableDates = useMemo(() => {
@@ -499,7 +457,7 @@ export default function ScheduleMatrix({
 
                   {/* Day Grid with Touch & Mouse Drag Support */}
                   <div
-                    onTouchMove={handleTouchMove}
+                    {...slotGridHandlers}
                     style={{ touchAction: 'pan-y' }}
                     className="grid grid-cols-7 gap-1.5 select-none"
                   >
@@ -523,9 +481,6 @@ export default function ScheduleMatrix({
                         <div
                           key={`${d.dateStr}-${index}`}
                           data-slot-id={d.dateStr}
-                          onMouseDown={() => handleSlotMouseDown(d.dateStr)}
-                          onMouseEnter={() => handleSlotMouseEnter(d.dateStr)}
-                          onTouchStart={() => handleSlotMouseDown(d.dateStr)}
                           className={`aspect-square flex flex-col items-center justify-center font-mono text-xs font-bold border-2 border-black transition-none cursor-pointer ${
                             isSelected
                               ? 'bg-[#FFE500] text-black font-extrabold shadow-[2px_2px_0_#000]'
@@ -591,7 +546,7 @@ export default function ScheduleMatrix({
               {granularity === 'hour' && (
                 <div className="overflow-x-auto select-none pb-2">
                   <div
-                    onTouchMove={handleTouchMove}
+                    {...slotGridHandlers}
                     style={{ touchAction: 'pan-x' }}
                     className="min-w-fit inline-block border-3 border-black bg-white"
                   >
@@ -625,9 +580,6 @@ export default function ScheduleMatrix({
                             <div
                               key={slotId}
                               data-slot-id={slotId}
-                              onMouseDown={() => handleSlotMouseDown(slotId)}
-                              onMouseEnter={() => handleSlotMouseEnter(slotId)}
-                              onTouchStart={() => handleSlotMouseDown(slotId)}
                               className={`w-24 sm:w-28 h-8 shrink-0 border-r-2 border-black last:border-r-0 cursor-pointer transition-none flex items-center justify-center font-mono text-xs ${
                                 isSelected
                                   ? 'bg-[#FFE500] text-black font-extrabold border-black'
