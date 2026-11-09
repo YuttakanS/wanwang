@@ -24,7 +24,7 @@ describe('retention period', () => {
   });
 
   it('is the same in both notes on the create form', () => {
-    const notes = read('src/lib/i18n.tsx').match(/createVisibilityNote: '.*'/g) ?? [];
+    const notes = read('src/lib/translations.ts').match(/createVisibilityNote: '.*'/g) ?? [];
     expect(notes).toHaveLength(2);
     for (const note of notes) expect(note).toContain(String(days));
   });
