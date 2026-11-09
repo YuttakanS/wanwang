@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Thai, Space_Mono } from "next/font/google";
 import "./globals.css";
+import ZoomLock from "@/components/ZoomLock";
 import { I18nProvider } from "@/lib/i18n";
 import { OPEN_GRAPH_BASE, SITE_DESCRIPTION, SITE_TITLE, TWITTER_BASE } from "@/lib/siteMetadata";
 
@@ -22,6 +23,14 @@ const spaceMono = Space_Mono({
 // A prerendered page has no per-request nonce, so the CSP in middleware would block its scripts.
 export const dynamic = "force-dynamic";
 
+// Zooming is off by request. iOS ignores these values, see ZoomLock and touch-action in globals.css.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 export const metadata: Metadata = {
@@ -40,10 +49,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th" className={`scroll-smooth ${plexThai.variable} ${spaceMono.variable}`}>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-      </head>
       <body className="bg-white text-black min-h-screen">
+        <ZoomLock />
         <I18nProvider>
           {children}
         </I18nProvider>

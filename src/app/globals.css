@@ -11,6 +11,31 @@
   border-radius: 0px !important;
 }
 
+/* Allows scrolling but no pinch or double-tap zoom. */
+html {
+  touch-action: pan-x pan-y;
+}
+
+/* iOS Safari zooms in on any focused field with text under 16px. */
+@media (max-width: 767px), (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* iOS gives date fields their own width, which ignores width: 100% and overflows the card. */
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}
+
 body {
   color: #000000;
   background-color: #FFFFFF;

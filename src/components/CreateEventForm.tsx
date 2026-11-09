@@ -243,7 +243,7 @@ export default function CreateEventForm() {
             </p>
           </div>
           {totalDays > 0 && (
-            <span className="font-mono text-xs uppercase px-2 py-1 bg-black text-[#FFE500] font-bold shrink-0 self-start sm:self-center">
+            <span className="font-mono text-xs uppercase px-2 py-1 bg-black text-[#FFE500] font-bold max-w-full self-start sm:self-center">
               {activePresetPrefix}{t('rangeDaysCount', { count: totalDays, range: formattedRange })}
             </span>
           )}
@@ -274,7 +274,7 @@ export default function CreateEventForm() {
 
         {/* Custom Start & End Date Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          <div>
+          <div className="min-w-0 max-w-full">
             <label className="block text-xs font-bold text-black mb-1">
               {t('rangeStartLabel')}
             </label>
@@ -283,11 +283,11 @@ export default function CreateEventForm() {
               required
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="w-full px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-mono text-sm focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none cursor-pointer"
+              className="block w-full max-w-full min-w-0 box-border px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-mono text-sm focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none cursor-pointer"
             />
           </div>
 
-          <div>
+          <div className="min-w-0 max-w-full">
             <label className="block text-xs font-bold text-black mb-1">
               {t('rangeEndLabel')}
             </label>
@@ -297,16 +297,16 @@ export default function CreateEventForm() {
               min={startDate}
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
-              className="w-full px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-mono text-sm focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none cursor-pointer"
+              className="block w-full max-w-full min-w-0 box-border px-3 py-2.5 bg-[#F0F0F0] hover:bg-[#E8E8E8] border-3 border-black text-black font-mono text-sm focus:outline-none focus:border-black focus:ring-2 focus:ring-black transition-none cursor-pointer"
             />
           </div>
         </div>
 
         {/* Active Window Summary Chip */}
         {totalDays > 0 && (
-          <div className="inline-flex items-stretch bg-white border-2 border-black overflow-hidden select-none">
+          <div className="inline-flex max-w-full items-stretch bg-white border-2 border-black overflow-hidden select-none">
             <div className="w-[6px] bg-[#FFE500] shrink-0" />
-            <div className="flex items-center px-3 py-1.5 text-xs text-black">
+            <div className="flex flex-wrap items-center min-w-0 px-3 py-1.5 text-xs text-black">
               <span className="font-bold mr-1">{t('rangeSummaryLabel')}</span>
               <span className="font-mono font-bold">{startDate}</span>
               <span className="mx-1.5 font-sans font-bold">→</span>
