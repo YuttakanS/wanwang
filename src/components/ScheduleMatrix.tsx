@@ -19,6 +19,7 @@ import {
   getWeekdayHeaders,
 } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
+import { buildMonthCells } from '@/lib/monthCells';
 
 interface ScheduleMatrixProps {
   event: WanWangEvent;
@@ -221,64 +222,10 @@ export default function ScheduleMatrix({
     return 'bg-accent text-ink border-ink font-mono font-extrabold';
   };
 
-  // Calendar Day Generation for a given month
-  const calendarDays = useMemo(() => {
-    const year = calendarMonth.getFullYear();
-    const month = calendarMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    const days: {
-      dateStr: string;
-      dayNum: number;
-      isCurrentMonth: boolean;
-      isWeekend: boolean;
-      isInRange: boolean;
-      isPast: boolean;
-    }[] = [];
-    const startOffset = firstDay.getDay();
-
-    for (let i = startOffset - 1; i >= 0; i--) {
-      const d = new Date(year, month, -i);
-      const ds = formatDateToISO(d);
-      days.push({
-        dateStr: ds,
-        dayNum: d.getDate(),
-        isCurrentMonth: false,
-        isWeekend: d.getDay() === 0 || d.getDay() === 6,
-        isInRange: ds >= rangeStart && ds <= rangeEnd,
-        isPast: ds < todayStr,
-      });
-    }
-
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      const d = new Date(year, month, i);
-      const ds = formatDateToISO(d);
-      days.push({
-        dateStr: ds,
-        dayNum: i,
-        isCurrentMonth: true,
-        isWeekend: d.getDay() === 0 || d.getDay() === 6,
-        isInRange: ds >= rangeStart && ds <= rangeEnd,
-        isPast: ds < todayStr,
-      });
-    }
-
-    while (days.length % 7 !== 0) {
-      const d = new Date(year, month + 1, days.length - lastDay.getDate() - startOffset + 1);
-      const ds = formatDateToISO(d);
-      days.push({
-        dateStr: ds,
-        dayNum: d.getDate(),
-        isCurrentMonth: false,
-        isWeekend: d.getDay() === 0 || d.getDay() === 6,
-        isInRange: ds >= rangeStart && ds <= rangeEnd,
-        isPast: ds < todayStr,
-      });
-    }
-
-    return days;
-  }, [calendarMonth, rangeStart, rangeEnd, todayStr]);
+  const calendarDays = useMemo(
+    () => buildMonthCells(calendarMonth, rangeStart, rangeEnd, todayStr),
+    [calendarMonth, rangeStart, rangeEnd, todayStr]
+  );
 
   const weekdayHeaders = getWeekdayHeaders(lang);
 
