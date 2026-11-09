@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { formatDateToISO, formatLocalizedDateRange, generateDatesInRange } from '@/lib/timeUtils';
-import { EVENT_CATEGORIES, type EventCategory } from '@/types';
+import { countEventSlots, formatDateToISO, formatLocalizedDateRange, generateDatesInRange } from '@/lib/timeUtils';
+import { EVENT_CATEGORIES, type EventCategory, MAX_EVENT_SLOTS, type TimeGranularity } from '@/types';
 import type { DateRange } from '~/calendar/rangePick';
 import { RangeCalendar } from '~/components/calendar/RangeCalendar';
 import { NeoButton } from '~/components/neo/NeoButton';
@@ -13,6 +13,7 @@ import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
 import { PrivacyNote } from '~/components/PrivacyNote';
 import { Screen } from '~/components/Screen';
+import { TimeStepper } from '~/components/TimeStepper';
 import { CATEGORY_LABEL_KEYS } from '~/constants/strings';
 import { useI18n } from '~/hooks/useI18n';
 import { useCreateEvent } from '~/hooks/useMyEvents';
@@ -33,6 +34,17 @@ const RANGE_PRESETS = [
 ];
 const DEFAULT_RANGE_DAYS = 365;
 
+const FORMATS: { id: TimeGranularity; labelKey: string; descriptionKey: string }[] = [
+  { id: 'day', labelKey: 'granularityDay', descriptionKey: 'granularityDayDesc' },
+  { id: 'daypart', labelKey: 'granularityDaypart', descriptionKey: 'granularityDaypartDesc' },
+  { id: 'hour', labelKey: 'granularityHour', descriptionKey: 'granularityHourDesc' },
+];
+
+const hourText = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
+const START_TIMES = Array.from({ length: 24 }, (_, hour) => hourText(hour));
+// The API's times stop at 23:59, which stands for midnight, as on the website.
+const END_TIMES = [...Array.from({ length: 23 }, (_, hour) => hourText(hour + 1)), '23:59'];
+
 function isoDaysFromToday(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -49,6 +61,10 @@ export default function CreateScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<EventCategory>('hangout');
   const [range, setRange] = useState<DateRange>(() => ({ start: isoDaysFromToday(0), end: isoDaysFromToday(DEFAULT_RANGE_DAYS) }));
+  const [granularity, setGranularity] = useState<TimeGranularity>('day');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('22:00');
+  const [slotInterval, setSlotInterval] = useState(60);
   const [triedSaving, setTriedSaving] = useState(false);
 
   const today = isoDaysFromToday(0);
@@ -61,7 +77,11 @@ export default function CreateScreen() {
       ? t('rangePickEnd')
       : dayCount > MAX_RANGE_DAYS
         ? t('rangeTooLong', { max: MAX_RANGE_DAYS })
-        : null;
+        : granularity === 'hour' && startTime >= endTime
+          ? t('timeWindowInvalid')
+          : countEventSlots(granularity, dayCount, startTime, endTime, slotInterval) > MAX_EVENT_SLOTS
+            ? t('formErrorTooManySlots')
+            : null;
 
   const submit = () => {
     if (problem || !range.end) {
@@ -75,10 +95,10 @@ export default function CreateScreen() {
         location: location.trim(),
         description: description.trim(),
         category,
-        // The other two formats arrive in Phase 4, once the app can answer them.
-        granularity: 'day',
+        granularity,
         dateRangeStart: range.start,
         dateRangeEnd: range.end,
+        ...(granularity === 'hour' ? { startTime, endTime, slotInterval } : {}),
       },
       { onSuccess: slug => router.replace({ pathname: '/e/[slug]', params: { slug, created: '1' } }) },
     );
@@ -151,6 +171,37 @@ export default function CreateScreen() {
         <NeoText variant="caption" tone="muted">
           {t('rangePickHint')}
         </NeoText>
+      </NeoCard>
+
+      <NeoCard style={styles.card}>
+        <NeoText variant="heading" accessibilityRole="header">
+          {t('step3Title')}
+        </NeoText>
+        <View style={styles.chips}>
+          {FORMATS.map(format => (
+            <NeoChip key={format.id} label={t(format.labelKey)} selected={granularity === format.id} onPress={() => setGranularity(format.id)} />
+          ))}
+        </View>
+        <NeoText variant="caption" tone="muted">
+          {t(FORMATS.find(format => format.id === granularity)?.descriptionKey ?? 'granularityDayDesc')}
+        </NeoText>
+        {granularity === 'hour' && (
+          <>
+            <TimeStepper label={t('startHourLabel')} options={START_TIMES} value={startTime} onChange={setStartTime} />
+            <TimeStepper
+              label={t('endHourLabel')}
+              options={END_TIMES}
+              value={endTime}
+              textFor={time => (time === '23:59' ? t('midnight') : time)}
+              onChange={setEndTime}
+            />
+            <NeoText variant="label">{t('intervalLabel')}</NeoText>
+            <View style={styles.chips}>
+              <NeoChip label={t('interval60')} selected={slotInterval === 60} onPress={() => setSlotInterval(60)} />
+              <NeoChip label={t('interval30')} selected={slotInterval === 30} onPress={() => setSlotInterval(30)} />
+            </View>
+          </>
+        )}
       </NeoCard>
 
       <PrivacyNote text={t('createVisibilityNote')} />

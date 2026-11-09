@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import type { MonthCell } from '@/lib/monthCells';
+import { wordOf } from '~/calendar/cellMask';
 import type { SelectionStore } from '~/calendar/selectionStore';
 import { useCalendarGesture } from '~/hooks/useCalendarGesture';
 import { DayCell, DisabledDayCell } from './DayCell';
@@ -22,9 +23,10 @@ export function DayGrid({ days, store, outsideVersion, labelFor, onDraggingChang
 
   const cells = useMemo(() => days.map(day => (day.isInRange && !day.isPast ? day.dateStr : null)), [days]);
 
-  const { gesture, maskLow, maskHigh, onGridLayout } = useCalendarGesture({
+  const { gesture, mask, onGridLayout } = useCalendarGesture({
     cells,
     store,
+    columns: COLUMNS,
     gap: GAP,
     outsideVersion,
     onCellSize: setCellSize,
@@ -43,7 +45,8 @@ export function DayGrid({ days, store, outsideVersion, labelFor, onDraggingChang
             const position = {
               left: (index % COLUMNS) * step,
               top: Math.floor(index / COLUMNS) * step,
-              size: cellSize,
+              width: cellSize,
+              height: cellSize,
             };
             const slotId = cells[index];
             return slotId === null ? (
@@ -57,8 +60,7 @@ export function DayGrid({ days, store, outsideVersion, labelFor, onDraggingChang
                 label={labelFor(day)}
                 position={position}
                 store={store}
-                maskLow={maskLow}
-                maskHigh={maskHigh}
+                maskWord={mask[wordOf(index)]}
               />
             );
           })}

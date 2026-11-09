@@ -1,9 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { formatDateToISO } from '@/lib/timeUtils';
 import { firstOfMonth, initialMonth } from '~/calendar/monthPaging';
+import { initialPage, pageOfDate } from '~/calendar/slotPages';
 import { AdminLinkNotice } from '~/components/event/AdminLinkNotice';
 import { BestTimes } from '~/components/event/BestTimes';
 import { EventHeader } from '~/components/event/EventHeader';
@@ -18,7 +18,7 @@ import { useI18n } from '~/hooks/useI18n';
 import { useMyEvents, useMyEventsActions } from '~/hooks/useMyEvents';
 import { usePullToRefresh } from '~/hooks/usePullToRefresh';
 import { ApiError, type EventDetails } from '~/services/api';
-import { buildEventUrl, isValidSlug } from '~/services/deepLink';
+import { isValidSlug } from '~/services/deepLink';
 import { errorMessage } from '~/services/errorMessage';
 
 function NotFound({ slug }: { slug: string }) {
@@ -64,20 +64,22 @@ function EventDetail({ details, refetchError, refetch, justCreated, adminLinkInv
 
   const [tab, setTab] = useState<ScheduleTab>('vote');
   const [month, setMonth] = useState(() => initialMonth(rangeStart, rangeEnd, today));
+  const [page, setPage] = useState(() => initialPage(event.dates, today));
   const [inspected, setInspected] = useState<string | null>(null);
+  const [highlighted, setHighlighted] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const [showAdminNotice, setShowAdminNotice] = useState(justCreated);
 
   const scrollRef = useRef<ScreenScrollView>(null);
   const scheduleY = useRef(0);
 
-  const isDayEvent = (event.granularity || 'day') === 'day';
-
-  // The best times sit below the calendar, so bring the chosen day into view.
-  const showDate = (date: string) => {
+  // The best times sit below the calendar, so bring the chosen slots into view.
+  const showMatch = (slotIds: string[], date: string) => {
     setTab('heatmap');
     setMonth(firstOfMonth(date));
-    setInspected(date);
+    setPage(pageOfDate(event.dates, date));
+    setInspected(slotIds[0] ?? null);
+    setHighlighted(slotIds);
     scrollRef.current?.scrollTo({ y: scheduleY.current, animated: true });
   };
 
@@ -97,34 +99,28 @@ function EventDetail({ details, refetchError, refetch, justCreated, adminLinkInv
           scheduleY.current = layoutEvent.nativeEvent.layout.y;
         }}
       >
-        {isDayEvent ? (
-          <Schedule
-            event={event}
-            participants={participants}
-            rangeStart={rangeStart}
-            rangeEnd={rangeEnd}
-            tab={tab}
-            onTabChange={setTab}
-            month={month}
-            onMonthChange={setMonth}
-            inspected={inspected}
-            onInspect={setInspected}
-            onDraggingChange={setDragging}
-          />
-        ) : (
-          <>
-            <NeoNotice tone="sunken" message={t('formatComingSoon')} />
-            <NeoButton
-              label={t('openOnWebBtn')}
-              variant="secondary"
-              size="sm"
-              onPress={() => void WebBrowser.openBrowserAsync(buildEventUrl(event.slug)).catch(() => {})}
-            />
-          </>
-        )}
+        <Schedule
+          event={event}
+          participants={participants}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          tab={tab}
+          onTabChange={setTab}
+          month={month}
+          onMonthChange={setMonth}
+          page={page}
+          onPageChange={setPage}
+          inspected={inspected}
+          highlighted={highlighted}
+          onInspect={slotId => {
+            setInspected(slotId);
+            setHighlighted([]);
+          }}
+          onDraggingChange={setDragging}
+        />
       </View>
 
-      <BestTimes event={event} participants={participants} isAdmin={isAdmin} onSelect={isDayEvent ? showDate : undefined} />
+      <BestTimes event={event} participants={participants} isAdmin={isAdmin} onSelect={showMatch} />
       <Roster slug={event.slug} participants={participants} isAdmin={isAdmin} />
     </Screen>
   );

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cellIndexAt, cellSizeFor, type GridLayout } from './gridGeometry';
 
 // 7 columns of 40 with a gap of 4: columns start at 0, 44, 88 and so on.
-const layout: GridLayout = { cellSize: 40, gap: 4, columns: 7, cellCount: 35 };
+const layout: GridLayout = { cellSize: 40, cellHeight: 40, gap: 4, columns: 7, cellCount: 35 };
 
 describe('cellSizeFor', () => {
   it('leaves room for the gaps', () => {
@@ -43,5 +43,14 @@ describe('cellIndexAt', () => {
 
   it('returns -1 before the grid has been measured', () => {
     expect(cellIndexAt(10, 10, { ...layout, cellSize: 0 })).toBe(-1);
+    expect(cellIndexAt(10, 10, { ...layout, cellHeight: 0 })).toBe(-1);
+  });
+
+  it('handles cells wider than they are tall', () => {
+    const wide = { ...layout, cellHeight: 20, cellCount: 28 };
+    expect(cellIndexAt(64, 10, wide)).toBe(1);
+    expect(cellIndexAt(64, 34, wide)).toBe(8);
+    expect(cellIndexAt(300, 90, wide)).toBe(27);
+    expect(cellIndexAt(300, 95, wide)).toBe(-1);
   });
 });
