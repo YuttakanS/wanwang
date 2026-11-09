@@ -1,88 +1,154 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { buildMonthCells } from '@/lib/monthCells';
-import { formatDateToISO, formatLocalizedDate } from '@/lib/timeUtils';
-import { DayGrid } from '~/components/calendar/DayGrid';
+import { NeoBadge } from '~/components/neo/NeoBadge';
 import { NeoButton } from '~/components/neo/NeoButton';
+import { NeoCard } from '~/components/neo/NeoCard';
+import { NeoChip } from '~/components/neo/NeoChip';
+import { NeoInput } from '~/components/neo/NeoInput';
+import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
-import { borderWidths } from '~/constants/theme';
-import { useSelectionStore } from '~/hooks/useSelectionStore';
+import { PrivacyNote } from '~/components/PrivacyNote';
+import { Screen } from '~/components/Screen';
+import { borderWidths, type ThemePreference } from '~/constants/theme';
+import { MY_EVENTS_KEY } from '~/hooks/useEvent';
+import { useI18n } from '~/hooks/useI18n';
+import { claimAdminLink, useMyEvents, useMyEventsActions } from '~/hooks/useMyEvents';
+import { usePullToRefresh } from '~/hooks/usePullToRefresh';
 import { useTheme } from '~/hooks/useTheme';
+import { ApiError } from '~/services/api';
+import { parseEventLink } from '~/services/deepLink';
+import { errorMessage } from '~/services/errorMessage';
 
-// Temporary screen for testing the calendar on a real phone. Phase 3 replaces it with the real home.
-const RANGE_DAYS = 45;
+const NEXT_THEME: Record<ThemePreference, ThemePreference> = { system: 'light', light: 'dark', dark: 'system' };
+const THEME_LABEL_KEYS: Record<ThemePreference, string> = { system: 'themeSystem', light: 'themeLight', dark: 'themeDark' };
 
-export default function CalendarTestScreen() {
-  const insets = useSafeAreaInsets();
+export default function HomeScreen() {
+  const { lang, setLang, t } = useI18n();
+  const { colors, preference, setPreference } = useTheme();
   const router = useRouter();
-  const { colors } = useTheme();
-  const { store, slots, outsideVersion } = useSelectionStore();
-  const [dragging, setDragging] = useState(false);
-  const [month, setMonth] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
+  const queryClient = useQueryClient();
 
-  const { today, rangeEnd } = useMemo(() => {
-    const now = new Date();
-    const end = new Date(now);
-    end.setDate(end.getDate() + RANGE_DAYS);
-    return { today: formatDateToISO(now), rangeEnd: formatDateToISO(end) };
-  }, []);
+  const myEvents = useMyEvents();
+  const { hide, showHidden } = useMyEventsActions();
+  const pull = usePullToRefresh(myEvents.refetch);
 
-  const days = useMemo(() => buildMonthCells(month, today, rangeEnd, today), [month, today, rangeEnd]);
-  const monthId = formatDateToISO(month);
+  const [linkText, setLinkText] = useState('');
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [isOpening, setIsOpening] = useState(false);
 
-  const shiftMonth = (delta: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + delta, 1));
-  const spacerStyle = [styles.spacer, { borderColor: colors.lineSoft }];
+  const openLink = async () => {
+    const link = parseEventLink(linkText);
+    if (!link) return setLinkError(t('openLinkInvalid'));
+    setLinkError(null);
+
+    let invalidAdmin = false;
+    if (link.adminKey) {
+      setIsOpening(true);
+      try {
+        invalidAdmin = !(await claimAdminLink(link.slug, link.adminKey));
+        await queryClient.invalidateQueries({ queryKey: MY_EVENTS_KEY });
+      } catch (error) {
+        // A missing event is explained by its own screen. Anything else can be tried again from here.
+        if (!(error instanceof ApiError && error.status === 404)) return setLinkError(errorMessage(error, t));
+      } finally {
+        setIsOpening(false);
+      }
+    }
+
+    setLinkText('');
+    router.push({ pathname: '/e/[slug]', params: { slug: link.slug, ...(invalidAdmin ? { invalidAdmin: '1' } : {}) } });
+  };
+
+  const events = myEvents.data ?? [];
+  const visible = events.filter(event => !event.hidden);
+  const hiddenCount = events.length - visible.length;
 
   return (
-    <ScrollView
-      scrollEnabled={!dragging}
-      style={{ flex: 1, backgroundColor: colors.surface }}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}
-    >
-      <NeoText variant="title">ทดสอบปฏิทิน</NeoText>
-      <NeoText tone="muted">แตะเพื่อเลือกหรือเอาออก กดค้างแล้วลากเพื่อเลือกหลายวัน เลื่อนจอเริ่มจากบนปฏิทินต้องไม่เลือกวัน</NeoText>
-      {__DEV__ && <NeoButton label="ดูระบบดีไซน์" variant="secondary" size="sm" onPress={() => router.push('/preview')} />}
-
-      <View style={spacerStyle}>
-        <NeoText tone="muted">พื้นที่ว่าง เพื่อให้หน้าเลื่อนได้</NeoText>
+    <Screen refreshing={pull.refreshing} onRefresh={pull.onRefresh}>
+      <View style={styles.settings}>
+        <NeoChip label={t('settingsLanguage')} onPress={() => setLang(lang === 'th' ? 'en' : 'th')} />
+        <NeoChip label={t(THEME_LABEL_KEYS[preference])} onPress={() => setPreference(NEXT_THEME[preference])} />
+        {__DEV__ && <NeoChip label="Preview" onPress={() => router.push('/preview')} />}
       </View>
 
-      <View style={styles.row}>
-        <NeoButton label="<" variant="secondary" size="sm" accessibilityLabel="เดือนก่อนหน้า" onPress={() => shiftMonth(-1)} />
-        <NeoText variant="label">{formatLocalizedDate(monthId, 'th', 'monthYear')}</NeoText>
-        <NeoButton label=">" variant="secondary" size="sm" accessibilityLabel="เดือนถัดไป" onPress={() => shiftMonth(1)} />
+      <View style={styles.hero}>
+        <NeoText variant="title" accessibilityRole="header">
+          {t('appName')}
+        </NeoText>
+        <NeoText tone="muted">{t('appSubtitle')}</NeoText>
       </View>
 
-      <DayGrid
-        key={monthId}
-        days={days}
-        store={store}
-        outsideVersion={outsideVersion}
-        labelFor={day => formatLocalizedDate(day.dateStr, 'th', 'chip')}
-        onDraggingChange={setDragging}
-      />
+      <NeoButton fullWidth label={t('createEventBtn')} onPress={() => router.push('/create')} />
 
-      <View style={styles.row}>
-        <NeoText variant="label">เลือกแล้ว: {slots.length} วัน</NeoText>
-        <NeoButton label="ล้าง" variant="secondary" size="sm" onPress={() => store.replace([])} />
-      </View>
-      <NeoText tone="muted">{[...slots].sort().join(', ') || '-'}</NeoText>
+      <NeoCard style={styles.card}>
+        <NeoInput
+          label={t('openLinkTitle')}
+          placeholder={t('openLinkPlaceholder')}
+          value={linkText}
+          onChangeText={text => {
+            setLinkText(text);
+            setLinkError(null);
+          }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          returnKeyType="go"
+          onSubmitEditing={() => void openLink()}
+          error={linkError}
+        />
+        <NeoButton label={t('openLinkBtn')} variant="secondary" size="sm" disabled={isOpening} onPress={() => void openLink()} />
+      </NeoCard>
 
-      <View style={spacerStyle}>
-        <NeoText tone="muted">พื้นที่ว่าง เพื่อให้หน้าเลื่อนได้</NeoText>
-      </View>
-    </ScrollView>
+      <NeoCard style={styles.card}>
+        <NeoText variant="heading" accessibilityRole="header">
+          {t('myEventsTitle')}
+        </NeoText>
+        <NeoText variant="caption" tone="muted">
+          {t('myEventsSubtitle')}
+        </NeoText>
+
+        {myEvents.isError && <NeoNotice message={errorMessage(myEvents.error, t)} />}
+        {myEvents.isSuccess && visible.length === 0 && hiddenCount === 0 && <NeoText tone="muted">{t('myEventsEmpty')}</NeoText>}
+
+        {visible.map((event, index) => (
+          <View key={event.slug} style={[styles.event, index > 0 && { borderTopWidth: borderWidths.thin, borderTopColor: colors.ink }]}>
+            <NeoText variant="label" tone="link" accessibilityRole="link" onPress={() => router.push({ pathname: '/e/[slug]', params: { slug: event.slug } })}>
+              {event.title}
+            </NeoText>
+            <View style={styles.eventMeta}>
+              {event.participantCount !== undefined && (
+                <NeoText variant="caption" tone="muted">
+                  {t('myEventsResponses', { count: event.participantCount })}
+                </NeoText>
+              )}
+              {event.isClosed && <NeoBadge label={t('votingClosedBadge')} />}
+              <NeoChip
+                label={t('myEventsHideBtn')}
+                accessibilityLabel={t('myEventsHideLabel', { title: event.title })}
+                onPress={() => void hide(event.slug)}
+              />
+            </View>
+          </View>
+        ))}
+
+        {hiddenCount > 0 && (
+          <NeoText variant="caption" tone="link" accessibilityRole="button" onPress={() => void showHidden()}>
+            {t('myEventsShowHidden', { count: hiddenCount })}
+          </NeoText>
+        )}
+      </NeoCard>
+
+      <PrivacyNote />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 16, gap: 12 },
-  spacer: { height: 280, justifyContent: 'center', alignItems: 'center', borderWidth: borderWidths.thin },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  settings: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  hero: { gap: 4 },
+  card: { padding: 12, gap: 10 },
+  event: { gap: 6, paddingTop: 8 },
+  eventMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
 });
