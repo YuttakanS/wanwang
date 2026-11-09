@@ -95,14 +95,33 @@ export function Heatmap({
   }));
 
   const inspectedInfo = inspected ? heatmap[inspected] : undefined;
+  const inspector = inspectedInfo && (
+    <NeoCard tone="sunken" style={styles.inspector} accessibilityLiveRegion="polite">
+      <NeoText variant="label">{slotTitle(inspectedInfo)}</NeoText>
+      <NeoText variant="monoBold">
+        {inspectedInfo.availableCount}/{inspectedInfo.totalParticipants} ({inspectedInfo.percentage}%)
+      </NeoText>
+      <NeoText variant="caption">{t('confirmedFreeLabel', { count: inspectedInfo.availableNames.length })}</NeoText>
+      <NeoText>{inspectedInfo.availableNames.join(', ') || t('noneLabel')}</NeoText>
+      <NeoText variant="caption">{t('busyListLabel', { count: inspectedInfo.unavailableNames.length })}</NeoText>
+      <NeoText tone="muted">{inspectedInfo.unavailableNames.join(', ') || t('allAvailableLabel')}</NeoText>
+    </NeoCard>
+  );
+  // A best time can be far down a tall table, so its details come first, in view. A tapped cell is
+  // already in view, so its details go below it.
+  const inspectorFirst = highlighted.length > 0;
   const legend = [colors.surface, colors.heat1, colors.heat2, colors.heat3, colors.accent];
 
   return (
     <NeoCard style={styles.card}>
-      <NeoText variant="heading">{t('inspectTitle')}</NeoText>
+      <NeoText variant="heading" accessibilityRole="header">
+        {t('inspectTitle')}
+      </NeoText>
       <NeoText variant="caption" tone="muted">
         {t('inspectSubtitle')}
       </NeoText>
+
+      {inspectorFirst && inspector}
 
       <View style={styles.legend} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <NeoText variant="caption">{t('densityZero')}</NeoText>
@@ -156,18 +175,7 @@ export function Heatmap({
         </>
       )}
 
-      {inspectedInfo && (
-        <NeoCard tone="sunken" style={styles.inspector} accessibilityLiveRegion="polite">
-          <NeoText variant="label">{slotTitle(inspectedInfo)}</NeoText>
-          <NeoText variant="monoBold">
-            {inspectedInfo.availableCount}/{inspectedInfo.totalParticipants} ({inspectedInfo.percentage}%)
-          </NeoText>
-          <NeoText variant="caption">{t('confirmedFreeLabel', { count: inspectedInfo.availableNames.length })}</NeoText>
-          <NeoText>{inspectedInfo.availableNames.join(', ') || t('noneLabel')}</NeoText>
-          <NeoText variant="caption">{t('busyListLabel', { count: inspectedInfo.unavailableNames.length })}</NeoText>
-          <NeoText tone="muted">{inspectedInfo.unavailableNames.join(', ') || t('allAvailableLabel')}</NeoText>
-        </NeoCard>
-      )}
+      {!inspectorFirst && inspector}
     </NeoCard>
   );
 }

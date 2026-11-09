@@ -2,8 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { formatDateToISO } from '@/lib/timeUtils';
-import { firstOfMonth, initialMonth } from '~/calendar/monthPaging';
-import { initialPage, pageOfDate } from '~/calendar/slotPages';
+import { canShowMonth, firstOfMonth, initialMonth } from '~/calendar/monthPaging';
+import { initialPage, pageCount, pageOfDate } from '~/calendar/slotPages';
 import { AdminLinkNotice } from '~/components/event/AdminLinkNotice';
 import { BestTimes } from '~/components/event/BestTimes';
 import { EventHeader } from '~/components/event/EventHeader';
@@ -62,13 +62,21 @@ function EventDetail({ details, refetchError, refetch, justCreated }: EventDetai
   const rangeStart = event.dateRangeStart || event.dates[0] || today;
   const rangeEnd = event.dateRangeEnd || event.dates[event.dates.length - 1] || rangeStart;
 
-  const [tab, setTab] = useState<ScheduleTab>('vote');
-  const [month, setMonth] = useState(() => initialMonth(rangeStart, rangeEnd, today));
-  const [page, setPage] = useState(() => initialPage(event.dates, today));
+  const [tab, setTab] = useState<ScheduleTab>(event.isClosed ? 'heatmap' : 'vote');
+  const [chosenMonth, setMonth] = useState(() => initialMonth(rangeStart, rangeEnd, today));
+  const [chosenPage, setPage] = useState(() => initialPage(event.dates, today));
+  // The range can shrink on the website while this screen is open.
+  const month = canShowMonth(chosenMonth, rangeStart, rangeEnd) ? chosenMonth : initialMonth(rangeStart, rangeEnd, today);
+  const page = Math.min(chosenPage, pageCount(event.dates) - 1);
   const [inspected, setInspected] = useState<string | null>(null);
   const [highlighted, setHighlighted] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const [showAdminNotice, setShowAdminNotice] = useState(justCreated);
+  // The event on screen can still hold the old key, if the refetch after changing it failed.
+  const [rotatedKey, setRotatedKey] = useState<string | null>(null);
+  const [adminLost, setAdminLost] = useState(false);
+  const onAdminLost = () => setAdminLost(true);
+  const adminKey = rotatedKey ?? event.adminKey;
 
   const scrollRef = useRef<ScreenScrollView>(null);
   const scheduleY = useRef(0);
@@ -87,11 +95,21 @@ function EventDetail({ details, refetchError, refetch, justCreated }: EventDetai
     <Screen showBack scrollRef={scrollRef} scrollEnabled={!dragging} refreshing={pull.refreshing} onRefresh={pull.onRefresh}>
       {refetchError && <NeoNotice message={errorMessage(refetchError, t)} />}
       {adminLinkInvalid && <NeoNotice message={t('adminLinkInvalidMsg')} />}
-      {showAdminNotice && isAdmin && event.adminKey ? (
-        <AdminLinkNotice slug={event.slug} adminKey={event.adminKey} onDismiss={() => setShowAdminNotice(false)} />
+      {adminLost && !isAdmin && <NeoNotice message={t('adminLostError')} />}
+      {showAdminNotice && isAdmin && adminKey ? (
+        <AdminLinkNotice slug={event.slug} adminKey={adminKey} onDismiss={() => setShowAdminNotice(false)} />
       ) : null}
 
-      <EventHeader event={event} participants={participants} isAdmin={isAdmin} onAdminKeyRotated={() => setShowAdminNotice(true)} />
+      <EventHeader
+        event={event}
+        participants={participants}
+        isAdmin={isAdmin}
+        onAdminKeyRotated={newKey => {
+          setRotatedKey(newKey);
+          setShowAdminNotice(true);
+        }}
+        onAdminLost={onAdminLost}
+      />
 
       <View
         style={styles.section}
@@ -120,7 +138,7 @@ function EventDetail({ details, refetchError, refetch, justCreated }: EventDetai
         />
       </View>
 
-      <BestTimes event={event} participants={participants} isAdmin={isAdmin} onSelect={showMatch} />
+      <BestTimes event={event} participants={participants} isAdmin={isAdmin} onSelect={showMatch} onAdminLost={onAdminLost} />
       <Roster slug={event.slug} participants={participants} isAdmin={isAdmin} />
     </Screen>
   );

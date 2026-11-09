@@ -16,7 +16,7 @@ import { NeoInput } from '~/components/neo/NeoInput';
 import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
 import { PrivacyNote } from '~/components/PrivacyNote';
-import { useSaveVote } from '~/hooks/useEvent';
+import { EDIT_TOKEN_UNAVAILABLE, useSaveVote } from '~/hooks/useEvent';
 import { useI18n } from '~/hooks/useI18n';
 import { useSelectionStore } from '~/hooks/useSelectionStore';
 import { ApiError } from '~/services/api';
@@ -82,7 +82,11 @@ export function Schedule({
   // Fills the calendar once per answer. Refetches happen whenever the app returns to the
   // foreground, and must not wipe what the person is in the middle of changing.
   const filledFor = useRef<string | null>(null);
+  // Known from the save itself, for when the refetch after it fails and the next save would otherwise
+  // create a second answer. Left to the refetch's answer as soon as there is one.
+  const savedId = useRef<string | null>(null);
   useEffect(() => {
+    if (mineId) savedId.current = null;
     if (mineId === filledFor.current) return;
     filledFor.current = mineId;
     if (!mine) return;
@@ -111,11 +115,15 @@ export function Schedule({
     }
 
     save.mutate(
-      { participantId: mineId ?? undefined, name: name.trim(), note: note.trim(), availability: [...slots] },
+      { participantId: mineId ?? savedId.current ?? undefined, name: name.trim(), note: note.trim(), availability: [...slots] },
       {
-        onSuccess: () => {
+        onSuccess: id => {
+          savedId.current = id;
           setJustSaved(true);
           onTabChange('heatmap');
+        },
+        onError: error => {
+          if (error instanceof ApiError && (error.status === 403 || error.status === EDIT_TOKEN_UNAVAILABLE)) savedId.current = null;
         },
       },
     );
@@ -127,7 +135,14 @@ export function Schedule({
   return (
     <View style={styles.schedule}>
       <View style={styles.tabs}>
-        <NeoChip label={t('tabVote', { count: slots.length })} selected={tab === 'vote'} onPress={() => onTabChange('vote')} />
+        <NeoChip
+          label={t('tabVote', { count: slots.length })}
+          selected={tab === 'vote'}
+          onPress={() => {
+            setJustSaved(false);
+            onTabChange('vote');
+          }}
+        />
         <NeoChip label={t('tabHeatmap', { count: participants.length })} selected={tab === 'heatmap'} onPress={() => onTabChange('heatmap')} />
       </View>
 
@@ -151,8 +166,9 @@ export function Schedule({
       )}
 
       {tab === 'vote' && event.isClosed && <NeoNotice tone="sunken" message={t('votingClosedAlert')} />}
+      {tab === 'vote' && !event.isClosed && selectable.length === 0 && <NeoNotice tone="sunken" message={t('eventPastNotice')} />}
 
-      {tab === 'vote' && !event.isClosed && (
+      {tab === 'vote' && !event.isClosed && selectable.length > 0 && (
         <NeoCard style={styles.card}>
           <NeoInput
             label={t('yourNameLabel')}
@@ -180,7 +196,11 @@ export function Schedule({
               label={t('shortcutWeekendsOnly')}
               onPress={() => store.replace(new Set([...slots, ...selectable.filter(slot => isWeekend(slot.date)).map(slot => slot.id)]))}
             />
-            <NeoChip label={t('btnSelectAll')} onPress={() => store.replace(selectable.map(slot => slot.id))} />
+            <NeoChip
+              label={t('btnSelectAll')}
+              // Adds to the selection, so days already gone in an earlier answer are not silently dropped.
+              onPress={() => store.replace(new Set([...slots, ...selectable.map(slot => slot.id)]))}
+            />
             {slots.length > 0 && <NeoChip label={t('shortcutClearSelection')} onPress={() => store.replace([])} />}
           </View>
 
@@ -203,7 +223,8 @@ export function Schedule({
                 <DaypartGrid dates={shownDates} today={today} store={store} />
               ) : (
                 <HourGrid
-                  key={page}
+                  // A new column or row needs a fresh measure, which a grid of unchanged width does not get.
+                  key={`${page}-${shownDates.length}-${times.length}`}
                   dates={shownDates}
                   times={times}
                   today={today}
@@ -217,7 +238,7 @@ export function Schedule({
 
           {shownError && <NeoNotice message={shownError} />}
 
-          <NeoText variant="monoBold">{t(granularity === 'day' ? 'selectedDaysCount' : 'selectedSlotsCount', { count: slots.length })}</NeoText>
+          <NeoText variant="label">{t(granularity === 'day' ? 'selectedDaysCount' : 'selectedSlotsCount', { count: slots.length })}</NeoText>
           <NeoButton
             fullWidth
             label={save.isPending ? t('savingDataBtn') : t('saveMyAvailabilityBtn')}

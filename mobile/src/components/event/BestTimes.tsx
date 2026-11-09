@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { findBestTimeMatches } from '@/lib/timeUtils';
+import { findBestTimeMatches, formatDateToISO } from '@/lib/timeUtils';
 import type { Participant, WanWangEvent } from '@/types';
 import { NeoBadge } from '~/components/neo/NeoBadge';
 import { NeoButton } from '~/components/neo/NeoButton';
@@ -11,30 +11,38 @@ import { borderWidths, ON_ACCENT } from '~/constants/theme';
 import { useAdminActions } from '~/hooks/useAdminActions';
 import { useI18n } from '~/hooks/useI18n';
 import { useTheme } from '~/hooks/useTheme';
-import { ApiError } from '~/services/api';
 import { errorMessage } from '~/services/errorMessage';
 
 const TOP_MATCHES = 6;
+// Enough to still find upcoming matches after leaving out days already gone.
+const CANDIDATES = 400;
 
 interface BestTimesProps {
   event: WanWangEvent;
   participants: Participant[];
   isAdmin: boolean;
   onSelect: (slotIds: string[], date: string) => void;
+  onAdminLost: () => void;
 }
 
-export function BestTimes({ event, participants, isAdmin, onSelect }: BestTimesProps) {
+export function BestTimes({ event, participants, isAdmin, onSelect, onAdminLost }: BestTimesProps) {
   const { lang, t } = useI18n();
   const { colors } = useTheme();
-  const { update } = useAdminActions(event.slug);
+  const { update } = useAdminActions(event.slug, onAdminLost);
 
-  const matches = useMemo(() => findBestTimeMatches(event, participants, TOP_MATCHES, lang), [event, participants, lang]);
+  const matches = useMemo(() => {
+    const all = findBestTimeMatches(event, participants, CANDIDATES, lang);
+    const today = formatDateToISO(new Date());
+    const upcoming = all.filter(match => match.date >= today);
+    // An event that has ended still shows how it turned out.
+    return (upcoming.length > 0 ? upcoming : all).slice(0, TOP_MATCHES);
+  }, [event, participants, lang]);
   if (matches.length === 0) return null;
 
   const total = participants.length;
   const when = (match: (typeof matches)[number]) => {
     if (event.granularity === 'day') return t('allDayLabel');
-    if (event.granularity === 'daypart') return `${match.dayPartLabel} (${match.startTime} - ${match.endTime})`;
+    if (event.granularity === 'daypart') return match.dayPartLabel;
     return `${match.startTime} - ${match.endTime} (${match.durationHours} ${t('durationSuffix')})`;
   };
 
@@ -43,9 +51,7 @@ export function BestTimes({ event, participants, isAdmin, onSelect }: BestTimesP
       <NeoText variant="heading" accessibilityRole="header">
         {t('leaderboardTitle')}
       </NeoText>
-      {update.error ? (
-        <NeoNotice message={update.error instanceof ApiError && update.error.status === 403 ? t('adminLostError') : errorMessage(update.error, t)} />
-      ) : null}
+      {update.error ? <NeoNotice message={errorMessage(update.error, t)} /> : null}
 
       {matches.map((match, index) => {
         const isPinned = event.confirmedDate === match.date;
@@ -88,6 +94,7 @@ export function BestTimes({ event, participants, isAdmin, onSelect }: BestTimesP
             {isAdmin && (
               <NeoButton
                 label={isPinned ? t('unpinThisDate') : t('pinThisDate')}
+                accessibilityLabel={`${isPinned ? t('unpinThisDate') : t('pinThisDate')} ${match.formattedThai}`}
                 variant="secondary"
                 size="sm"
                 disabled={update.isPending}

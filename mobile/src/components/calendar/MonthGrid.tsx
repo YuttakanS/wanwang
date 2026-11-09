@@ -57,7 +57,7 @@ export function GridCell({ dayNumber, detail, backgroundColor, color, emphasized
         { backgroundColor, borderColor: colors.ink, borderWidth: emphasized ? borderWidths.regular + 1 : borderWidths.thin },
       ]}
     >
-      <Text style={[styles.day, { color }]} maxFontSizeMultiplier={1.3}>
+      <Text style={[detail ? styles.dayWithDetail : styles.day, { color }]} maxFontSizeMultiplier={1.3}>
         {dayNumber}
       </Text>
       {detail ? (
@@ -90,6 +90,8 @@ const styles = StyleSheet.create({
   cellBox: { flex: 1, aspectRatio: 1 },
   cell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   day: { fontFamily: fonts.monoBold, fontSize: 14 },
-  detail: { fontFamily: fonts.monoBold, fontSize: 10, lineHeight: 12 },
+  // Small enough for the number and "12/12" to fit together in a cell on a 320-wide phone.
+  dayWithDetail: { fontFamily: fonts.monoBold, fontSize: 13, lineHeight: 15 },
+  detail: { fontFamily: fonts.monoBold, fontSize: 9, lineHeight: 11 },
   disabledDay: { fontFamily: fonts.mono, fontSize: 14 },
 });

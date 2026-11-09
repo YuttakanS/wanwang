@@ -167,9 +167,10 @@ export async function getEventBySlug(slug: string): Promise<WanWangEvent | null>
       .eq('slug', slug)
       .maybeSingle();
 
+    // Thrown rather than returned as "not found": callers read null as "this event does not exist".
     if (error) {
       console.error('Supabase getEventBySlug error:', error);
-      return null;
+      throw new Error(error.message);
     }
 
     if (!data) return null;
@@ -252,12 +253,14 @@ export async function updateEvent(
   const now = new Date().toISOString();
 
   if (shouldUseSupabase() && supabase) {
-    const { data: existing } = await supabase
+    // A failed read must not look like a wrong key: apps forget a key the server rejects, for good.
+    const { data: existing, error: readError } = await supabase
       .from('events')
       .select('id, admin_key, granularity, dates, start_time, end_time, slot_interval')
       .eq('slug', slug)
-      .single();
+      .maybeSingle();
 
+    if (readError) throw new Error(readError.message);
     if (!existing || !verifySecret(adminKey, existing.admin_key)) {
       throw new Error('UNAUTHORIZED');
     }
@@ -409,9 +412,10 @@ export async function getParticipantsByEventId(eventId: string): Promise<Partici
       .eq('event_id', eventId)
       .order('created_at', { ascending: true });
 
+    // Thrown rather than returned as an empty list, which would look like nobody has answered.
     if (error) {
       console.error('Supabase getParticipants error:', error);
-      return [];
+      throw new Error(error.message);
     }
 
     return (data || []).map(p => ({
@@ -553,7 +557,8 @@ export async function deleteParticipant(
       query = query.eq('edit_token', hashSecret(auth.editToken!));
     }
     const { data, error } = await query.select('id');
-    return !error && (data?.length ?? 0) > 0;
+    if (error) throw new Error(error.message);
+    return (data?.length ?? 0) > 0;
   }
 
   const participants = await readLocalParticipants();
@@ -579,11 +584,12 @@ export async function rotateAdminKey(slug: string, currentKey: string): Promise<
   const now = new Date().toISOString();
 
   if (shouldUseSupabase() && supabase) {
-    const { data: existing } = await supabase
+    const { data: existing, error: readError } = await supabase
       .from('events')
       .select('id, admin_key')
       .eq('slug', slug)
       .maybeSingle();
+    if (readError) throw new Error(readError.message);
     if (!existing || !verifySecret(currentKey, existing.admin_key)) return null;
 
     // Matching the old key too means two simultaneous rotations cannot both win.
@@ -645,14 +651,16 @@ export async function getAdminEventSummaries(
 
 export async function deleteEvent(slug: string, adminKey: string): Promise<boolean> {
   if (shouldUseSupabase() && supabase) {
-    const { data: existing } = await supabase
+    const { data: existing, error: readError } = await supabase
       .from('events')
       .select('id, admin_key')
       .eq('slug', slug)
       .maybeSingle();
+    if (readError) throw new Error(readError.message);
     if (!existing || !verifySecret(adminKey, existing.admin_key)) return false;
     const { error } = await supabase.from('events').delete().eq('id', existing.id);
-    return !error;
+    if (error) throw new Error(error.message);
+    return true;
   }
 
   const events = await readLocalEvents();

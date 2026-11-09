@@ -12,6 +12,9 @@ describe('parseEventLink', () => {
     ['exp://192.168.1.101:8081/--/e/abc123', 'abc123'],
     ['/e/abc123', 'abc123'],
     ['e/abc123', 'abc123'],
+    ['wanwang-one.vercel.app/e/abc123', 'abc123'],
+    ['ดูนี่ https://wanwang-one.vercel.app/e/abc123 ขอบคุณ', 'abc123'],
+    ['นัดกินข้าว\n👉 https://wanwang-one.vercel.app/e/abc123', 'abc123'],
     ['  abc123\n', 'abc123'],
   ])('reads the slug from %s', (input, slug) => {
     expect(parseEventLink(input)).toEqual({ slug, adminKey: null });
@@ -31,6 +34,11 @@ describe('parseEventLink', () => {
     expect(parseEventLink(`https://x.app/e/abc#admin=${'k'.repeat(101)}`)).toEqual({ slug: 'abc', adminKey: null });
   });
 
+  it('ignores an admin key that an HTTP header could not carry', () => {
+    expect(parseEventLink('https://x.app/e/abc#admin=%E0%B8%81')).toEqual({ slug: 'abc', adminKey: null });
+    expect(parseEventLink('https://x.app/e/abc#admin=a%0Ab')).toEqual({ slug: 'abc', adminKey: null });
+  });
+
   it.each([
     '',
     '   ',
@@ -41,6 +49,7 @@ describe('parseEventLink', () => {
     'exp://192.168.1.101:8081/--/',
     'มีภาษาไทย',
     'a b',
+    'นัด abc123',
     'https://x.app/e/%E0%A4%A',
   ])('refuses %j', input => {
     expect(parseEventLink(input)).toBeNull();

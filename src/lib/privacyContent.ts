@@ -60,23 +60,25 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'มาตรการรักษาความปลอดภัย',
         paragraphs: [
-          'ข้อมูลระหว่างเบราว์เซอร์กับเซิร์ฟเวอร์ส่งผ่าน HTTPS (TLS) และเบราว์เซอร์ถูกบังคับให้ใช้ HTTPS เสมอ',
+          'ข้อมูลระหว่างเบราว์เซอร์หรือแอปกับเซิร์ฟเวอร์ส่งผ่าน HTTPS (TLS) และเบราว์เซอร์ถูกบังคับให้ใช้ HTTPS เสมอ',
           'รหัสผู้ดูแลและรหัสแก้ไขเก็บเป็นค่าแฮช SHA-256 ทางเดียว ไม่สามารถย้อนกลับเป็นรหัสเดิมได้ ค่า hash ของ IP ใช้คีย์ลับในการแฮช',
           'ตารางในฐานข้อมูลปิดการเข้าถึงด้วยคีย์สาธารณะ ผู้ใช้ทั่วไปจึงอ่านหรือแก้ไขข้อมูลโดยตรงไม่ได้ ข้อมูลเข้าถึงได้ผ่านเซิร์ฟเวอร์ของเราเท่านั้น',
         ],
       },
       {
-        title: 'ข้อมูลในเบราว์เซอร์ของคุณ',
+        title: 'ข้อมูลในเบราว์เซอร์และแอปของคุณ',
         paragraphs: [
           'เราไม่ใช้คุกกี้ แต่เก็บรหัสผู้ดูแล รหัสแก้ไข ภาษาและธีมที่เลือก และรายการนัดที่ซ่อนไว้ใน localStorage และ sessionStorage ของเบราว์เซอร์ เพื่อให้คุณกลับมาแก้ไขได้',
           'หากล้างข้อมูลเบราว์เซอร์ คุณอาจแก้ไขคำตอบเดิมไม่ได้ และต้องใช้ลิงก์ผู้ดูแลเพื่อเข้าจัดการนัดอีกครั้ง',
+          'ในแอปวันว่าง รหัสผู้ดูแลและรหัสแก้ไขเก็บในพื้นที่ปลอดภัยของเครื่อง (Keychain หรือ Keystore) ส่วนภาษา ธีม และรายการนัดที่คุณสร้างหรือลงเวลาเก็บในพื้นที่ของแอปบนเครื่องนั้น แอปไม่มีโฆษณาและไม่มีระบบติดตามผู้ใช้',
+          'หากลบแอปหรือเปลี่ยนเครื่อง คุณอาจแก้ไขคำตอบเดิมไม่ได้ และต้องใช้ลิงก์ผู้ดูแลเพื่อเข้าจัดการนัดอีกครั้ง',
         ],
       },
       {
         title: 'สิทธิ์ของคุณ',
         paragraphs: [
           'วิธีใช้สิทธิ์ในทางปฏิบัติ: ผู้สร้างนัดแก้ไขหรือลบนัดได้ทันทีผ่านลิงก์จัดการสำหรับผู้ดูแล (Admin Link) และลบคำตอบของทุกคนได้',
-          'ผู้เข้าร่วมแก้ไขหรือถอนคำตอบของตัวเองได้ทันทีผ่านเบราว์เซอร์เดิม หากล้างข้อมูลเบราว์เซอร์แล้ว ให้ส่งอีเมลมาที่ wanwang.help@gmail.com พร้อมชื่อนัดและชื่อที่ใช้ลงเวลา เราจะดำเนินการลบข้อมูลภายใน 30 วันตามที่กฎหมายกำหนด',
+          'ผู้เข้าร่วมแก้ไขหรือถอนคำตอบของตัวเองได้ทันทีผ่านเบราว์เซอร์หรือแอปเดิม หากล้างข้อมูลเบราว์เซอร์หรือลบแอปแล้ว ให้ส่งอีเมลมาที่ wanwang.help@gmail.com พร้อมชื่อนัดและชื่อที่ใช้ลงเวลา เราจะดำเนินการลบข้อมูลภายใน 30 วันตามที่กฎหมายกำหนด',
           'ตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล คุณมีสิทธิ์ขอเข้าถึง แก้ไข หรือลบข้อมูล คัดค้านการประมวลผล และร้องเรียนต่อสำนักงานคณะกรรมการคุ้มครองข้อมูลส่วนบุคคล',
         ],
       },
@@ -129,23 +131,25 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'Security measures',
         paragraphs: [
-          'Data travels between your browser and our servers over HTTPS (TLS), and the browser is told to use HTTPS only.',
+          'Data travels between your browser or the app and our servers over HTTPS (TLS), and the browser is told to use HTTPS only.',
           'Admin keys and edit tokens are stored as one-way SHA-256 hashes, so the original values cannot be recovered from the database. IP hashes use a secret key.',
           'Database tables block access made with the public API key, so visitors cannot read or change the data directly. Data is reached only through our servers.',
         ],
       },
       {
-        title: 'Data in your browser',
+        title: 'Data in your browser and the app',
         paragraphs: [
           'We do not use cookies. Admin keys, edit tokens, your language and theme, and hidden events are kept in your browser’s localStorage and sessionStorage so you can come back and make changes.',
           'If you clear your browser data, you may lose the ability to edit your response, and you will need the admin link to manage your event again.',
+          'In the WanWang app, admin keys and edit tokens are kept in your device’s secure storage (Keychain or Keystore). Your language, theme and the list of events you created or answered are kept in the app’s storage on that device. The app has no ads and no user tracking.',
+          'If you delete the app or change devices, you may lose the ability to edit your response, and you will need the admin link to manage your event again.',
         ],
       },
       {
         title: 'Your rights',
         paragraphs: [
           'In practice: an event’s creator can edit or delete the event at any time through the admin link, and can delete any response.',
-          'Participants can edit or withdraw their own response at any time from the same browser. If you have cleared your browser data, email wanwang.help@gmail.com with the event name and the name you used to respond. We will delete the data within 30 days, as the law requires.',
+          'Participants can edit or withdraw their own response at any time from the same browser or app. If you have cleared your browser data or deleted the app, email wanwang.help@gmail.com with the event name and the name you used to respond. We will delete the data within 30 days, as the law requires.',
           'Under Thailand’s Personal Data Protection Act, you may request access to, correction of, or deletion of your data, object to processing, and complain to the Personal Data Protection Committee.',
         ],
       },

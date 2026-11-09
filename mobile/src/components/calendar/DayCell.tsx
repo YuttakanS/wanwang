@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { isBitSet } from '~/calendar/cellMask';
 import type { SelectionStore } from '~/calendar/selectionStore';
@@ -52,6 +52,8 @@ export function DayCell({ index, slotId, dayNumber, label, position, store, mask
       accessibilityLabel={label}
       accessibilityState={{ checked: isSelected }}
       onAccessibilityTap={() => store.toggle(slotId)}
+      // Android has no onAccessibilityTap, and these cells have no press handler for TalkBack to use.
+      {...(Platform.OS === 'android' ? { accessibilityActions: [{ name: 'activate' }], onAccessibilityAction: () => store.toggle(slotId) } : {})}
       style={[styles.cell, position, cellStyle]}
     >
       {dayNumber !== undefined && (
