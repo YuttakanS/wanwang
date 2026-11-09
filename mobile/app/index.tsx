@@ -1,4 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -12,14 +11,13 @@ import { NeoText } from '~/components/neo/NeoText';
 import { PrivacyNote } from '~/components/PrivacyNote';
 import { Screen } from '~/components/Screen';
 import { borderWidths, type ThemePreference } from '~/constants/theme';
-import { MY_EVENTS_KEY } from '~/hooks/useEvent';
 import { useI18n } from '~/hooks/useI18n';
-import { claimAdminLink, useMyEvents, useMyEventsActions } from '~/hooks/useMyEvents';
+import { useMyEvents, useMyEventsActions } from '~/hooks/useMyEvents';
 import { usePullToRefresh } from '~/hooks/usePullToRefresh';
 import { useTheme } from '~/hooks/useTheme';
-import { ApiError } from '~/services/api';
 import { parseEventLink } from '~/services/deepLink';
 import { errorMessage } from '~/services/errorMessage';
+import { holdAdminLink } from '~/services/loadEvent';
 
 const NEXT_THEME: Record<ThemePreference, ThemePreference> = { system: 'light', light: 'dark', dark: 'system' };
 const THEME_LABEL_KEYS: Record<ThemePreference, string> = { system: 'themeSystem', light: 'themeLight', dark: 'themeDark' };
@@ -28,7 +26,6 @@ export default function HomeScreen() {
   const { lang, setLang, t } = useI18n();
   const { colors, preference, setPreference } = useTheme();
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const myEvents = useMyEvents();
   const { hide, showHidden } = useMyEventsActions();
@@ -36,29 +33,14 @@ export default function HomeScreen() {
 
   const [linkText, setLinkText] = useState('');
   const [linkError, setLinkError] = useState<string | null>(null);
-  const [isOpening, setIsOpening] = useState(false);
 
-  const openLink = async () => {
+  const openLink = () => {
     const link = parseEventLink(linkText);
     if (!link) return setLinkError(t('openLinkInvalid'));
     setLinkError(null);
-
-    let invalidAdmin = false;
-    if (link.adminKey) {
-      setIsOpening(true);
-      try {
-        invalidAdmin = !(await claimAdminLink(link.slug, link.adminKey));
-        await queryClient.invalidateQueries({ queryKey: MY_EVENTS_KEY });
-      } catch (error) {
-        // A missing event is explained by its own screen. Anything else can be tried again from here.
-        if (!(error instanceof ApiError && error.status === 404)) return setLinkError(errorMessage(error, t));
-      } finally {
-        setIsOpening(false);
-      }
-    }
-
+    if (link.adminKey) holdAdminLink(link.slug, link.adminKey);
     setLinkText('');
-    router.push({ pathname: '/e/[slug]', params: { slug: link.slug, ...(invalidAdmin ? { invalidAdmin: '1' } : {}) } });
+    router.push({ pathname: '/e/[slug]', params: { slug: link.slug } });
   };
 
   const events = myEvents.data ?? [];
@@ -95,10 +77,10 @@ export default function HomeScreen() {
           autoCorrect={false}
           keyboardType="url"
           returnKeyType="go"
-          onSubmitEditing={() => void openLink()}
+          onSubmitEditing={openLink}
           error={linkError}
         />
-        <NeoButton label={t('openLinkBtn')} variant="secondary" size="sm" disabled={isOpening} onPress={() => void openLink()} />
+        <NeoButton label={t('openLinkBtn')} variant="secondary" size="sm" onPress={openLink} />
       </NeoCard>
 
       <NeoCard style={styles.card}>

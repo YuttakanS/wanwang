@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Participant } from '@/types';
-import { ApiError, deleteParticipant, fetchEvent, saveParticipant } from '~/services/api';
+import { ApiError, deleteParticipant, saveParticipant } from '~/services/api';
 import { isValidSlug } from '~/services/deepLink';
+import { loadEvent } from '~/services/loadEvent';
 import { rememberEvent } from '~/services/localStore';
 import { forgetEditToken, getAdminKey, getEditToken, saveEditToken } from '~/services/secrets';
 
@@ -12,9 +13,10 @@ export function useEvent(slug: string) {
   return useQuery({
     queryKey: eventKey(slug),
     enabled: isValidSlug(slug),
-    queryFn: async () => {
-      const [adminKey, editToken] = await Promise.all([getAdminKey(slug), getEditToken(slug)]);
-      return fetchEvent(slug, { adminKey, editToken });
+    queryFn: async ({ client }) => {
+      const loaded = await loadEvent(slug);
+      if (loaded.adminLinkClaimed) void client.invalidateQueries({ queryKey: MY_EVENTS_KEY });
+      return loaded;
     },
   });
 }

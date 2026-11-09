@@ -17,9 +17,10 @@ import { useEvent } from '~/hooks/useEvent';
 import { useI18n } from '~/hooks/useI18n';
 import { useMyEvents, useMyEventsActions } from '~/hooks/useMyEvents';
 import { usePullToRefresh } from '~/hooks/usePullToRefresh';
-import { ApiError, type EventDetails } from '~/services/api';
+import { ApiError } from '~/services/api';
 import { isValidSlug } from '~/services/deepLink';
 import { errorMessage } from '~/services/errorMessage';
+import type { LoadedEvent } from '~/services/loadEvent';
 
 function NotFound({ slug }: { slug: string }) {
   const { t } = useI18n();
@@ -46,16 +47,15 @@ function NotFound({ slug }: { slug: string }) {
 }
 
 interface EventDetailProps {
-  details: EventDetails;
+  details: LoadedEvent;
   refetchError: Error | null;
   refetch: () => Promise<unknown>;
   justCreated: boolean;
-  adminLinkInvalid: boolean;
 }
 
-function EventDetail({ details, refetchError, refetch, justCreated, adminLinkInvalid }: EventDetailProps) {
+function EventDetail({ details, refetchError, refetch, justCreated }: EventDetailProps) {
   const { t } = useI18n();
-  const { event, participants, isAdmin } = details;
+  const { event, participants, isAdmin, adminLinkInvalid } = details;
   const pull = usePullToRefresh(refetch);
 
   const today = formatDateToISO(new Date());
@@ -129,7 +129,7 @@ function EventDetail({ details, refetchError, refetch, justCreated, adminLinkInv
 export default function EventScreen() {
   const { t } = useI18n();
   const router = useRouter();
-  const { slug, created, invalidAdmin } = useLocalSearchParams<{ slug: string; created?: string; invalidAdmin?: string }>();
+  const { slug, created } = useLocalSearchParams<{ slug: string; created?: string }>();
   const query = useEvent(slug);
 
   if (!isValidSlug(slug) || (query.error instanceof ApiError && query.error.status === 404)) {
@@ -153,7 +153,6 @@ export default function EventScreen() {
       refetchError={query.error}
       refetch={query.refetch}
       justCreated={created === '1'}
-      adminLinkInvalid={invalidAdmin === '1'}
     />
   );
 }

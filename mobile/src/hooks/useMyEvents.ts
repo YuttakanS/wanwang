@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createEvent, type CreateEventInput, fetchEvent, lookupAdminEvents } from '~/services/api';
+import { createEvent, type CreateEventInput, lookupAdminEvents } from '~/services/api';
 import { forgetKnownEvent, loadKnownEvents, rememberEvent, setEventHidden, showAllEvents } from '~/services/localStore';
 import { mergeMyEvents } from '~/services/myEventsList';
 import { forgetEventSecrets, getAdminKey, saveAdminKey } from '~/services/secrets';
@@ -52,13 +52,4 @@ export function useCreateEvent() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MY_EVENTS_KEY }),
   });
-}
-
-/** Stores the key from an admin link only once the server has accepted it. */
-export async function claimAdminLink(slug: string, adminKey: string): Promise<boolean> {
-  const { event, isAdmin } = await fetchEvent(slug, { adminKey });
-  if (!isAdmin) return false;
-  await saveAdminKey(slug, adminKey);
-  await rememberEvent(slug, event.title);
-  return true;
 }
