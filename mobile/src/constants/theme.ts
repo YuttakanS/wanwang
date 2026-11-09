@@ -70,6 +70,15 @@ export const ON_ACCENT = '#000000';
 export const borderWidths = { thin: 2, regular: 3, thick: 5 };
 export const HARD_SHADOW_OFFSET = 4;
 
+/** Same bands as the website's group view. */
+export function heatColors(percentage: number, count: number, colors: ThemeColors): { background: string; text: string } {
+  if (count === 0 || percentage === 0) return { background: colors.surface, text: colors.muted };
+  if (percentage <= 25) return { background: colors.heat1, text: colors.onHeat1 };
+  if (percentage <= 50) return { background: colors.heat2, text: colors.onHeat2 };
+  if (percentage <= 75) return { background: colors.heat3, text: colors.onHeat3 };
+  return { background: colors.accent, text: ON_ACCENT };
+}
+
 export function parseThemePreference(stored: string | null): ThemePreference {
   return stored === 'light' || stored === 'dark' ? stored : 'system';
 }
