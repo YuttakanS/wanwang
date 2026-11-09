@@ -2,6 +2,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { FeatureList } from '~/components/home/FeatureList';
+import { HomeHero } from '~/components/home/HomeHero';
+import { HomeNavbar } from '~/components/home/HomeNavbar';
 import { NeoBadge } from '~/components/neo/NeoBadge';
 import { NeoButton } from '~/components/neo/NeoButton';
 import { NeoCard } from '~/components/neo/NeoCard';
@@ -11,7 +15,7 @@ import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
 import { PrivacyNote } from '~/components/PrivacyNote';
 import { Screen } from '~/components/Screen';
-import { borderWidths, type ThemePreference } from '~/constants/theme';
+import { borderWidths } from '~/constants/theme';
 import { eventKey } from '~/hooks/useEvent';
 import { useI18n } from '~/hooks/useI18n';
 import { useMyEvents, useMyEventsActions } from '~/hooks/useMyEvents';
@@ -21,12 +25,9 @@ import { parseEventLink } from '~/services/deepLink';
 import { errorMessage } from '~/services/errorMessage';
 import { holdAdminLink } from '~/services/loadEvent';
 
-const NEXT_THEME: Record<ThemePreference, ThemePreference> = { system: 'light', light: 'dark', dark: 'system' };
-const THEME_LABEL_KEYS: Record<ThemePreference, string> = { system: 'themeSystem', light: 'themeLight', dark: 'themeDark' };
-
 export default function HomeScreen() {
-  const { lang, setLang, t } = useI18n();
-  const { colors, preference, setPreference } = useTheme();
+  const { t } = useI18n();
+  const { colors } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -56,88 +57,92 @@ export default function HomeScreen() {
 
   return (
     <Screen refreshing={pull.refreshing} onRefresh={pull.onRefresh}>
-      <View style={styles.settings}>
-        <NeoChip label={t('settingsLanguage')} onPress={() => setLang(lang === 'th' ? 'en' : 'th')} />
-        <NeoChip label={t(THEME_LABEL_KEYS[preference])} onPress={() => setPreference(NEXT_THEME[preference])} />
-        {__DEV__ && <NeoChip label="Preview" onPress={() => router.push('/preview')} />}
-      </View>
+      <HomeNavbar />
 
-      <View style={styles.hero}>
-        <NeoText variant="title" accessibilityRole="header">
-          {t('appName')}
-        </NeoText>
-        <NeoText tone="muted">{t('appSubtitle')}</NeoText>
-      </View>
+      <Animated.View entering={enter(0)}>
+        <HomeHero />
+      </Animated.View>
 
-      <NeoButton fullWidth label={t('createEventBtn')} onPress={() => router.push('/create')} />
+      <Animated.View entering={enter(60)}>
+        <NeoButton fullWidth label={t('createEventBtn')} onPress={() => router.push('/create')} />
+      </Animated.View>
 
-      <NeoCard style={styles.card}>
-        <NeoInput
-          label={t('openLinkTitle')}
-          placeholder={t('openLinkPlaceholder')}
-          value={linkText}
-          onChangeText={text => {
-            setLinkText(text);
-            setLinkError(null);
-          }}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          returnKeyType="go"
-          onSubmitEditing={openLink}
-          error={linkError}
-        />
-        <NeoButton label={t('openLinkBtn')} variant="secondary" size="sm" onPress={openLink} />
-      </NeoCard>
+      {/* Hidden when empty, as on the website, so a first launch opens on the hero and the button. */}
+      {(myEvents.isError || events.length > 0) && (
+        <NeoCard style={styles.card}>
+          <NeoText variant="heading" accessibilityRole="header">
+            {t('myEventsTitle')}
+          </NeoText>
+          <NeoText variant="caption" tone="muted">
+            {t('myEventsSubtitle')}
+          </NeoText>
 
-      <NeoCard style={styles.card}>
-        <NeoText variant="heading" accessibilityRole="header">
-          {t('myEventsTitle')}
-        </NeoText>
-        <NeoText variant="caption" tone="muted">
-          {t('myEventsSubtitle')}
-        </NeoText>
+          {myEvents.isError && <NeoNotice message={errorMessage(myEvents.error, t)} />}
 
-        {myEvents.isError && <NeoNotice message={errorMessage(myEvents.error, t)} />}
-        {myEvents.isSuccess && visible.length === 0 && hiddenCount === 0 && <NeoText tone="muted">{t('myEventsEmpty')}</NeoText>}
-
-        {visible.map((event, index) => (
-          <View key={event.slug} style={[styles.event, index > 0 && { borderTopWidth: borderWidths.thin, borderTopColor: colors.ink }]}>
-            <Pressable accessibilityRole="link" style={styles.eventLink} onPress={() => router.push({ pathname: '/e/[slug]', params: { slug: event.slug } })}>
-              <NeoText variant="label" tone="link">
-                {event.title}
-              </NeoText>
-            </Pressable>
-            <View style={styles.eventMeta}>
-              {event.participantCount !== undefined && (
-                <NeoText variant="caption" tone="muted">
-                  {t('myEventsResponses', { count: event.participantCount })}
+          {visible.map((event, index) => (
+            <View key={event.slug} style={[styles.event, index > 0 && { borderTopWidth: borderWidths.thin, borderTopColor: colors.ink }]}>
+              <Pressable accessibilityRole="link" style={styles.eventLink} onPress={() => router.push({ pathname: '/e/[slug]', params: { slug: event.slug } })}>
+                <NeoText variant="label" tone="link">
+                  {event.title}
                 </NeoText>
-              )}
-              {event.isClosed && <NeoBadge label={t('votingClosedBadge')} />}
-              <NeoChip
-                label={t('myEventsHideBtn')}
-                accessibilityLabel={t('myEventsHideLabel', { title: event.title })}
-                onPress={() => void hide(event.slug)}
-              />
+              </Pressable>
+              <View style={styles.eventMeta}>
+                {event.participantCount !== undefined && (
+                  <NeoText variant="caption" tone="muted">
+                    {t('myEventsResponses', { count: event.participantCount })}
+                  </NeoText>
+                )}
+                {event.isClosed && <NeoBadge label={t('votingClosedBadge')} />}
+                <NeoChip
+                  label={t('myEventsHideBtn')}
+                  accessibilityLabel={t('myEventsHideLabel', { title: event.title })}
+                  onPress={() => void hide(event.slug)}
+                />
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
 
-        {hiddenCount > 0 && (
-          <NeoChip label={t('myEventsShowHidden', { count: hiddenCount })} onPress={() => void showHidden()} />
-        )}
-      </NeoCard>
+          {hiddenCount > 0 && (
+            <NeoChip label={t('myEventsShowHidden', { count: hiddenCount })} onPress={() => void showHidden()} />
+          )}
+        </NeoCard>
+      )}
+
+      <Animated.View entering={enter(120)}>
+        <NeoCard style={styles.card}>
+          <NeoInput
+            label={t('openLinkTitle')}
+            placeholder={t('openLinkPlaceholder')}
+            value={linkText}
+            onChangeText={text => {
+              setLinkText(text);
+              setLinkError(null);
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            returnKeyType="go"
+            onSubmitEditing={openLink}
+            error={linkError}
+          />
+          <NeoButton label={t('openLinkBtn')} variant="secondary" size="sm" onPress={openLink} />
+        </NeoCard>
+      </Animated.View>
+
+      <Animated.View entering={enter(180)}>
+        <FeatureList />
+      </Animated.View>
 
       <PrivacyNote />
     </Screen>
   );
 }
 
+// The website's .motion-stagger.
+const enter = (delay: number) => FadeInDown.duration(240).delay(delay);
+
 const styles = StyleSheet.create({
-  settings: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  hero: { gap: 4 },
-  card: { padding: 12, gap: 10 },
+  card: { padding: 16, gap: 10 },
   event: { gap: 6, paddingTop: 8 },
   eventLink: { minHeight: 44, justifyContent: 'center' },
   eventMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
