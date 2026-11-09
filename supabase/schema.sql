@@ -91,6 +91,9 @@ DROP POLICY IF EXISTS "Owner delete participants" ON participants;
 
 REVOKE ALL ON events FROM anon, authenticated;
 REVOKE ALL ON participants FROM anon, authenticated;
+-- The app connects only as service_role, so do not rely on a project's default grants.
+GRANT ALL ON events TO service_role;
+GRANT ALL ON participants TO service_role;
 
 -- 6. Rate limiting: fixed-window counter per key, shared across serverless instances.
 --    Keys hold a keyed hash of the client IP, never the raw address.
