@@ -7,10 +7,11 @@ export interface EventLink {
 
 // SecureStore key names allow only these characters, and the API caps slugs and keys at 100.
 const SLUG_RE = /^[A-Za-z0-9_-]{1,100}$/;
-const MAX_ADMIN_KEY_LENGTH = 100;
+// A key travels in an HTTP header, which cannot carry anything else.
+const ADMIN_KEY_RE = /^[\x21-\x7e]{1,100}$/;
 
-// https://host/e/x, wanwang://e/x, wanwang:///e/x, Expo Go's exp://host/--/e/x, /e/x and e/x.
-const EVENT_PATH_RE = /^(?:https?:\/\/[^/]+\/|wanwang:\/\/\/?|exps?:\/\/[^/]+\/--\/|\/)?e\/([^/]+)\/?$/i;
+// https://host/e/x, host.name/e/x, wanwang://e/x, wanwang:///e/x, Expo Go's exp://host/--/e/x, /e/x and e/x.
+const EVENT_PATH_RE = /^(?:https?:\/\/[^/]+\/|[a-z0-9-]+(?:\.[a-z0-9-]+)+\/|wanwang:\/\/\/?|exps?:\/\/[^/]+\/--\/|\/)?e\/([^/]+)\/?$/i;
 
 export function isValidSlug(slug: unknown): slug is string {
   return typeof slug === 'string' && SLUG_RE.test(slug);
@@ -36,7 +37,7 @@ function linkFrom(rawSlug: string, fragment: string): EventLink | null {
 
   const adminMatch = fragment.match(/^admin=([^&]+)$/);
   const adminKey = adminMatch ? decode(adminMatch[1]) : null;
-  return { slug, adminKey: adminKey && adminKey.length <= MAX_ADMIN_KEY_LENGTH ? adminKey : null };
+  return { slug, adminKey: adminKey && ADMIN_KEY_RE.test(adminKey) ? adminKey : null };
 }
 
 /** Written by hand because URL in React Native does not parse custom schemes the same way on every system. */
@@ -46,13 +47,16 @@ export function parseEventUrl(input: string): EventLink | null {
   return match ? linkFrom(match[1], fragment) : null;
 }
 
-/** What a person can paste: an event URL, or just the slug. */
+/** What a person can paste: an event URL, a message with one inside (shared summaries end in one), or just the slug. */
 export function parseEventLink(input: string): EventLink | null {
-  const text = input.trim();
-  const fromUrl = parseEventUrl(text);
-  if (fromUrl) return fromUrl;
+  const words = input.trim().split(/\s+/);
+  for (const word of words) {
+    const fromUrl = parseEventUrl(word);
+    if (fromUrl) return fromUrl;
+  }
+  if (words.length !== 1) return null;
 
-  const { path, fragment } = splitUrl(text);
+  const { path, fragment } = splitUrl(words[0]);
   return path && !/[:/]/.test(path) ? linkFrom(path, fragment) : null;
 }
 

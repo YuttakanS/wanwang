@@ -7,7 +7,9 @@ import { useTheme } from '~/hooks/useTheme';
 
 const GAP = 2;
 const CELL_HEIGHT = 34;
-const LABEL_WIDTH = 48;
+const LABEL_WIDTH = 44;
+// Seven columns on a small phone leave no room for "12/12", so narrow tables show only the count.
+const NARROW_FROM_COLUMNS = 5;
 
 export interface HeatRow {
   key: string;
@@ -28,25 +30,21 @@ interface HeatTableProps {
 /** The group view for daypart and hourly events: one page of slots, tinted by how many are free. */
 export function HeatTable({ columnLabels, rows, heatmap, total, isEmphasized, labelFor, onInspect }: HeatTableProps) {
   const { colors } = useTheme();
+  const narrow = columnLabels.length >= NARROW_FROM_COLUMNS;
 
   return (
     <View style={styles.table}>
       <View style={styles.row} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.rowLabel} />
         {columnLabels.map((label, index) => (
-          <NeoText key={`${label}-${index}`} variant="mono" style={styles.columnLabel}>
+          <NeoText key={`${label}-${index}`} variant="caption" style={styles.columnLabel}>
             {label}
           </NeoText>
         ))}
       </View>
       {rows.map(row => (
         <View key={row.key} style={styles.row}>
-          <NeoText
-            variant="mono"
-            style={[styles.rowLabel, styles.label]}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
+          <NeoText variant="caption" style={[styles.rowLabel, styles.label]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             {row.label}
           </NeoText>
           {row.slotIds.map(slotId => {
@@ -61,14 +59,13 @@ export function HeatTable({ columnLabels, rows, heatmap, total, isEmphasized, la
                 accessibilityLabel={labelFor(slotId, count)}
                 accessibilityState={{ selected: emphasized }}
                 onPress={() => onInspect(slotId)}
-                style={[
-                  styles.cell,
-                  { backgroundColor: background, borderColor: colors.ink, borderWidth: emphasized ? borderWidths.regular + 1 : borderWidths.thin },
-                ]}
+                style={[styles.cell, { backgroundColor: background, borderColor: colors.ink }]}
               >
                 <Text style={[styles.count, { color: text }]} maxFontSizeMultiplier={1.2}>
-                  {count > 0 ? `${count}/${total}` : '-'}
+                  {count === 0 ? '-' : narrow ? count : `${count}/${total}`}
                 </Text>
+                {/* Drawn over the cell, because a thicker border on the cell itself would shift its row. */}
+                {emphasized && <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.emphasis, { borderColor: colors.ink }]} />}
               </Pressable>
             );
           })}
@@ -82,8 +79,9 @@ const styles = StyleSheet.create({
   table: { gap: GAP },
   row: { flexDirection: 'row', gap: GAP, alignItems: 'center' },
   rowLabel: { width: LABEL_WIDTH },
-  label: { fontSize: 11, lineHeight: 14 },
-  columnLabel: { flex: 1, textAlign: 'center', fontSize: 11, lineHeight: 14 },
-  cell: { flex: 1, height: CELL_HEIGHT, alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 11 },
+  columnLabel: { flex: 1, textAlign: 'center', fontSize: 11 },
+  cell: { flex: 1, height: CELL_HEIGHT, alignItems: 'center', justifyContent: 'center', borderWidth: borderWidths.thin },
+  emphasis: { borderWidth: borderWidths.thin },
   count: { fontFamily: fonts.monoBold, fontSize: 10 },
 });

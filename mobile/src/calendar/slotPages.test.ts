@@ -64,9 +64,9 @@ describe('slot ids', () => {
 });
 
 describe('dayColumnLabel', () => {
-  it('shows the weekday over the day and month', () => {
-    expect(dayColumnLabel('2026-12-07', 'th').split('\n')).toEqual(['จ.', '7/12']);
-    expect(dayColumnLabel('2026-12-06', 'en').split('\n')).toEqual(['Sun', '6/12']);
+  it('shows the weekday over the day', () => {
+    expect(dayColumnLabel('2026-12-07', 'th').split('\n')).toEqual(['จ.', '7']);
+    expect(dayColumnLabel('2026-12-06', 'en').split('\n')).toEqual(['Sun', '6']);
   });
 });
 

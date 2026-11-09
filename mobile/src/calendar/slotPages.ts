@@ -43,8 +43,8 @@ export function hourCells(dates: readonly string[], times: readonly string[], to
   return times.flatMap(time => dates.map(date => (date >= today ? hourSlotId(date, time) : null)));
 }
 
-/** Two short lines for a narrow column, such as "จ." over "9/12". */
+/** Two short lines for a narrow column, such as "จ." over "9". The month is in the page's header. */
 export function dayColumnLabel(date: string, lang: Language): string {
   const [year, month, day] = date.split('-').map(Number);
-  return `${getWeekdayHeaders(lang)[new Date(year, month - 1, day).getDay()]}\n${day}/${month}`;
+  return `${getWeekdayHeaders(lang)[new Date(year, month - 1, day).getDay()]}\n${day}`;
 }

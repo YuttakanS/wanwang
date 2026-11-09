@@ -338,3 +338,48 @@ describe('getAdminEventSummaries', () => {
     expect(JSON.stringify(summaries)).not.toContain(hashSecret('my-key'));
   });
 });
+
+// Apps forget an admin key when the server rejects it, and a key cannot be recovered. A database
+// failure therefore has to surface as a failure, never as "wrong key" or "no such event".
+describe('database failures', () => {
+  const failure = { data: null, error: { message: 'connection lost' } };
+
+  it('are not reported as a missing event', async () => {
+    const { getEventBySlug } = await import('./db');
+    fake.state.results.push(failure);
+    await expect(getEventBySlug('abc')).rejects.toThrow('connection lost');
+  });
+
+  it('are not reported as nobody having answered', async () => {
+    const { getParticipantsByEventId } = await import('./db');
+    fake.state.results.push(failure);
+    await expect(getParticipantsByEventId('e1')).rejects.toThrow('connection lost');
+  });
+
+  it('are not reported as a wrong key when updating', async () => {
+    const { updateEvent } = await import('./db');
+    fake.state.results.push(failure);
+    await expect(updateEvent('abc', 'key', { isClosed: true })).rejects.toThrow('connection lost');
+  });
+
+  it('are not reported as a wrong key when changing the key', async () => {
+    const { rotateAdminKey } = await import('./db');
+    fake.state.results.push(failure);
+    await expect(rotateAdminKey('abc', 'key')).rejects.toThrow('connection lost');
+  });
+
+  it('are not reported as a wrong key when deleting, on the read or on the delete', async () => {
+    const { deleteEvent } = await import('./db');
+    fake.state.results.push(failure);
+    await expect(deleteEvent('abc', 'key')).rejects.toThrow('connection lost');
+
+    fake.state.results.push({ data: { id: 'e1', admin_key: hashSecret('key') }, error: null }, failure);
+    await expect(deleteEvent('abc', 'key')).rejects.toThrow('connection lost');
+  });
+
+  it('are not reported as a refused delete of an answer', async () => {
+    const { deleteParticipant } = await import('./db');
+    fake.state.results.push(failure);
+    await expect(deleteParticipant('e1', 'p1', { asAdmin: true })).rejects.toThrow('connection lost');
+  });
+});

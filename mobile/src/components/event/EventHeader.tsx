@@ -15,10 +15,11 @@ interface EventHeaderProps {
   event: WanWangEvent;
   participants: Participant[];
   isAdmin: boolean;
-  onAdminKeyRotated: () => void;
+  onAdminKeyRotated: (newKey: string) => void;
+  onAdminLost: () => void;
 }
 
-export function EventHeader({ event, participants, isAdmin, onAdminKeyRotated }: EventHeaderProps) {
+export function EventHeader({ event, participants, isAdmin, onAdminKeyRotated, onAdminLost }: EventHeaderProps) {
   const { lang, t } = useI18n();
   // Collapsed by default, so people opening a link reach the voting form straight away.
   const [panel, setPanel] = useState<'share' | 'manage' | null>(null);
@@ -67,7 +68,7 @@ export function EventHeader({ event, participants, isAdmin, onAdminKeyRotated }:
           {isAdmin && <NeoChip label={t('manageToggleBtn')} selected={panel === 'manage'} onPress={() => togglePanel('manage')} />}
         </View>
         {panel === 'share' && <SharePanel event={event} participants={participants} />}
-        {panel === 'manage' && isAdmin && <ManagePanel event={event} onAdminKeyRotated={onAdminKeyRotated} />}
+        {panel === 'manage' && isAdmin && <ManagePanel event={event} onAdminKeyRotated={onAdminKeyRotated} onAdminLost={onAdminLost} />}
       </NeoCard>
     </>
   );

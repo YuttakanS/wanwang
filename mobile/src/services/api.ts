@@ -102,6 +102,8 @@ export async function createEvent(input: CreateEventInput): Promise<{ event: Wan
 
 export async function fetchEvent(slug: string, credentials: Credentials): Promise<EventDetails> {
   const { event, isAdmin, participants } = await request<EventDetails>(eventPath(slug), credentials);
+  // A proxy can answer 200 with something else entirely, and the screens assume an event.
+  if (!event) throw new ApiError('Unexpected response', 0);
   return { event, isAdmin: Boolean(isAdmin), participants: participants ?? [] };
 }
 

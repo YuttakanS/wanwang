@@ -52,7 +52,7 @@ export function HourGrid({ dates, times, today, store, outsideVersion, onDraggin
       <View style={styles.headerRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.corner} />
         {dates.map(date => (
-          <NeoText key={date} variant="mono" style={styles.dayLabel}>
+          <NeoText key={date} variant="caption" style={styles.dayLabel}>
             {dayColumnLabel(date, lang)}
           </NeoText>
         ))}
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   grid: { gap: 4 },
   headerRow: { flexDirection: 'row', gap: GAP },
   corner: { width: TIME_COLUMN_WIDTH },
-  dayLabel: { flex: 1, textAlign: 'center', fontSize: 11, lineHeight: 14 },
+  dayLabel: { flex: 1, textAlign: 'center', fontSize: 11 },
   body: { flexDirection: 'row', gap: GAP },
   timeColumn: { width: TIME_COLUMN_WIDTH, gap: GAP },
   timeLabel: { height: CELL_HEIGHT, lineHeight: CELL_HEIGHT, fontSize: 11 },

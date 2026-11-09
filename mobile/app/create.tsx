@@ -66,6 +66,8 @@ export default function CreateScreen() {
   const [endTime, setEndTime] = useState('22:00');
   const [slotInterval, setSlotInterval] = useState(60);
   const [triedSaving, setTriedSaving] = useState(false);
+  // Changes with each preset, so the calendar opens on the range it just set.
+  const [calendarKey, setCalendarKey] = useState(0);
 
   const today = isoDaysFromToday(0);
   const dayCount = range.end ? generateDatesInRange(range.start, range.end).length : 0;
@@ -113,6 +115,9 @@ export default function CreateScreen() {
       </NeoText>
 
       <NeoCard style={styles.card}>
+        <NeoText variant="heading" accessibilityRole="header">
+          {t('step1Title')}
+        </NeoText>
         <NeoInput
           label={t('eventNameLabel')}
           placeholder={t('eventNamePlaceholder')}
@@ -157,7 +162,10 @@ export default function CreateScreen() {
                 key={preset.days}
                 label={t(preset.labelKey)}
                 selected={range.start === today && range.end === end}
-                onPress={() => setRange({ start: today, end })}
+                onPress={() => {
+                  setRange({ start: today, end });
+                  setCalendarKey(key => key + 1);
+                }}
               />
             );
           })}
@@ -167,7 +175,7 @@ export default function CreateScreen() {
             ? t('rangeDaysCount', { count: dayCount, range: formatLocalizedDateRange(range.start, range.end, lang) })
             : t('rangePickEnd')}
         </NeoText>
-        <RangeCalendar range={range} today={today} onChange={setRange} />
+        <RangeCalendar key={calendarKey} range={range} today={today} onChange={setRange} />
         <NeoText variant="caption" tone="muted">
           {t('rangePickHint')}
         </NeoText>

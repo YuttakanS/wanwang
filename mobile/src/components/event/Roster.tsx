@@ -44,7 +44,9 @@ export function Roster({ slug, participants, isAdmin }: RosterProps) {
           style={[styles.row, index > 0 && { borderTopWidth: borderWidths.thin, borderTopColor: colors.ink }]}
         >
           <View style={styles.nameRow}>
-            <NeoText variant="label">{participant.name}</NeoText>
+            <NeoText variant="label" style={styles.name}>
+              {participant.name}
+            </NeoText>
             {participant.isMine && <NeoBadge label={t('youTag')} tone="ink" />}
           </View>
           <NeoText variant="caption" tone="muted">
@@ -54,6 +56,7 @@ export function Roster({ slug, participants, isAdmin }: RosterProps) {
           {(participant.isMine || isAdmin) && (
             <NeoButton
               label={t('deleteBtn')}
+              accessibilityLabel={`${t('deleteBtn')} ${participant.name}`}
               variant="secondary"
               size="sm"
               disabled={remove.isPending}
@@ -71,4 +74,6 @@ const styles = StyleSheet.create({
   card: { padding: 12, gap: 8 },
   row: { gap: 4, paddingTop: 8 },
   nameRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  // Without this, a long name with no spaces runs off the screen instead of wrapping.
+  name: { flexShrink: 1, maxWidth: '100%' },
 });

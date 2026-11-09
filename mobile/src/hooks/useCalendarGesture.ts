@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent } from 'react-native';
 import { useExclusiveGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import { makeMutable, type SharedValue, useSharedValue } from 'react-native-reanimated';
@@ -79,6 +79,9 @@ export function useCalendarGesture({ cells, store, columns, gap, cellHeight, out
   const [selectable] = useState(newMask);
   const [touched] = useState(newMask);
   const layout = useSharedValue<GridLayout>({ cellSize: 0, cellHeight: 0, gap, columns, cellCount: cells.length });
+  // Written whole from here rather than as an update of the shared value, whose value on this thread
+  // can lag the UI thread. An update could otherwise put back a cell size of 0 and leave a dead grid.
+  const measured = useRef({ cellSize: 0, cellHeight: 0 });
 
   const dragMode = useSharedValue(DRAG_NONE);
   const lastCell = useSharedValue(-1);
@@ -96,8 +99,11 @@ export function useCalendarGesture({ cells, store, columns, gap, cellHeight, out
       selectable[i].set(selectableWords[i]);
       mask[i].set(selectedWords[i]);
     }
-    layout.set(current => ({ ...current, gap, columns, cellCount: cells.length }));
+    layout.set({ ...measured.current, gap, columns, cellCount: cells.length });
   }, [cells, store, gap, columns, outsideVersion, selectable, mask, layout]);
+
+  // If the grid goes away under a finger, the end of the gesture never arrives to unlock scrolling.
+  useEffect(() => () => onDraggingChange(false), [onDraggingChange]);
 
   const commit = useCallback(
     (words: number[], add: boolean) => {
@@ -190,10 +196,11 @@ export function useCalendarGesture({ cells, store, columns, gap, cellHeight, out
   const onGridLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const size = cellSizeFor(event.nativeEvent.layout.width, columns, gap);
-      layout.set(current => ({ ...current, cellSize: size, cellHeight: cellHeight ?? size }));
+      measured.current = { cellSize: size, cellHeight: cellHeight ?? size };
+      layout.set({ ...measured.current, gap, columns, cellCount: cells.length });
       onCellSize(size);
     },
-    [columns, gap, cellHeight, layout, onCellSize]
+    [columns, gap, cellHeight, cells.length, layout, onCellSize]
   );
 
   return { gesture, mask, onGridLayout };

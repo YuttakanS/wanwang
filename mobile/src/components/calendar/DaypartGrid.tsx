@@ -42,7 +42,7 @@ function PartCell({ slotId, label, store }: PartCellProps) {
       }}
       style={[styles.cell, isSelected ? { backgroundColor: colors.accent, borderColor: ON_ACCENT } : { backgroundColor: colors.surface, borderColor: colors.ink }]}
     >
-      <NeoText variant="monoBold" style={isSelected ? styles.mark : { color: colors.faint }}>
+      <NeoText variant="monoBold" style={isSelected ? styles.mark : { color: colors.muted }}>
         {isSelected ? '✓' : '-'}
       </NeoText>
     </Pressable>
@@ -66,7 +66,7 @@ export function DaypartGrid({ dates, today, store }: DaypartGridProps) {
       <View style={styles.row} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.dateColumn} />
         {DAY_PART_IDS.map(part => (
-          <NeoText key={part} variant="mono" style={styles.partLabel}>
+          <NeoText key={part} variant="caption" style={styles.partLabel}>
             {`${t(PART_LABEL_KEYS[part].name)}\n${t(PART_LABEL_KEYS[part].range)}`}
           </NeoText>
         ))}
@@ -75,7 +75,7 @@ export function DaypartGrid({ dates, today, store }: DaypartGridProps) {
         const isPast = date < today;
         return (
           <View key={date} style={styles.row}>
-            <NeoText variant="mono" tone={isPast ? 'faint' : 'ink'} style={[styles.dateColumn, styles.dateLabel]}>
+            <NeoText variant="caption" tone={isPast ? 'faint' : 'ink'} style={[styles.dateColumn, styles.dateLabel]}>
               {dayColumnLabel(date, lang)}
             </NeoText>
             {DAY_PART_IDS.map(part =>
@@ -101,8 +101,8 @@ const styles = StyleSheet.create({
   grid: { gap: GAP },
   row: { flexDirection: 'row', gap: GAP, alignItems: 'center' },
   dateColumn: { width: DATE_COLUMN_WIDTH },
-  dateLabel: { fontSize: 11, lineHeight: 14 },
-  partLabel: { flex: 1, textAlign: 'center', fontSize: 11, lineHeight: 14 },
+  dateLabel: { fontSize: 11 },
+  partLabel: { flex: 1, textAlign: 'center', fontSize: 11 },
   cell: {
     flex: 1,
     height: CELL_HEIGHT,

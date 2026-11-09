@@ -30,7 +30,7 @@ export function SharePanel({ event, participants }: SharePanelProps) {
   return (
     <View style={styles.panel}>
       <View style={styles.buttons}>
-        <NeoButton label={t('shareToggleBtn')} size="sm" onPress={() => void Share.share({ message: message() }).catch(() => {})} />
+        <NeoButton label={t('shareNativeBtn')} size="sm" onPress={() => void Share.share({ message: message() }).catch(() => {})} />
         <NeoButton label={t('shareLineBtn')} variant="secondary" size="sm" onPress={() => shareTo('line')} />
         <NeoButton label={t('shareWhatsappBtn')} variant="secondary" size="sm" onPress={() => shareTo('whatsapp')} />
         <NeoButton

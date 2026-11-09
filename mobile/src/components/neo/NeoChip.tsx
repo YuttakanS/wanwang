@@ -30,7 +30,7 @@ export function NeoChip({ label, selected = false, disabled = false, accessibili
         { borderColor, backgroundColor: selected ? colors.ink : pressed ? colors.sunken : colors.surface },
       ]}
     >
-      <NeoText variant="caption" style={[styles.label, { color }]}>
+      <NeoText variant="caption" style={{ color }}>
         {label}
       </NeoText>
     </Pressable>
@@ -46,5 +46,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: borderWidths.thin,
   },
-  label: { fontWeight: '700' },
 });

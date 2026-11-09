@@ -41,7 +41,7 @@ export function MonthHeader({ month, rangeStart, rangeEnd, onChange }: MonthHead
       </View>
       <View style={styles.weekdays} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         {getWeekdayHeaders(lang).map((day, index) => (
-          <NeoText key={`${day}-${index}`} variant="mono" tone={index === 0 || index === 6 ? 'ink' : 'muted'} style={styles.weekday}>
+          <NeoText key={`${day}-${index}`} variant="caption" tone={index === 0 || index === 6 ? 'ink' : 'muted'} style={styles.weekday}>
             {day}
           </NeoText>
         ))}

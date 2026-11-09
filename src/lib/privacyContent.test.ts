@@ -29,3 +29,11 @@ describe('retention period', () => {
     for (const note of notes) expect(note).toContain(String(days));
   });
 });
+
+// The app stores secrets differently from a browser, and the notice has to say so.
+describe('the mobile app', () => {
+  it('is described in both languages', () => {
+    expect(JSON.stringify(PRIVACY_CONTENT.th)).toContain('Keychain หรือ Keystore');
+    expect(JSON.stringify(PRIVACY_CONTENT.en)).toContain('Keychain or Keystore');
+  });
+});

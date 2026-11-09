@@ -40,9 +40,11 @@ export async function saveLanguage(language: Language): Promise<void> {
   }
 }
 
+const readKnownEvents = async () => parseKnownEvents(await AsyncStorage.getItem(EVENTS_KEY));
+
 export async function loadKnownEvents(): Promise<KnownEvent[]> {
   try {
-    return parseKnownEvents(await AsyncStorage.getItem(EVENTS_KEY));
+    return await readKnownEvents();
   } catch {
     return [];
   }
@@ -54,8 +56,9 @@ let queue: Promise<unknown> = Promise.resolve();
 function changeKnownEvents(change: (events: KnownEvent[]) => KnownEvent[]): Promise<void> {
   const run = queue.then(async () => {
     try {
-      await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(change(await loadKnownEvents())));
+      await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(change(await readKnownEvents())));
     } catch {
+      // Nothing is written after a failed read, which would replace the whole list.
       // The list is a convenience: the event still opens from its link.
     }
   });

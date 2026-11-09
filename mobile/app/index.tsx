@@ -1,6 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { NeoBadge } from '~/components/neo/NeoBadge';
 import { NeoButton } from '~/components/neo/NeoButton';
 import { NeoCard } from '~/components/neo/NeoCard';
@@ -11,6 +12,7 @@ import { NeoText } from '~/components/neo/NeoText';
 import { PrivacyNote } from '~/components/PrivacyNote';
 import { Screen } from '~/components/Screen';
 import { borderWidths, type ThemePreference } from '~/constants/theme';
+import { eventKey } from '~/hooks/useEvent';
 import { useI18n } from '~/hooks/useI18n';
 import { useMyEvents, useMyEventsActions } from '~/hooks/useMyEvents';
 import { usePullToRefresh } from '~/hooks/usePullToRefresh';
@@ -26,6 +28,7 @@ export default function HomeScreen() {
   const { lang, setLang, t } = useI18n();
   const { colors, preference, setPreference } = useTheme();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const myEvents = useMyEvents();
   const { hide, showHidden } = useMyEventsActions();
@@ -38,7 +41,11 @@ export default function HomeScreen() {
     const link = parseEventLink(linkText);
     if (!link) return setLinkError(t('openLinkInvalid'));
     setLinkError(null);
-    if (link.adminKey) holdAdminLink(link.slug, link.adminKey);
+    if (link.adminKey) {
+      holdAdminLink(link.slug, link.adminKey);
+      // A load already running for this event started without the key.
+      void queryClient.invalidateQueries({ queryKey: eventKey(link.slug) });
+    }
     setLinkText('');
     router.push({ pathname: '/e/[slug]', params: { slug: link.slug } });
   };
@@ -96,9 +103,11 @@ export default function HomeScreen() {
 
         {visible.map((event, index) => (
           <View key={event.slug} style={[styles.event, index > 0 && { borderTopWidth: borderWidths.thin, borderTopColor: colors.ink }]}>
-            <NeoText variant="label" tone="link" accessibilityRole="link" onPress={() => router.push({ pathname: '/e/[slug]', params: { slug: event.slug } })}>
-              {event.title}
-            </NeoText>
+            <Pressable accessibilityRole="link" style={styles.eventLink} onPress={() => router.push({ pathname: '/e/[slug]', params: { slug: event.slug } })}>
+              <NeoText variant="label" tone="link">
+                {event.title}
+              </NeoText>
+            </Pressable>
             <View style={styles.eventMeta}>
               {event.participantCount !== undefined && (
                 <NeoText variant="caption" tone="muted">
@@ -116,9 +125,7 @@ export default function HomeScreen() {
         ))}
 
         {hiddenCount > 0 && (
-          <NeoText variant="caption" tone="link" accessibilityRole="button" onPress={() => void showHidden()}>
-            {t('myEventsShowHidden', { count: hiddenCount })}
-          </NeoText>
+          <NeoChip label={t('myEventsShowHidden', { count: hiddenCount })} onPress={() => void showHidden()} />
         )}
       </NeoCard>
 
@@ -132,5 +139,6 @@ const styles = StyleSheet.create({
   hero: { gap: 4 },
   card: { padding: 12, gap: 10 },
   event: { gap: 6, paddingTop: 8 },
+  eventLink: { minHeight: 44, justifyContent: 'center' },
   eventMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
 });
