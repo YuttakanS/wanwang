@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { WanWangEvent, Participant } from '@/types';
 import { generateShareMessage } from '@/lib/timeUtils';
 import { buildShareUrl, ShareTarget } from '@/lib/shareTargets';
 import { useRouter } from 'next/navigation';
 import { buildAdminLink, forgetEvent, getStoredAdminKey } from '@/lib/adminAccess';
+import { copyText } from '@/lib/clipboard';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useI18n } from '@/lib/i18n';
 
@@ -34,6 +35,11 @@ export default function EventShareBar({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
   const [copiedAdminLink, setCopiedAdminLink] = useState(false);
+  const [manualCopy, setManualCopy] = useState<{ text: string; isAdminLink: boolean } | null>(null);
+  const manualCopyRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    manualCopyRef.current?.focus();
+  }, [manualCopy]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [rotateFailed, setRotateFailed] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
@@ -50,20 +56,24 @@ export default function EventShareBar({
     return `https://wanwang.me/e/${event.slug}`;
   };
 
-  const handleCopyLink = async () => {
-    const url = getEventUrl();
-    await navigator.clipboard.writeText(url);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+  const copyWithFeedback = async (
+    text: string,
+    setCopied: (copied: boolean) => void,
+    isAdminLink = false
+  ) => {
+    if (await copyText(text)) {
+      setManualCopy(null);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      setManualCopy({ text, isAdminLink });
+    }
   };
 
-  const handleCopySummaryText = async () => {
-    const url = getEventUrl();
-    const text = generateShareMessage(event, participants, url, lang);
-    await navigator.clipboard.writeText(text);
-    setCopiedText(true);
-    setTimeout(() => setCopiedText(false), 2000);
-  };
+  const handleCopyLink = () => copyWithFeedback(getEventUrl(), setCopiedLink);
+
+  const handleCopySummaryText = () =>
+    copyWithFeedback(generateShareMessage(event, participants, getEventUrl(), lang), setCopiedText);
 
   const handleNativeShare = async () => {
     const url = getEventUrl();
@@ -90,9 +100,7 @@ export default function EventShareBar({
     const adminKey = event.adminKey || getStoredAdminKey(event.slug);
 
     if (adminKey) {
-      await navigator.clipboard.writeText(buildAdminLink(event.slug, adminKey));
-      setCopiedAdminLink(true);
-      setTimeout(() => setCopiedAdminLink(false), 2000);
+      await copyWithFeedback(buildAdminLink(event.slug, adminKey), setCopiedAdminLink, true);
     }
   };
 
@@ -273,6 +281,31 @@ export default function EventShareBar({
           </div>
         )}
       </div>
+
+      {manualCopy && (
+        <div className="p-3 bg-[#FFE500] border-2 border-black text-black space-y-2 motion-shake">
+          <p role="alert" className="font-mono text-xs">
+            [ERROR] {t('copyManualNotice')}
+          </p>
+          {manualCopy.isAdminLink && <p className="text-xs">{t('adminNoticeWarning')}</p>}
+          <textarea
+            ref={manualCopyRef}
+            readOnly
+            aria-label={t('copyManualLabel')}
+            rows={manualCopy.text.includes('\n') ? 6 : 2}
+            value={manualCopy.text}
+            onFocus={e => e.target.select()}
+            className="w-full px-3 py-2 bg-white border-2 border-black text-black font-mono text-xs focus:outline-none focus:ring-2 focus:ring-black"
+          />
+          <button
+            type="button"
+            onClick={() => setManualCopy(null)}
+            className="btn-secondary-raw px-3 py-1.5 text-xs font-semibold"
+          >
+            {t('copyManualDismiss')}
+          </button>
+        </div>
+      )}
 
       {rotateFailed && (
         <div className="p-3 bg-[#FFE500] border-2 border-black text-black font-mono text-xs motion-shake">

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { buildAdminLink } from '@/lib/adminAccess';
+import { copyText } from '@/lib/clipboard';
 import { useI18n } from '@/lib/i18n';
 
 interface AdminLinkNoticeProps {
@@ -21,12 +22,11 @@ export default function AdminLinkNotice({ slug, adminKey, onDismiss }: AdminLink
   }, [slug, adminKey]);
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
+    if (await copyText(link)) {
       setCopyFailed(false);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       setCopyFailed(true);
     }
   };
