@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeEvent } from '@/test/fixtures';
-import { hashSecret } from './validation';
+import { ValidationError, hashSecret } from './validation';
 
 interface Call {
   table: string;
@@ -197,6 +197,78 @@ describe('updateEvent', () => {
     await expect(updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-12-02', dateRangeEnd: '2026-12-05' }))
       .rejects.toThrow('CANNOT_SHRINK_RANGE_WITH_VOTES');
     expect(didWrite()).toBe(false);
+  });
+});
+
+describe('updateEvent slot cap', () => {
+  // 47 half-hour slots a day: 212 days is under the 10,000 cap and 213 is over.
+  const fine = { start_time: '00:00', end_time: '23:30', slot_interval: 30 };
+  const existing = (overrides: Record<string, unknown>) => ({
+    data: { ...stored, granularity: 'hour', dates: ['2026-01-01'], ...fine, ...overrides },
+    error: null,
+  });
+  const noVotes = { data: [], error: null };
+  const updated = { data: { id: 'event-1', dates: [] }, error: null };
+  const TOO_MANY = /Too many time slots/;
+
+  it('refuses widening the range past the cap', async () => {
+    state.results.push(existing({}));
+
+    const edit = updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-01-01', dateRangeEnd: '2026-08-01' });
+
+    await expect(edit).rejects.toThrow(TOO_MANY);
+    await expect(edit).rejects.toBeInstanceOf(ValidationError);
+    expect(didWrite()).toBe(false);
+  });
+
+  it('allows a range exactly at what fits under the cap', async () => {
+    state.results.push(existing({}), noVotes, updated);
+
+    await updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-01-01', dateRangeEnd: '2026-07-31' });
+
+    expect(didWrite()).toBe(true);
+  });
+
+  it('refuses making slots finer past the cap, without changing the range', async () => {
+    const dates = Array.from({ length: 300 }, (_, i) => `d${i}`);
+    state.results.push(existing({ granularity: 'day', dates }));
+
+    await expect(updateEvent('abc123', CURRENT_KEY, { granularity: 'hour' })).rejects.toThrow(TOO_MANY);
+    expect(didWrite()).toBe(false);
+  });
+
+  it('checks the new range with the new granularity together', async () => {
+    state.results.push(existing({ granularity: 'day' }));
+
+    await expect(updateEvent('abc123', CURRENT_KEY, {
+      granularity: 'hour',
+      dateRangeStart: '2026-01-01',
+      dateRangeEnd: '2026-12-31',
+    })).rejects.toThrow(TOO_MANY);
+  });
+
+  it('allows a wide range when the slots are coarse', async () => {
+    state.results.push(existing({ granularity: 'day' }), noVotes, updated);
+
+    await updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-01-01', dateRangeEnd: '2026-12-31' });
+
+    expect(didWrite()).toBe(true);
+  });
+
+  it('still lets an oversized older event change other fields', async () => {
+    const dates = Array.from({ length: 300 }, (_, i) => `d${i}`);
+    state.results.push(existing({ dates }), updated);
+
+    await updateEvent('abc123', CURRENT_KEY, { title: 'New title', isClosed: true, granularity: 'hour' });
+
+    expect(didWrite()).toBe(true);
+  });
+
+  it('reports a wrong key first, so the size stays private', async () => {
+    state.results.push(existing({}));
+
+    await expect(updateEvent('abc123', 'wrong-key', { dateRangeStart: '2026-01-01', dateRangeEnd: '2026-12-31' }))
+      .rejects.toThrow('UNAUTHORIZED');
   });
 });
 

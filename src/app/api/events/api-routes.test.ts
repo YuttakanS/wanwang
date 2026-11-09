@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeEvent, makeParticipant } from '@/test/fixtures';
-import { hashSecret } from '@/lib/validation';
+import { ValidationError, hashSecret } from '@/lib/validation';
 import { MAX_ADMIN_LOOKUP } from '@/types';
 
 const db = vi.hoisted(() => ({
@@ -193,6 +193,15 @@ describe('PATCH /api/events/[slug]', () => {
 
     expect(res.status).toBe(status);
     if (status === 500) expect(await res.text()).not.toContain('database failure');
+  });
+
+  it('answers 400 and explains when an edit would exceed the slot cap', async () => {
+    db.updateEvent.mockRejectedValue(new ValidationError('Too many time slots (max 10000)'));
+
+    const res = await PATCH(request('PATCH', eventPath, { headers: asAdmin, body: { granularity: 'hour' } }), params);
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Too many time slots');
   });
 
   it('answers 403 when nothing was updated', async () => {

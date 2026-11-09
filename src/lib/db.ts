@@ -1,10 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import { WanWangEvent, Participant, AdminEventSummary } from '@/types';
+import { WanWangEvent, Participant, AdminEventSummary, TimeGranularity } from '@/types';
 import { supabase, shouldUseSupabase } from './supabaseClient';
-import { hashSecret, verifySecret } from './validation';
-import { generateDatesInRange, formatDateToISO } from './timeUtils';
+import { LIMITS, ValidationError, hashSecret, rangeDays, verifySecret } from './validation';
+import { countEventSlots, generateDatesInRange, formatDateToISO } from './timeUtils';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
@@ -219,6 +219,31 @@ export async function getEventBySlug(slug: string): Promise<WanWangEvent | null>
   };
 }
 
+/**
+ * Creating an event enforces the slot cap, but an edit can exceed it by widening the range or
+ * making slots finer. Runs after the key check, so only the event's admin learns its size.
+ */
+function assertSlotCapAfterUpdate(
+  current: {
+    granularity: TimeGranularity;
+    dayCount: number;
+    startTime: string;
+    endTime: string;
+    slotInterval: number;
+  },
+  updates: Partial<WanWangEvent>
+) {
+  const newGranularity = updates.granularity ?? current.granularity;
+  const hasNewRange = Boolean(updates.dateRangeStart && updates.dateRangeEnd);
+  if (newGranularity === current.granularity && !hasNewRange) return;
+
+  const days = hasNewRange ? rangeDays(updates.dateRangeStart!, updates.dateRangeEnd!) : current.dayCount;
+  const slots = countEventSlots(newGranularity, days, current.startTime, current.endTime, current.slotInterval);
+  if (slots > LIMITS.maxSlots) {
+    throw new ValidationError(`Too many time slots (max ${LIMITS.maxSlots})`);
+  }
+}
+
 export async function updateEvent(
   slug: string,
   adminKey: string,
@@ -229,13 +254,24 @@ export async function updateEvent(
   if (shouldUseSupabase() && supabase) {
     const { data: existing } = await supabase
       .from('events')
-      .select('id, admin_key, granularity, dates')
+      .select('id, admin_key, granularity, dates, start_time, end_time, slot_interval')
       .eq('slug', slug)
       .single();
 
     if (!existing || !verifySecret(adminKey, existing.admin_key)) {
       throw new Error('UNAUTHORIZED');
     }
+
+    assertSlotCapAfterUpdate(
+      {
+        granularity: existing.granularity || 'day',
+        dayCount: existing.dates?.length ?? 0,
+        startTime: existing.start_time || '09:00',
+        endTime: existing.end_time || '22:00',
+        slotInterval: existing.slot_interval || 60,
+      },
+      updates
+    );
 
     if (updates.granularity !== undefined && updates.granularity !== existing.granularity) {
       const participants = await getParticipantsByEventId(existing.id);
@@ -308,6 +344,17 @@ export async function updateEvent(
   if (index === -1) return null;
 
   const existingEvent = events[index];
+
+  assertSlotCapAfterUpdate(
+    {
+      granularity: existingEvent.granularity || 'day',
+      dayCount: existingEvent.dates?.length ?? 0,
+      startTime: existingEvent.startTime || '09:00',
+      endTime: existingEvent.endTime || '22:00',
+      slotInterval: existingEvent.slotInterval || 60,
+    },
+    updates
+  );
 
   if (updates.granularity !== undefined && updates.granularity !== (existingEvent.granularity || 'day')) {
     const participants = await getParticipantsByEventId(existingEvent.id);
