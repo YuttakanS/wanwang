@@ -5,9 +5,10 @@ import { countEventSlots, formatDateToISO, formatLocalizedDateRange, generateDat
 import { EVENT_CATEGORIES, type EventCategory, MAX_EVENT_SLOTS, type TimeGranularity } from '@/types';
 import type { DateRange } from '~/calendar/rangePick';
 import { RangeCalendar } from '~/components/calendar/RangeCalendar';
+import { ChoiceGrid, Segmented } from '~/components/create/Choices';
+import { FormSection } from '~/components/create/FormSection';
+import { RangeSummary } from '~/components/create/RangeSummary';
 import { NeoButton } from '~/components/neo/NeoButton';
-import { NeoCard } from '~/components/neo/NeoCard';
-import { NeoChip } from '~/components/neo/NeoChip';
 import { NeoInput } from '~/components/neo/NeoInput';
 import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
@@ -15,7 +16,9 @@ import { PrivacyNote } from '~/components/PrivacyNote';
 import { Screen } from '~/components/Screen';
 import { TimeStepper } from '~/components/TimeStepper';
 import { CATEGORY_LABEL_KEYS } from '~/constants/strings';
+import { borderWidths } from '~/constants/theme';
 import { useI18n } from '~/hooks/useI18n';
+import { useTheme } from '~/hooks/useTheme';
 import { useCreateEvent } from '~/hooks/useMyEvents';
 import { errorMessage } from '~/services/errorMessage';
 
@@ -53,6 +56,7 @@ function isoDaysFromToday(days: number): string {
 
 export default function CreateScreen() {
   const { lang, t } = useI18n();
+  const { colors } = useTheme();
   const router = useRouter();
   const create = useCreateEvent();
 
@@ -106,31 +110,39 @@ export default function CreateScreen() {
     );
   };
 
-  const shownError = triedSaving && problem ? problem : create.error ? errorMessage(create.error, t) : null;
+  const currentFormat = FORMATS.find(format => format.id === granularity) ?? FORMATS[0];
+  const shownError =triedSaving && problem ? problem : create.error ? errorMessage(create.error, t) : null;
+
+  const activePreset = RANGE_PRESETS.find(preset => range.start === today && range.end === isoDaysFromToday(preset.days));
+  const presetPrefix = activePreset ? `${t(activePreset.labelKey)} • ` : '';
 
   return (
     <Screen showBack>
-      <NeoText variant="title" accessibilityRole="header">
-        {t('createTitle')}
-      </NeoText>
-
-      <NeoCard style={styles.card}>
-        <NeoText variant="heading" accessibilityRole="header">
-          {t('step1Title')}
+      <View style={[styles.pageTitle, { borderBottomColor: colors.ink }]}>
+        <NeoText variant="display" accessibilityRole="header">
+          {t('createTitle')}
         </NeoText>
-        <NeoInput
-          label={t('eventNameLabel')}
-          placeholder={t('eventNamePlaceholder')}
-          value={title}
-          onChangeText={setTitle}
-          maxLength={MAX_TITLE_LENGTH}
-        />
-        <NeoText variant="label">{t('categoryLabel')}</NeoText>
-        <View style={styles.chips}>
-          {EVENT_CATEGORIES.map(item => (
-            <NeoChip key={item.id} label={t(CATEGORY_LABEL_KEYS[item.id])} selected={category === item.id} onPress={() => setCategory(item.id)} />
-          ))}
+      </View>
+
+      <FormSection title={t('step1Title')} subtitle={t('step1Subtitle')} badge={t('requiredBadge')}>
+        <View style={styles.field}>
+          <NeoInput
+            label={t('eventNameLabel')}
+            placeholder={t('eventNamePlaceholder')}
+            value={title}
+            onChangeText={setTitle}
+            maxLength={MAX_TITLE_LENGTH}
+          />
+          <NeoText variant="caption" tone="muted">
+            {t('eventNameHelper')}
+          </NeoText>
         </View>
+        <ChoiceGrid
+          label={t('categoryLabel')}
+          options={EVENT_CATEGORIES.map(item => ({ value: item.id, label: t(CATEGORY_LABEL_KEYS[item.id]) }))}
+          value={category}
+          onChange={setCategory}
+        />
         <NeoInput
           label={t('locationLabel')}
           placeholder={t('locationPlaceholder')}
@@ -145,56 +157,44 @@ export default function CreateScreen() {
           onChangeText={setDescription}
           maxLength={MAX_DESCRIPTION_LENGTH}
         />
-      </NeoCard>
+      </FormSection>
 
-      <NeoCard style={styles.card}>
-        <NeoText variant="heading" accessibilityRole="header">
-          {t('step2RangeTitle')}
-        </NeoText>
-        <NeoText variant="caption" tone="muted">
-          {t('step2RangeSubtitle')}
-        </NeoText>
-        <View style={styles.chips}>
-          {RANGE_PRESETS.map(preset => {
-            const end = isoDaysFromToday(preset.days);
-            return (
-              <NeoChip
-                key={preset.days}
-                label={t(preset.labelKey)}
-                selected={range.start === today && range.end === end}
-                onPress={() => {
-                  setRange({ start: today, end });
-                  setCalendarKey(key => key + 1);
-                }}
-              />
-            );
-          })}
-        </View>
-        <NeoText variant="caption" accessibilityLiveRegion="polite">
-          {range.end
-            ? t('rangeDaysCount', { count: dayCount, range: formatLocalizedDateRange(range.start, range.end, lang) })
-            : t('rangePickEnd')}
-        </NeoText>
+      <FormSection
+        title={t('step2RangeTitle')}
+        subtitle={t('step2RangeSubtitle')}
+        badge={range.end ? `${presetPrefix}${t('rangeDaysBadge', { count: dayCount })}` : undefined}
+      >
+        <ChoiceGrid
+          label={t('shortcutsLabel')}
+          options={RANGE_PRESETS.map(preset => ({ value: preset.days, label: t(preset.labelKey) }))}
+          value={activePreset?.days ?? -1}
+          onChange={days => {
+            setRange({ start: today, end: isoDaysFromToday(days) });
+            setCalendarKey(key => key + 1);
+          }}
+        />
         <RangeCalendar key={calendarKey} range={range} today={today} onChange={setRange} />
+        <RangeSummary
+          label={range.end ? t('rangeSummaryLabel') : ''}
+          text={range.end ? formatLocalizedDateRange(range.start, range.end, lang) : t('rangePickEnd')}
+        />
         <NeoText variant="caption" tone="muted">
           {t('rangePickHint')}
         </NeoText>
-      </NeoCard>
+      </FormSection>
 
-      <NeoCard style={styles.card}>
-        <NeoText variant="heading" accessibilityRole="header">
-          {t('step3Title')}
-        </NeoText>
-        <View style={styles.chips}>
-          {FORMATS.map(format => (
-            <NeoChip key={format.id} label={t(format.labelKey)} selected={granularity === format.id} onPress={() => setGranularity(format.id)} />
-          ))}
+      <FormSection title={t('step3Title')} subtitle={t('step3Subtitle')} badge={t(currentFormat.labelKey)}>
+        <View style={styles.field}>
+          <Segmented
+            label={t('granularityLabel')}
+            options={FORMATS.map(format => ({ value: format.id, label: t(format.labelKey) }))}
+            value={granularity}
+            onChange={setGranularity}
+          />
+          <NeoNotice tone="sunken" message={t(currentFormat.descriptionKey)} />
         </View>
-        <NeoText variant="caption" tone="muted">
-          {t(FORMATS.find(format => format.id === granularity)?.descriptionKey ?? 'granularityDayDesc')}
-        </NeoText>
         {granularity === 'hour' && (
-          <>
+          <View style={[styles.hours, { borderTopColor: colors.ink }]}>
             <TimeStepper label={t('startHourLabel')} options={START_TIMES} value={startTime} onChange={setStartTime} />
             <TimeStepper
               label={t('endHourLabel')}
@@ -203,26 +203,35 @@ export default function CreateScreen() {
               textFor={time => (time === '23:59' ? t('midnight') : time)}
               onChange={setEndTime}
             />
-            <NeoText variant="label">{t('intervalLabel')}</NeoText>
-            <View style={styles.chips}>
-              <NeoChip label={t('interval60')} selected={slotInterval === 60} onPress={() => setSlotInterval(60)} />
-              <NeoChip label={t('interval30')} selected={slotInterval === 30} onPress={() => setSlotInterval(30)} />
-            </View>
-          </>
+            <Segmented
+              label={t('intervalLabel')}
+              options={[
+                { value: 60, label: t('interval60') },
+                { value: 30, label: t('interval30') },
+              ]}
+              value={slotInterval}
+              onChange={setSlotInterval}
+            />
+          </View>
         )}
-      </NeoCard>
+      </FormSection>
 
       <PrivacyNote text={t('createVisibilityNote')} />
       {shownError && <NeoNotice message={shownError} />}
-      <NeoButton fullWidth label={create.isPending ? t('submitCreating') : t('submitBtn')} disabled={create.isPending} onPress={submit} />
-      <NeoText variant="caption" tone="muted">
-        {t('formFooterNote')}
-      </NeoText>
+      <View style={styles.submit}>
+        <NeoButton fullWidth label={create.isPending ? t('submitCreating') : t('submitBtn')} disabled={create.isPending} onPress={submit} />
+        <NeoText variant="caption" tone="muted" style={styles.footer}>
+          {t('formFooterNote')}
+        </NeoText>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 12, gap: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pageTitle: { paddingBottom: 12, borderBottomWidth: borderWidths.thick },
+  field: { gap: 8 },
+  hours: { gap: 12, paddingTop: 16, borderTopWidth: borderWidths.thin },
+  submit: { gap: 8, paddingTop: 4 },
+  footer: { textAlign: 'center' },
 });
