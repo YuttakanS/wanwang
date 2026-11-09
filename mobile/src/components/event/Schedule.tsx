@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { buildMonthCells } from '@/lib/monthCells';
-import { formatDateToISO, formatLocalizedDate, isWeekend } from '@/lib/timeUtils';
+import { formatDateToISO, formatLocalizedDate, generateAllEventSlots, generateDayTimeSlots, isWeekend } from '@/lib/timeUtils';
 import type { Participant, WanWangEvent } from '@/types';
+import { datesOnPage } from '~/calendar/slotPages';
 import { DayGrid } from '~/components/calendar/DayGrid';
+import { DaypartGrid } from '~/components/calendar/DaypartGrid';
+import { HourGrid } from '~/components/calendar/HourGrid';
 import { MonthHeader } from '~/components/calendar/MonthHeader';
+import { PageHeader } from '~/components/calendar/PageHeader';
 import { NeoButton } from '~/components/neo/NeoButton';
 import { NeoCard } from '~/components/neo/NeoCard';
 import { NeoChip } from '~/components/neo/NeoChip';
@@ -34,12 +38,15 @@ interface ScheduleProps {
   onTabChange: (tab: ScheduleTab) => void;
   month: Date;
   onMonthChange: (month: Date) => void;
+  page: number;
+  onPageChange: (page: number) => void;
   inspected: string | null;
-  onInspect: (date: string) => void;
+  highlighted: string[];
+  onInspect: (slotId: string) => void;
   onDraggingChange: (dragging: boolean) => void;
 }
 
-/** Answering and the group view for all-day events. Phase 4 adds the other two formats. */
+/** Answering and the group view, for all three event formats. */
 export function Schedule({
   event,
   participants,
@@ -49,7 +56,10 @@ export function Schedule({
   onTabChange,
   month,
   onMonthChange,
+  page,
+  onPageChange,
   inspected,
+  highlighted,
   onInspect,
   onDraggingChange,
 }: ScheduleProps) {
@@ -57,6 +67,7 @@ export function Schedule({
   const { store, slots, outsideVersion } = useSelectionStore();
   const save = useSaveVote(event.slug, event.title);
 
+  const granularity = event.granularity || 'day';
   const mine = participants.find(p => p.isMine);
   const mineId = mine?.id ?? null;
 
@@ -80,8 +91,14 @@ export function Schedule({
   }, [mine, mineId, store, onTabChange]);
 
   const today = formatDateToISO(new Date());
-  const selectable = event.dates.filter(date => date >= today);
   const days = buildMonthCells(month, rangeStart, rangeEnd, today);
+  const shownDates = datesOnPage(event.dates, page);
+  const times = useMemo(
+    () => generateDayTimeSlots(event.startTime || '09:00', event.endTime || '22:00', event.slotInterval || 60),
+    [event.startTime, event.endTime, event.slotInterval],
+  );
+  // Past days cannot be chosen, so the shortcuts leave them out too.
+  const selectable = useMemo(() => generateAllEventSlots(event).filter(slot => slot.date >= today), [event, today]);
 
   // Worked out on each render, so the message goes away as soon as the person fixes the problem.
   const problem = !name.trim() ? t('errorNameRequired') : slots.length === 0 ? t('errorSlotRequired') : null;
@@ -124,7 +141,10 @@ export function Schedule({
           rangeEnd={rangeEnd}
           month={month}
           onMonthChange={onMonthChange}
+          page={page}
+          onPageChange={onPageChange}
           inspected={inspected}
+          highlighted={highlighted}
           onInspect={onInspect}
           onVoteFirst={() => onTabChange('vote')}
         />
@@ -152,26 +172,52 @@ export function Schedule({
           />
           <PrivacyNote text={t('voteVisibilityNote')} />
 
-          <NeoText variant="caption">{t('voteCalendarPrompt')}</NeoText>
+          <NeoText variant="caption">
+            {granularity === 'day' ? t('voteCalendarPrompt') : granularity === 'daypart' ? t('votePromptDaypart') : t('dragInstructions')}
+          </NeoText>
           <View style={styles.shortcuts}>
-            <NeoChip label={t('shortcutWeekendsOnly')} onPress={() => store.replace(new Set([...slots, ...selectable.filter(isWeekend)]))} />
-            <NeoChip label={t('btnSelectAll')} onPress={() => store.replace(selectable)} />
+            <NeoChip
+              label={t('shortcutWeekendsOnly')}
+              onPress={() => store.replace(new Set([...slots, ...selectable.filter(slot => isWeekend(slot.date)).map(slot => slot.id)]))}
+            />
+            <NeoChip label={t('btnSelectAll')} onPress={() => store.replace(selectable.map(slot => slot.id))} />
             {slots.length > 0 && <NeoChip label={t('shortcutClearSelection')} onPress={() => store.replace([])} />}
           </View>
 
-          <MonthHeader month={month} rangeStart={rangeStart} rangeEnd={rangeEnd} onChange={onMonthChange} />
-          <DayGrid
-            key={formatDateToISO(month)}
-            days={days}
-            store={store}
-            outsideVersion={outsideVersion}
-            labelFor={day => formatLocalizedDate(day.dateStr, lang, 'chip')}
-            onDraggingChange={onDraggingChange}
-          />
+          {granularity === 'day' ? (
+            <>
+              <MonthHeader month={month} rangeStart={rangeStart} rangeEnd={rangeEnd} onChange={onMonthChange} />
+              <DayGrid
+                key={formatDateToISO(month)}
+                days={days}
+                store={store}
+                outsideVersion={outsideVersion}
+                labelFor={day => formatLocalizedDate(day.dateStr, lang, 'chip')}
+                onDraggingChange={onDraggingChange}
+              />
+            </>
+          ) : (
+            <>
+              <PageHeader dates={event.dates} page={page} onChange={onPageChange} />
+              {granularity === 'daypart' ? (
+                <DaypartGrid dates={shownDates} today={today} store={store} />
+              ) : (
+                <HourGrid
+                  key={page}
+                  dates={shownDates}
+                  times={times}
+                  today={today}
+                  store={store}
+                  outsideVersion={outsideVersion}
+                  onDraggingChange={onDraggingChange}
+                />
+              )}
+            </>
+          )}
 
           {shownError && <NeoNotice message={shownError} />}
 
-          <NeoText variant="monoBold">{t('selectedDaysCount', { count: slots.length })}</NeoText>
+          <NeoText variant="monoBold">{t(granularity === 'day' ? 'selectedDaysCount' : 'selectedSlotsCount', { count: slots.length })}</NeoText>
           <NeoButton
             fullWidth
             label={save.isPending ? t('savingDataBtn') : t('saveMyAvailabilityBtn')}

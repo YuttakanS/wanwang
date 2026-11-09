@@ -20,8 +20,7 @@ interface BestTimesProps {
   event: WanWangEvent;
   participants: Participant[];
   isAdmin: boolean;
-  /** Left out for formats that have no group view in the app yet. */
-  onSelect?: (date: string) => void;
+  onSelect: (slotIds: string[], date: string) => void;
 }
 
 export function BestTimes({ event, participants, isAdmin, onSelect }: BestTimesProps) {
@@ -54,9 +53,8 @@ export function BestTimes({ event, participants, isAdmin, onSelect }: BestTimesP
         return (
           <NeoCard key={match.id} emphasis={isPinned} tone={isEveryone ? 'accent' : 'surface'} style={styles.match}>
             <Pressable
-              accessibilityRole={onSelect ? 'button' : undefined}
-              disabled={!onSelect}
-              onPress={() => onSelect?.(match.date)}
+              accessibilityRole="button"
+              onPress={() => onSelect(match.slotIds, match.date)}
               style={styles.matchBody}
             >
               <View style={styles.matchTop}>

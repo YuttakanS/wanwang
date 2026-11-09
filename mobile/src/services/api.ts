@@ -74,6 +74,10 @@ export interface CreateEventInput {
   granularity: TimeGranularity;
   dateRangeStart: string;
   dateRangeEnd: string;
+  /** Hourly events only. The server fills in its defaults for the others. */
+  startTime?: string;
+  endTime?: string;
+  slotInterval?: number;
 }
 
 export interface EventDetails {
