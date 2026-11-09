@@ -3,7 +3,7 @@ import { fonts } from '~/constants/fonts';
 import { ON_ACCENT, type ThemeColors } from '~/constants/theme';
 import { useTheme } from '~/hooks/useTheme';
 
-type NeoTextVariant = 'title' | 'heading' | 'body' | 'label' | 'caption' | 'mono' | 'monoBold';
+type NeoTextVariant = 'display' | 'title' | 'heading' | 'body' | 'label' | 'caption' | 'mono' | 'monoBold';
 type NeoTextTone = 'ink' | 'muted' | 'faint' | 'link' | 'onAccent';
 
 interface NeoTextProps extends TextProps {
@@ -26,6 +26,7 @@ export function NeoText({ variant = 'body', tone = 'ink', maxFontSizeMultiplier 
 
 // No lineHeight: Plex Thai's natural 1.65 fits stacked Thai marks, and anything tighter can clip them.
 const styles = StyleSheet.create({
+  display: { fontFamily: fonts.bold, fontSize: 30 },
   title: { fontFamily: fonts.bold, fontSize: 24 },
   heading: { fontFamily: fonts.bold, fontSize: 18 },
   body: { fontFamily: fonts.regular, fontSize: 14 },
