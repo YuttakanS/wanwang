@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useSlotDragSelect } from '@/components/useSlotDragSelect';
 import {
@@ -108,6 +108,14 @@ export default function ScheduleMatrix({
   };
 
   const slotGridHandlers = useSlotDragSelect(mySelectedSlots, setMySelectedSlots);
+
+  // The best-times list sits below this grid, so bring the highlighted slots into view.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (highlightSlotIds.length === 0) return;
+    setActiveTab('heatmap');
+    rootRef.current?.scrollIntoView({ block: 'start' });
+  }, [highlightSlotIds]);
 
   // Filter valid selectable dates (within range and not in past)
   const validSelectableDates = useMemo(() => {
@@ -281,7 +289,7 @@ export default function ScheduleMatrix({
   );
 
   return (
-    <div className="space-y-6">
+    <div ref={rootRef} className="space-y-6 scroll-mt-20">
       {/* Dual Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 sm:p-3 border-3 border-black">
         <div className="flex items-center gap-1.5 sm:gap-2">

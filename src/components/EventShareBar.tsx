@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { WanWangEvent, Participant } from '@/types';
 import { generateShareMessage } from '@/lib/timeUtils';
 import { buildShareUrl, ShareTarget } from '@/lib/shareTargets';
@@ -26,6 +27,13 @@ export default function EventShareBar({
   onAdminKeyRotated,
 }: EventShareBarProps) {
   const { lang, t } = useI18n();
+
+  const [openPanel, setOpenPanel] = useState<'share' | 'admin' | null>(null);
+  const togglePanel = (panel: 'share' | 'admin') =>
+    setOpenPanel(current => (current === panel ? null : panel));
+  const panelIdBase = useId();
+  const sharePanelId = `${panelIdBase}-share`;
+  const adminPanelId = `${panelIdBase}-admin`;
 
   const [canNativeShare, setCanNativeShare] = useState(false);
   useEffect(() => {
@@ -179,16 +187,42 @@ export default function EventShareBar({
   };
 
   return (
-    <div className="bg-white border-3 border-black p-4 space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* Share buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="border-t-3 border-black pt-4 space-y-3">
+      {/* Collapsed by default so people opening the link reach the voting form straight away. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          aria-expanded={openPanel === 'share'}
+          aria-controls={sharePanelId}
+          onClick={() => togglePanel('share')}
+          className="btn-primary-raw gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold"
+        >
+          {t('shareToggleBtn')}
+          <ChevronDown aria-hidden="true" size={16} className={openPanel === 'share' ? 'rotate-180' : ''} />
+        </button>
+
+        {isAdmin && (
+          <button
+            type="button"
+            aria-expanded={openPanel === 'admin'}
+            aria-controls={adminPanelId}
+            onClick={() => togglePanel('admin')}
+            className="btn-secondary-raw gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold"
+          >
+            {t('manageToggleBtn')}
+            <ChevronDown aria-hidden="true" size={16} className={openPanel === 'admin' ? 'rotate-180' : ''} />
+          </button>
+        )}
+      </div>
+
+      {openPanel === 'share' && (
+        <div id={sharePanelId} className="flex flex-wrap items-center gap-2 motion-enter">
           {/* The system share sheet reaches every installed app, including Messenger. */}
           {canNativeShare && (
             <button
               type="button"
               onClick={handleNativeShare}
-              className="btn-primary-raw px-4 py-2 text-xs sm:text-sm font-bold"
+              className="btn-secondary-raw px-3 py-2 text-xs font-semibold"
             >
               {t('shareNativeBtn')}
             </button>
@@ -197,11 +231,7 @@ export default function EventShareBar({
           <button
             type="button"
             onClick={() => handleShareTo('line')}
-            className={
-              canNativeShare
-                ? 'btn-secondary-raw px-3 py-2 text-xs font-semibold'
-                : 'btn-primary-raw px-4 py-2 text-xs sm:text-sm font-bold'
-            }
+            className="btn-secondary-raw px-3 py-2 text-xs font-semibold"
           >
             {t('shareLineBtn')}
           </button>
@@ -232,55 +262,55 @@ export default function EventShareBar({
             {copiedLink ? t('copyLinkDone') : t('copyLinkBtn')}
           </button>
         </div>
+      )}
 
-        {/* Organizer / Admin secret UX */}
-        {isAdmin && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0 border-t-2 sm:border-t-0 border-black">
-            <span className="font-mono text-xs font-bold px-2 py-1 bg-[#F0F0F0] border-2 border-black text-black">
-              {t('adminVerifiedBadge')}
-            </span>
+      {/* Organizer / Admin secret UX */}
+      {isAdmin && openPanel === 'admin' && (
+        <div id={adminPanelId} className="flex flex-wrap items-center gap-2 motion-enter">
+          <span className="font-mono text-xs font-bold px-2 py-1 bg-[#F0F0F0] border-2 border-black text-black">
+            {t('adminVerifiedBadge')}
+          </span>
 
-            <button
-              type="button"
-              onClick={handleCopyAdminLink}
-              className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
-            >
-              {copiedAdminLink ? t('copyAdminLinkDone') : t('copyAdminLinkBtn')}
-            </button>
+          <button
+            type="button"
+            onClick={handleCopyAdminLink}
+            className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
+          >
+            {copiedAdminLink ? t('copyAdminLinkDone') : t('copyAdminLinkBtn')}
+          </button>
 
-            <button
-              type="button"
-              disabled={isUpdating}
-              onClick={() => setConfirmingRotate(true)}
-              className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
-            >
-              {t('rotateAdminBtn')}
-            </button>
+          <button
+            type="button"
+            disabled={isUpdating}
+            onClick={() => setConfirmingRotate(true)}
+            className="px-2 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-mono text-xs transition-none"
+          >
+            {t('rotateAdminBtn')}
+          </button>
 
-            <button
-              type="button"
-              disabled={isUpdating}
-              onClick={handleToggleClosed}
-              className={`px-2.5 py-1 font-mono text-xs font-bold border-2 border-black transition-none ${
-                event.isClosed
-                  ? 'bg-[#FFE500] text-black hover:bg-black hover:text-[#FFE500]'
-                  : 'bg-black text-white hover:bg-white hover:text-black'
-              }`}
-            >
-              {event.isClosed ? t('reopenVotingBtn') : t('closeVotingBtn')}
-            </button>
+          <button
+            type="button"
+            disabled={isUpdating}
+            onClick={handleToggleClosed}
+            className={`px-2.5 py-1 font-mono text-xs font-bold border-2 border-black transition-none ${
+              event.isClosed
+                ? 'bg-[#FFE500] text-black hover:bg-black hover:text-[#FFE500]'
+                : 'bg-black text-white hover:bg-white hover:text-black'
+            }`}
+          >
+            {event.isClosed ? t('reopenVotingBtn') : t('closeVotingBtn')}
+          </button>
 
-            <button
-              type="button"
-              disabled={isUpdating}
-              onClick={() => setConfirmingDelete(true)}
-              className="px-2.5 py-1 font-mono text-xs font-bold border-2 border-black bg-[#FF0000] text-white hover:bg-black hover:text-[#FF0000] transition-none"
-            >
-              {t('deleteEventBtn')}
-            </button>
-          </div>
-        )}
-      </div>
+          <button
+            type="button"
+            disabled={isUpdating}
+            onClick={() => setConfirmingDelete(true)}
+            className="px-2.5 py-1 font-mono text-xs font-bold border-2 border-black bg-[#FF0000] text-white hover:bg-black hover:text-[#FF0000] transition-none"
+          >
+            {t('deleteEventBtn')}
+          </button>
+        </div>
+      )}
 
       {manualCopy && (
         <div className="p-3 bg-[#FFE500] border-2 border-black text-black space-y-2 motion-shake">

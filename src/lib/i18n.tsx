@@ -146,6 +146,8 @@ export const translations: Record<Language, Translations> = {
     metaLocationLabel: 'สถานที่: {loc}',
 
     // Share Bar
+    shareToggleBtn: 'แชร์ให้เพื่อน',
+    manageToggleBtn: 'จัดการกิจกรรม',
     shareNativeBtn: 'แชร์ไปให้เพื่อนคุณเลย!! ->',
     shareLineBtn: 'แชร์ผ่าน LINE',
     shareWhatsappBtn: 'แชร์ผ่าน WhatsApp',
@@ -397,6 +399,8 @@ export const translations: Record<Language, Translations> = {
     metaLocationLabel: 'Location: {loc}',
 
     // Share Bar
+    shareToggleBtn: 'Share with friends',
+    manageToggleBtn: 'Manage event',
     shareNativeBtn: 'Share it with your friends!! ->',
     shareLineBtn: 'Share on LINE',
     shareWhatsappBtn: 'Share on WhatsApp',

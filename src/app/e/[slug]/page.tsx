@@ -257,26 +257,15 @@ export default function EventDetailPage({
               </div>
             )}
           </div>
+
+          <EventShareBar
+            event={event}
+            participants={participants}
+            isAdmin={isAdmin}
+            onEventUpdated={fetchEventData}
+            onAdminKeyRotated={handleAdminKeyRotated}
+          />
         </div>
-
-        {/* 1-Click Share & LINE Bar */}
-        <EventShareBar
-          event={event}
-          participants={participants}
-          isAdmin={isAdmin}
-          onEventUpdated={fetchEventData}
-          onAdminKeyRotated={handleAdminKeyRotated}
-        />
-
-        {/* Top Matches Leaderboard */}
-        <BestTimeLeaderboard
-          event={event}
-          participants={participants}
-          isAdmin={isAdmin}
-          onEventUpdated={fetchEventData}
-          onSelectMatch={slotIds => setHighlightSlotIds(slotIds)}
-          selectedSlotIds={highlightSlotIds}
-        />
 
         {/* Interactive Schedule Matrix & Voting */}
         <ScheduleMatrix
@@ -284,6 +273,16 @@ export default function EventDetailPage({
           participants={participants}
           onParticipantSaved={fetchEventData}
           highlightSlotIds={highlightSlotIds}
+        />
+
+        {/* Top Matches Leaderboard. A new array each time, so choosing a match again still scrolls to it. */}
+        <BestTimeLeaderboard
+          event={event}
+          participants={participants}
+          isAdmin={isAdmin}
+          onEventUpdated={fetchEventData}
+          onSelectMatch={slotIds => setHighlightSlotIds([...slotIds])}
+          selectedSlotIds={highlightSlotIds}
         />
 
         {/* Participants Roster */}
