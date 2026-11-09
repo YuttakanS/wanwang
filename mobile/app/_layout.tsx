@@ -13,6 +13,9 @@ import { queryClient } from '~/services/queryClient';
 
 void SplashScreen.preventAutoHideAsync();
 
+// A link can open an event directly. This keeps the home screen behind it, so back still works.
+export const unstable_settings = { anchor: 'index' };
+
 function AppShell() {
   const { colors, scheme } = useTheme();
   const [fontsLoaded, fontError] = useFonts(fontAssets);

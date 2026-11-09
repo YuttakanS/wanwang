@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: securityHeaders },
       // Event pages show people's names and availability, so keep them out of search results.
       { source: "/e/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      // Android refuses to verify App Links unless this file is served as JSON.
+      { source: "/.well-known/assetlinks.json", headers: [{ key: "Content-Type", value: "application/json" }] },
     ];
   },
 };
