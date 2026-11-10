@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SlotHeatmapInfo } from '@/types';
 import { NeoText } from '~/components/neo/NeoText';
 import { fonts } from '~/constants/fonts';
-import { borderWidths, heatColors } from '~/constants/theme';
+import { borderWidths, heatColors, GRID_LABEL_MAX_SCALE } from '~/constants/theme';
 import { useTheme } from '~/hooks/useTheme';
 
 const GAP = 2;
@@ -37,14 +37,14 @@ export function HeatTable({ columnLabels, rows, heatmap, total, isEmphasized, la
       <View style={styles.row} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.rowLabel} />
         {columnLabels.map((label, index) => (
-          <NeoText key={`${label}-${index}`} variant="caption" style={styles.columnLabel}>
+          <NeoText key={`${label}-${index}`} variant="caption" maxFontSizeMultiplier={GRID_LABEL_MAX_SCALE} style={styles.columnLabel}>
             {label}
           </NeoText>
         ))}
       </View>
       {rows.map(row => (
         <View key={row.key} style={styles.row}>
-          <NeoText variant="caption" style={[styles.rowLabel, styles.label]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <NeoText variant="caption" maxFontSizeMultiplier={GRID_LABEL_MAX_SCALE} style={[styles.rowLabel, styles.label]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             {row.label}
           </NeoText>
           {row.slotIds.map(slotId => {

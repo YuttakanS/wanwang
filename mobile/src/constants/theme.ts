@@ -70,6 +70,9 @@ export const ON_ACCENT = '#000000';
 export const borderWidths = { thin: 2, regular: 3, thick: 5 };
 export const HARD_SHADOW_OFFSET = 4;
 
+// Grid cells have a fixed size, so their text and the row/column labels beside them grow less than body text.
+export const GRID_LABEL_MAX_SCALE = 1.3;
+
 /** Same bands as the website's group view. */
 export function heatColors(percentage: number, count: number, colors: ThemeColors): { background: string; text: string } {
   if (count === 0 || percentage === 0) return { background: colors.surface, text: colors.muted };
