@@ -6,6 +6,18 @@
 
 > **English:** WanWang ("free day") is a sign-up-free scheduling poll. Create an event, share the link in a group chat, and everyone marks the times they are free; a heatmap and ranked best times show when the group overlaps. Thai/English UI, light/dark theme, all-day / day-part / hourly formats. Includes a native Android/iOS app that shares the same API.
 
+## ตัวอย่างหน้าจอ
+
+ข้อมูลในภาพเป็นข้อมูลสมมติ
+
+| หน้าสร้างนัด | หน้าผลลัพธ์ของกลุ่ม |
+|---|---|
+| ![หน้าสร้างนัด](docs/screenshots/home.png) | ![Heatmap และอันดับเวลา](docs/screenshots/event-heatmap.png) |
+
+| ธีมมืด | มือถือ |
+|---|---|
+| ![ธีมมืด](docs/screenshots/event-dark.png) | ![มือถือ](docs/screenshots/event-mobile.png) |
+
 ## เทคโนโลยี
 
 - **เว็บ:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
