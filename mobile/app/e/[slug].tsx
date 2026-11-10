@@ -6,7 +6,9 @@ import { canShowMonth, firstOfMonth, initialMonth } from '~/calendar/monthPaging
 import { initialPage, pageCount, pageOfDate } from '~/calendar/slotPages';
 import { AdminLinkNotice } from '~/components/event/AdminLinkNotice';
 import { BestTimes } from '~/components/event/BestTimes';
+
 import { EventHeader } from '~/components/event/EventHeader';
+import { EventSkeleton } from '~/components/event/EventSkeleton';
 import { Roster } from '~/components/event/Roster';
 import { Schedule, type ScheduleTab } from '~/components/event/Schedule';
 import { NeoButton } from '~/components/neo/NeoButton';
@@ -155,7 +157,7 @@ export default function EventScreen() {
   }
 
   if (!query.data) {
-    if (!query.isError) return <StatusScreen title={t('appLoading')} />;
+    if (!query.isError) return <EventSkeleton />;
     return (
       <StatusScreen title={t('errorTitle')} description={errorMessage(query.error, t)}>
         <NeoButton label={t('retryBtn')} size="sm" onPress={() => void query.refetch()} />
