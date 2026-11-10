@@ -94,7 +94,12 @@ export interface SaveParticipantInput {
   availability: string[];
 }
 
-export type EventPatch = Partial<Pick<WanWangEvent, 'isClosed' | 'confirmedDate'>>;
+export type EventPatch = Partial<
+  Pick<
+    WanWangEvent,
+    'isClosed' | 'confirmedDate' | 'title' | 'description' | 'location' | 'category' | 'dateRangeStart' | 'dateRangeEnd'
+  >
+>;
 
 export async function createEvent(input: CreateEventInput): Promise<{ event: WanWangEvent; adminKey: string }> {
   return request('/api/events', { method: 'POST', body: input });

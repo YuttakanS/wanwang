@@ -15,6 +15,7 @@ import { NeoText } from '~/components/neo/NeoText';
 import { PrivacyNote } from '~/components/PrivacyNote';
 import { Screen } from '~/components/Screen';
 import { TimeStepper } from '~/components/TimeStepper';
+import { MAX_DESCRIPTION_LENGTH, MAX_LOCATION_LENGTH, MAX_RANGE_DAYS, MAX_TITLE_LENGTH } from '~/constants/limits';
 import { CATEGORY_LABEL_KEYS } from '~/constants/strings';
 import { borderWidths } from '~/constants/theme';
 import { useI18n } from '~/hooks/useI18n';
@@ -22,11 +23,6 @@ import { useTheme } from '~/hooks/useTheme';
 import { useCreateEvent } from '~/hooks/useMyEvents';
 import { errorMessage } from '~/services/errorMessage';
 
-// The API's limits, in LIMITS in src/lib/validation.ts, which cannot be imported here because it uses crypto.
-const MAX_TITLE_LENGTH = 100;
-const MAX_LOCATION_LENGTH = 100;
-const MAX_DESCRIPTION_LENGTH = 500;
-const MAX_RANGE_DAYS = 366;
 
 // `days` is added to the start date, so the inclusive count is days + 1. Same presets as the website.
 const RANGE_PRESETS = [

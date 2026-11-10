@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { WanWangEvent } from '@/types';
+import { EditEventPanel } from '~/components/event/EditEventPanel';
 import { NeoBadge } from '~/components/neo/NeoBadge';
 import { NeoButton } from '~/components/neo/NeoButton';
 import { NeoNotice } from '~/components/neo/NeoNotice';
@@ -15,16 +17,18 @@ import { getAdminKey } from '~/services/secrets';
 
 interface ManagePanelProps {
   event: WanWangEvent;
+  hasVotes: boolean;
   /** The new key is on this phone only until it is copied, so the screen reminds the person. */
   onAdminKeyRotated: (newKey: string) => void;
   onAdminLost: () => void;
 }
 
-export function ManagePanel({ event, onAdminKeyRotated, onAdminLost }: ManagePanelProps) {
+export function ManagePanel({ event, hasVotes, onAdminKeyRotated, onAdminLost }: ManagePanelProps) {
   const { t } = useI18n();
   const router = useRouter();
   const { copied, failedText, copy } = useCopy();
   const { update, rotate, remove } = useAdminActions(event.slug, onAdminLost);
+  const [editing, setEditing] = useState(false);
 
   const failed = update.error ?? rotate.error ?? remove.error;
   const isBusy = update.isPending || rotate.isPending || remove.isPending;
@@ -58,6 +62,14 @@ export function ManagePanel({ event, onAdminKeyRotated, onAdminLost }: ManagePan
       <NeoBadge label={t('adminVerifiedBadge')} tone="sunken" />
       <View style={styles.buttons}>
         <NeoButton
+          label={t('editEventBtn')}
+          variant="secondary"
+          size="sm"
+          disabled={isBusy}
+          accessibilityState={{ expanded: editing }}
+          onPress={() => setEditing(open => !open)}
+        />
+        <NeoButton
           label={copied === 'admin' ? t('copyAdminLinkDone') : t('copyAdminLinkBtn')}
           variant="secondary"
           size="sm"
@@ -84,6 +96,7 @@ export function ManagePanel({ event, onAdminKeyRotated, onAdminLost }: ManagePan
           onPress={confirmDelete}
         />
       </View>
+      {editing && <EditEventPanel event={event} hasVotes={hasVotes} onDone={() => setEditing(false)} onAdminLost={onAdminLost} />}
       {failed ? <NeoNotice message={errorMessage(failed, t)} /> : null}
       {failedText && (
         <>
