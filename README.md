@@ -2,6 +2,18 @@
 
 เว็บโพลหาเวลานัดที่ทุกคนว่างตรงกัน ไม่ต้องสมัครสมาชิก ตั้งชื่อนัด เลือกช่วงวัน แล้วส่งลิงก์เข้ากลุ่มแชทได้เลย
 
+**เว็บ live:** https://wanwang-one.vercel.app
+
+> **English:** WanWang ("free day") is a sign-up-free scheduling poll. Create an event, share the link in a group chat, and everyone marks the times they are free; a heatmap and ranked best times show when the group overlaps. Thai/English UI, light/dark theme, all-day / day-part / hourly formats. Includes a native Android/iOS app that shares the same API.
+
+## เทคโนโลยี
+
+- **เว็บ:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
+- **ฐานข้อมูล:** Supabase (Postgres) เข้าถึงผ่าน API route ด้วย service role เท่านั้น, pg_cron ลบข้อมูลที่หมดอายุ
+- **แอปมือถือ:** Expo SDK 58 / React Native 0.88 ใน [](mobile/) เรียก API เดียวกับเว็บ และใช้โค้ดคำนวณร่วมกันจาก  (Reanimated, Gesture Handler, Expo Router, deep link )
+- **คุณภาพ:** Vitest, ESLint, GitHub Actions CI, Content Security Policy แบบ nonce, rate limit ด้วย IP hash
+- **Deploy:** Vercel (Singapore) + Supabase
+
 ## ฟีเจอร์
 
 **สร้างนัด**
@@ -99,3 +111,7 @@ Import repo นี้ แล้วตั้ง Environment Variables ดัง�
 - สร้างนัด ลงเวลา และลบนัดได้
 - ส่งลิงก์เข้าแอปแชทจริงแล้วเห็นชื่อนัดกับรูปตัวอย่าง
 - กดปุ่มแชร์และคัดลอกได้บนมือถือจริง
+
+## ไลเซนส์
+
+[MIT](LICENSE)
