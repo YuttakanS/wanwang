@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   match: { padding: 16, gap: 12 },
   matchBody: { gap: 12 },
   matchTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
-  rank: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rank: { flexDirection: 'row', flexWrap: 'wrap', flexShrink: 1, alignItems: 'center', gap: 6 },
   bar: { height: 12, borderWidth: borderWidths.thin },
   barFill: { height: '100%', borderRightWidth: borderWidths.thin },
   counts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 6 },

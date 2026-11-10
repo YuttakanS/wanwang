@@ -7,6 +7,7 @@ import { wordOf } from '~/calendar/cellMask';
 import type { SelectionStore } from '~/calendar/selectionStore';
 import { dayColumnLabel, hourCells } from '~/calendar/slotPages';
 import { NeoText } from '~/components/neo/NeoText';
+import { GRID_LABEL_MAX_SCALE } from '~/constants/theme';
 import { useCalendarGesture } from '~/hooks/useCalendarGesture';
 import { useI18n } from '~/hooks/useI18n';
 import { DayCell, DisabledDayCell } from './DayCell';
@@ -52,7 +53,7 @@ export function HourGrid({ dates, times, today, store, outsideVersion, onDraggin
       <View style={styles.headerRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.corner} />
         {dates.map(date => (
-          <NeoText key={date} variant="caption" style={styles.dayLabel}>
+          <NeoText key={date} variant="caption" maxFontSizeMultiplier={GRID_LABEL_MAX_SCALE} style={styles.dayLabel}>
             {dayColumnLabel(date, lang)}
           </NeoText>
         ))}
@@ -60,7 +61,7 @@ export function HourGrid({ dates, times, today, store, outsideVersion, onDraggin
       <View style={styles.body}>
         <View style={styles.timeColumn} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {times.map(time => (
-            <NeoText key={time} variant="mono" style={styles.timeLabel}>
+            <NeoText key={time} variant="mono" maxFontSizeMultiplier={GRID_LABEL_MAX_SCALE} style={styles.timeLabel}>
               {time}
             </NeoText>
           ))}

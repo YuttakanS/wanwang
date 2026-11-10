@@ -5,7 +5,7 @@ import type { DayPartId } from '@/types';
 import type { SelectionStore } from '~/calendar/selectionStore';
 import { DAY_PART_IDS, dayColumnLabel, daypartSlotId } from '~/calendar/slotPages';
 import { NeoText } from '~/components/neo/NeoText';
-import { borderWidths, ON_ACCENT } from '~/constants/theme';
+import { borderWidths, ON_ACCENT, GRID_LABEL_MAX_SCALE } from '~/constants/theme';
 import { useI18n } from '~/hooks/useI18n';
 import { useIsSlotSelected } from '~/hooks/useSelectionStore';
 import { useTheme } from '~/hooks/useTheme';
@@ -42,7 +42,7 @@ function PartCell({ slotId, label, store }: PartCellProps) {
       }}
       style={[styles.cell, isSelected ? { backgroundColor: colors.accent, borderColor: ON_ACCENT } : { backgroundColor: colors.surface, borderColor: colors.ink }]}
     >
-      <NeoText variant="monoBold" style={isSelected ? styles.mark : { color: colors.muted }}>
+      <NeoText variant="monoBold" maxFontSizeMultiplier={GRID_LABEL_MAX_SCALE} style={isSelected ? styles.mark : { color: colors.muted }}>
         {isSelected ? '✓' : '-'}
       </NeoText>
     </Pressable>
@@ -66,7 +66,7 @@ export function DaypartGrid({ dates, today, store }: DaypartGridProps) {
       <View style={styles.row} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.dateColumn} />
         {DAY_PART_IDS.map(part => (
-          <NeoText key={part} variant="caption" style={styles.partLabel}>
+          <NeoText key={part} variant="caption" maxFontSizeMultiplier={GRID_LABEL_MAX_SCALE} style={styles.partLabel}>
             {`${t(PART_LABEL_KEYS[part].name)}\n${t(PART_LABEL_KEYS[part].range)}`}
           </NeoText>
         ))}
@@ -75,7 +75,7 @@ export function DaypartGrid({ dates, today, store }: DaypartGridProps) {
         const isPast = date < today;
         return (
           <View key={date} style={styles.row}>
-            <NeoText variant="caption" tone={isPast ? 'faint' : 'ink'} style={[styles.dateColumn, styles.dateLabel]}>
+            <NeoText variant="caption" tone={isPast ? 'faint' : 'ink'} maxFontSizeMultiplier={GRID_LABEL_MAX_SCALE} style={[styles.dateColumn, styles.dateLabel]}>
               {dayColumnLabel(date, lang)}
             </NeoText>
             {DAY_PART_IDS.map(part =>
