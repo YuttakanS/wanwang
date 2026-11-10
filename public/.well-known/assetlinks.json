@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.wanwang.app",
-      "sha256_cert_fingerprints": []
+      "sha256_cert_fingerprints": [
+        "C0:75:62:A4:99:94:16:EB:04:AF:D7:65:44:2E:95:4F:B4:64:74:DE:BF:6F:53:60:62:3F:45:59:F0:A2:9B:EB"
+      ]
     }
   }
 ]
