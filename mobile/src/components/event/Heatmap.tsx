@@ -11,6 +11,7 @@ import { PageHeader } from '~/components/calendar/PageHeader';
 import { NeoButton } from '~/components/neo/NeoButton';
 import { NeoCard } from '~/components/neo/NeoCard';
 import { NeoText } from '~/components/neo/NeoText';
+import { SectionHeader } from '~/components/SectionHeader';
 import type { Translate } from '~/constants/strings';
 import { borderWidths, heatColors } from '~/constants/theme';
 import { useI18n } from '~/hooks/useI18n';
@@ -63,12 +64,21 @@ export function Heatmap({
     [event.startTime, event.endTime, event.slotInterval],
   );
 
+  const header = <SectionHeader title={t('inspectTitle')} subtitle={t('inspectSubtitle')} badge={t('responsesBadge', { count: total })} />;
+
   if (total === 0) {
     return (
       <NeoCard style={styles.card}>
-        <NeoText variant="heading">{t('emptyHeatmapTitle')}</NeoText>
-        <NeoText tone="muted">{t('emptyHeatmapDesc')}</NeoText>
-        <NeoButton label={t('recordFirstBtn')} size="sm" onPress={onVoteFirst} />
+        {header}
+        <View style={[styles.empty, { borderColor: colors.ink }]}>
+          <NeoText variant="heading" style={styles.center}>
+            {t('emptyHeatmapTitle')}
+          </NeoText>
+          <NeoText variant="caption" tone="muted" style={styles.center}>
+            {t('emptyHeatmapDesc')}
+          </NeoText>
+          <NeoButton label={t('recordFirstBtn')} size="sm" onPress={onVoteFirst} />
+        </View>
       </NeoCard>
     );
   }
@@ -110,26 +120,12 @@ export function Heatmap({
   // A best time can be far down a tall table, so its details come first, in view. A tapped cell is
   // already in view, so its details go below it.
   const inspectorFirst = highlighted.length > 0;
-  const legend = [colors.surface, colors.heat1, colors.heat2, colors.heat3, colors.accent];
 
   return (
     <NeoCard style={styles.card}>
-      <NeoText variant="heading" accessibilityRole="header">
-        {t('inspectTitle')}
-      </NeoText>
-      <NeoText variant="caption" tone="muted">
-        {t('inspectSubtitle')}
-      </NeoText>
+      {header}
 
       {inspectorFirst && inspector}
-
-      <View style={styles.legend} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <NeoText variant="caption">{t('densityZero')}</NeoText>
-        {legend.map(backgroundColor => (
-          <View key={backgroundColor} style={[styles.swatch, { backgroundColor, borderColor: colors.ink }]} />
-        ))}
-        <NeoText variant="caption">{t('densityAll')}</NeoText>
-      </View>
 
       {granularity === 'day' ? (
         <>
@@ -180,8 +176,30 @@ export function Heatmap({
   );
 }
 
+/** How many are free, from none to everyone. Sits beside the tabs, as on the website. */
+export function HeatLegend() {
+  const { t } = useI18n();
+  const { colors } = useTheme();
+  const legend = [colors.surface, colors.heat1, colors.heat2, colors.heat3, colors.accent];
+
+  return (
+    <View style={styles.legend} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <NeoText variant="caption">{t('densityZero')}</NeoText>
+      <View style={styles.swatches}>
+        {legend.map(backgroundColor => (
+          <View key={backgroundColor} style={[styles.swatch, { backgroundColor, borderColor: colors.ink }]} />
+        ))}
+      </View>
+      <NeoText variant="caption">{t('densityAll')}</NeoText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  card: { padding: 12, gap: 10 },
+  card: { gap: 16 },
+  empty: { alignItems: 'center', gap: 10, paddingVertical: 32, paddingHorizontal: 16, borderWidth: borderWidths.thin, borderStyle: 'dashed' },
+  center: { textAlign: 'center' },
+  swatches: { flexDirection: 'row' },
   legend: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
   swatch: { width: 14, height: 14, borderWidth: borderWidths.thin },
   inspector: { padding: 12, gap: 4 },

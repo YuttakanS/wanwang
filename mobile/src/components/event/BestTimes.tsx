@@ -7,7 +7,8 @@ import { NeoButton } from '~/components/neo/NeoButton';
 import { NeoCard } from '~/components/neo/NeoCard';
 import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
-import { borderWidths, ON_ACCENT } from '~/constants/theme';
+import { SectionHeader } from '~/components/SectionHeader';
+import { borderWidths } from '~/constants/theme';
 import { useAdminActions } from '~/hooks/useAdminActions';
 import { useI18n } from '~/hooks/useI18n';
 import { useTheme } from '~/hooks/useTheme';
@@ -40,68 +41,95 @@ export function BestTimes({ event, participants, isAdmin, onSelect, onAdminLost 
   if (matches.length === 0) return null;
 
   const total = participants.length;
+  const hasEveryone = matches.some(match => match.availableCount === total);
   const when = (match: (typeof matches)[number]) => {
     if (event.granularity === 'day') return t('allDayLabel');
-    if (event.granularity === 'daypart') return match.dayPartLabel;
+    if (event.granularity === 'daypart') return `${match.dayPartLabel} (${match.startTime} - ${match.endTime})`;
     return `${match.startTime} - ${match.endTime} (${match.durationHours} ${t('durationSuffix')})`;
   };
 
   return (
     <NeoCard style={styles.card}>
-      <NeoText variant="heading" accessibilityRole="header">
-        {t('leaderboardTitle')}
-      </NeoText>
+      <SectionHeader
+        title={t('leaderboardTitle')}
+        subtitle={t('leaderboardSubtitle')}
+        badge={hasEveryone ? t('everyoneFree') : t('closestMatch')}
+        badgeTone={hasEveryone ? 'accent' : 'sunken'}
+      />
       {update.error ? <NeoNotice message={errorMessage(update.error, t)} /> : null}
 
       {matches.map((match, index) => {
         const isPinned = event.confirmedDate === match.date;
         const isEveryone = match.availableCount === total;
+        // The website's yellow tints: a quarter for everyone free, less for the pinned one.
+        const backgroundColor = isPinned ? `${colors.accent}26` : isEveryone ? `${colors.accent}40` : colors.surface;
         return (
-          <NeoCard key={match.id} emphasis={isPinned} tone={isEveryone ? 'accent' : 'surface'} style={styles.match}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => onSelect(match.slotIds, match.date)}
-              style={styles.matchBody}
-            >
+          <View
+            key={match.id}
+            style={[
+              styles.match,
+              { backgroundColor, borderColor: colors.ink, borderWidth: isPinned ? borderWidths.thick : borderWidths.regular },
+            ]}
+          >
+            <Pressable accessibilityRole="button" onPress={() => onSelect(match.slotIds, match.date)} style={styles.matchBody}>
               <View style={styles.matchTop}>
-                <NeoText variant="label" tone={isEveryone ? 'onAccent' : 'ink'}>
-                  {t('rankPrefix', { rank: index + 1 })}
-                </NeoText>
-                {isPinned && <NeoBadge label={t('pinnedBadge')} tone="ink" />}
-                {isEveryone && <NeoBadge label={t('everyoneFree')} />}
+                <View style={styles.rank}>
+                  <NeoText variant="heading">{t('rankPrefix', { rank: index + 1 })}</NeoText>
+                  {isPinned && <NeoBadge label={t('pinnedBadge')} tone="ink" />}
+                </View>
+                <View style={styles.rank}>
+                  {isEveryone ? (
+                    <NeoBadge label={t('everyoneFree')} tone="accent" />
+                  ) : index === 0 ? (
+                    <NeoBadge label={t('closestMatch')} tone="sunken" />
+                  ) : null}
+                  <NeoBadge label={t('matchPercent', { percent: match.percentage })} />
+                </View>
               </View>
-              <NeoText variant="label" tone={isEveryone ? 'onAccent' : 'ink'}>
-                {match.formattedThai}
-              </NeoText>
-              <NeoText variant="caption" tone={isEveryone ? 'onAccent' : 'muted'}>
-                {when(match)}
-              </NeoText>
-              <View style={[styles.bar, { backgroundColor: colors.sunken, borderColor: isEveryone ? ON_ACCENT : colors.ink }]}>
-                <View style={[styles.barFill, { width: `${match.percentage}%`, backgroundColor: isEveryone ? ON_ACCENT : colors.accent }]} />
-              </View>
-              <NeoText variant="caption" tone={isEveryone ? 'onAccent' : 'ink'}>
-                {t('freeCountText', { free: match.availableCount, total: match.totalParticipants })} · {t('matchPercent', { percent: match.percentage })}
-              </NeoText>
-              <NeoText variant="caption" tone={isEveryone ? 'onAccent' : 'ink'}>
-                {t('availableLabel')} {match.availableNames.join(', ')}
-              </NeoText>
-              {match.missingNames.length > 0 && (
+
+              <View>
+                <NeoText variant="label">{match.formattedThai}</NeoText>
                 <NeoText variant="caption" tone="muted">
-                  {t('missingFriendsLabel')} {match.missingNames.join(', ')}
+                  {when(match)}
                 </NeoText>
-              )}
+              </View>
+
+              <View style={[styles.bar, { backgroundColor: colors.sunken, borderColor: colors.ink }]}>
+                <View style={[styles.barFill, { width: `${match.percentage}%`, backgroundColor: colors.accent, borderColor: colors.ink }]} />
+              </View>
+
+              <View style={styles.counts}>
+                <NeoText variant="caption">{t('freeCountText', { free: match.availableCount, total: match.totalParticipants })}</NeoText>
+                <NeoText variant="caption" tone={match.missingNames.length === 0 ? 'ink' : 'muted'}>
+                  {match.missingNames.length === 0 ? `[${t('allAvailableLabel')}]` : t('missingCount', { count: match.missingNames.length })}
+                </NeoText>
+              </View>
+
+              <View style={[styles.names, { borderTopColor: colors.ink }]}>
+                <NeoText variant="caption" tone="muted" numberOfLines={2}>
+                  <NeoText variant="caption">{t('availableLabel')}</NeoText> {match.availableNames.join(', ')}
+                </NeoText>
+                {match.missingNames.length > 0 && (
+                  <NeoText variant="caption" tone="muted" numberOfLines={2}>
+                    <NeoText variant="caption">{t('missingFriendsLabel')}</NeoText> {match.missingNames.join(', ')}
+                  </NeoText>
+                )}
+              </View>
             </Pressable>
             {isAdmin && (
-              <NeoButton
-                label={isPinned ? t('unpinThisDate') : t('pinThisDate')}
-                accessibilityLabel={`${isPinned ? t('unpinThisDate') : t('pinThisDate')} ${match.formattedThai}`}
-                variant="secondary"
-                size="sm"
-                disabled={update.isPending}
-                onPress={() => update.mutate({ confirmedDate: isPinned ? '' : match.date })}
-              />
+              <View style={[styles.pinRow, { borderTopColor: colors.ink }]}>
+                <NeoButton
+                  label={isPinned ? `✓ ${t('unpinThisDate')}` : `📌 ${t('pinThisDate')}`}
+                  accessibilityLabel={`${isPinned ? t('unpinThisDate') : t('pinThisDate')} ${match.formattedThai}`}
+                  variant={isPinned ? 'ink' : 'primary'}
+                  size="sm"
+                  style={styles.pinButton}
+                  disabled={update.isPending}
+                  onPress={() => update.mutate({ confirmedDate: isPinned ? '' : match.date })}
+                />
+              </View>
             )}
-          </NeoCard>
+          </View>
         );
       })}
     </NeoCard>
@@ -109,10 +137,15 @@ export function BestTimes({ event, participants, isAdmin, onSelect, onAdminLost 
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 12, gap: 12 },
-  match: { padding: 12, gap: 10 },
-  matchBody: { gap: 4 },
-  matchTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
-  bar: { height: 10, borderWidth: borderWidths.thin, marginVertical: 4 },
-  barFill: { height: '100%' },
+  card: { gap: 16 },
+  match: { padding: 16, gap: 12 },
+  matchBody: { gap: 12 },
+  matchTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  rank: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bar: { height: 12, borderWidth: borderWidths.thin },
+  barFill: { height: '100%', borderRightWidth: borderWidths.thin },
+  counts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 6 },
+  names: { gap: 4, paddingTop: 8, borderTopWidth: borderWidths.thin },
+  pinRow: { paddingTop: 10, borderTopWidth: borderWidths.thin },
+  pinButton: { alignSelf: 'flex-end' },
 });

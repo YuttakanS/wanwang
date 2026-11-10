@@ -12,13 +12,13 @@
       "android"
     ],
     "ios": {
-      "bundleIdentifier": "com.yuttakans.wanwang",
+      "bundleIdentifier": "com.wanwang.app",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.yuttakans.wanwang",
+      "package": "com.wanwang.app",
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

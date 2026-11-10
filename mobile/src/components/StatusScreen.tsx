@@ -18,12 +18,16 @@ export function StatusScreen({ title, description, children }: StatusScreenProps
   const { colors } = useTheme();
   return (
     <View style={[styles.screen, { backgroundColor: colors.surface, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
-      <NeoCard emphasis style={styles.card}>
-        <NeoText variant="heading" accessibilityRole="header" accessibilityLiveRegion="polite">
+      <NeoCard style={styles.card}>
+        <NeoText variant="title" accessibilityRole="header" accessibilityLiveRegion="polite" style={styles.center}>
           {title}
         </NeoText>
-        {description ? <NeoText tone="muted">{description}</NeoText> : null}
-        {children}
+        {description ? (
+          <NeoText variant="caption" tone="muted" style={styles.center}>
+            {description}
+          </NeoText>
+        ) : null}
+        {children ? <View style={styles.buttons}>{children}</View> : null}
       </NeoCard>
     </View>
   );
@@ -31,5 +35,7 @@ export function StatusScreen({ title, description, children }: StatusScreenProps
 
 const styles = StyleSheet.create({
   screen: { flex: 1, justifyContent: 'center', paddingHorizontal: 16 },
-  card: { padding: 20, gap: 12 },
+  card: { padding: 24, gap: 12, alignItems: 'center' },
+  center: { textAlign: 'center' },
+  buttons: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 },
 });
