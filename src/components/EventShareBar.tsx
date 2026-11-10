@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { WanWangEvent, Participant } from '@/types';
-import { generateShareMessage } from '@/lib/timeUtils';
+import { generateShareMessage, participantsHaveSlots } from '@/lib/timeUtils';
 import { buildShareUrl, ShareTarget } from '@/lib/shareTargets';
 import { useRouter } from 'next/navigation';
 import { buildAdminLink, forgetEvent, getStoredAdminKey } from '@/lib/adminAccess';
@@ -327,7 +327,7 @@ export default function EventShareBar({
       {isAdmin && openPanel === 'admin' && isEditing && (
         <EditEventForm
           event={event}
-          hasVotes={participants.length > 0}
+          hasVotes={participantsHaveSlots(participants)}
           onCancel={() => setIsEditing(false)}
           onSaved={() => {
             setIsEditing(false);

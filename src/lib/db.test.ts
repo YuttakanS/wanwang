@@ -192,11 +192,50 @@ describe('updateEvent', () => {
 
   it('refuses shrinking the range once people have voted', async () => {
     state.results.push({ data: { ...stored, granularity: 'day', dates: ['2026-12-01', '2026-12-05'] }, error: null });
-    state.results.push({ data: [{ id: 'p1', event_id: 'event-1', availability: [] }], error: null });
+    state.results.push({ data: [{ id: 'p1', event_id: 'event-1', availability: ['2026-12-05'] }], error: null });
 
     await expect(updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-12-02', dateRangeEnd: '2026-12-05' }))
       .rejects.toThrow('CANNOT_SHRINK_RANGE_WITH_VOTES');
     expect(didWrite()).toBe(false);
+  });
+
+  it('allows shrinking the range when every answer has no slots', async () => {
+    state.results.push({ data: { ...stored, granularity: 'day', dates: ['2026-12-01', '2026-12-05'] }, error: null });
+    state.results.push({ data: [{ id: 'p1', event_id: 'event-1', availability: [] }], error: null });
+    state.results.push({ data: { id: 'event-1', dates: [] }, error: null });
+
+    await updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-12-02', dateRangeEnd: '2026-12-03' });
+
+    const update = state.calls.find(c => stepsNamed(c, 'update').length > 0)!;
+    expect(argsOf(update, 'update').dates).toEqual(['2026-12-02', '2026-12-03']);
+  });
+
+  it('clears a confirmed date that the new range leaves out', async () => {
+    state.results.push({
+      data: { ...stored, granularity: 'day', dates: ['2026-12-01', '2026-12-02'], confirmed_date: '2026-12-01' },
+      error: null,
+    });
+    state.results.push({ data: [], error: null });
+    state.results.push({ data: { id: 'event-1', dates: [] }, error: null });
+
+    await updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-12-02', dateRangeEnd: '2026-12-04' });
+
+    const update = state.calls.find(c => stepsNamed(c, 'update').length > 0)!;
+    expect(argsOf(update, 'update')).toHaveProperty('confirmed_date', null);
+  });
+
+  it('keeps a confirmed date that is still in the new range', async () => {
+    state.results.push({
+      data: { ...stored, granularity: 'hour', dates: ['2026-12-01', '2026-12-02'], confirmed_date: '2026-12-02' },
+      error: null,
+    });
+    state.results.push({ data: [{ id: 'p1', event_id: 'event-1', availability: ['2026-12-02T09:00'] }], error: null });
+    state.results.push({ data: { id: 'event-1', dates: [] }, error: null });
+
+    await updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-12-01', dateRangeEnd: '2026-12-05' });
+
+    const update = state.calls.find(c => stepsNamed(c, 'update').length > 0)!;
+    expect(argsOf(update, 'update')).not.toHaveProperty('confirmed_date');
   });
 
   it('allows widening the range once people have voted', async () => {
