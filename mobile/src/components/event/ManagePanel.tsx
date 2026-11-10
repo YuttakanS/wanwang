@@ -55,7 +55,7 @@ export function ManagePanel({ event, onAdminKeyRotated, onAdminLost }: ManagePan
 
   return (
     <View style={styles.panel}>
-      <NeoBadge label={t('adminVerifiedBadge')} />
+      <NeoBadge label={t('adminVerifiedBadge')} tone="sunken" />
       <View style={styles.buttons}>
         <NeoButton
           label={copied === 'admin' ? t('copyAdminLinkDone') : t('copyAdminLinkBtn')}
@@ -66,7 +66,8 @@ export function ManagePanel({ event, onAdminKeyRotated, onAdminLost }: ManagePan
         <NeoButton label={t('rotateAdminBtn')} variant="secondary" size="sm" disabled={isBusy} onPress={confirmRotate} />
         <NeoButton
           label={event.isClosed ? t('reopenVotingBtn') : t('closeVotingBtn')}
-          variant="secondary"
+          // As on the website: closing is the dark button, reopening the yellow one.
+          variant={event.isClosed ? 'primary' : 'ink'}
           size="sm"
           disabled={isBusy}
           onPress={() => update.mutate({ isClosed: !event.isClosed })}
@@ -77,7 +78,7 @@ export function ManagePanel({ event, onAdminKeyRotated, onAdminLost }: ManagePan
         ) : null}
         <NeoButton
           label={remove.isPending ? t('deleteEventDeleting') : t('deleteEventBtn')}
-          variant="secondary"
+          variant="danger"
           size="sm"
           disabled={isBusy}
           onPress={confirmDelete}

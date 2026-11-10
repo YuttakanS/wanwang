@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { buildMonthCells } from '@/lib/monthCells';
 import { formatDateToISO, formatLocalizedDate, generateAllEventSlots, generateDayTimeSlots, isWeekend } from '@/lib/timeUtils';
 import type { Participant, WanWangEvent } from '@/types';
@@ -16,12 +16,14 @@ import { NeoInput } from '~/components/neo/NeoInput';
 import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
 import { PrivacyNote } from '~/components/PrivacyNote';
+import { borderWidths } from '~/constants/theme';
 import { EDIT_TOKEN_UNAVAILABLE, useSaveVote } from '~/hooks/useEvent';
 import { useI18n } from '~/hooks/useI18n';
 import { useSelectionStore } from '~/hooks/useSelectionStore';
+import { useTheme } from '~/hooks/useTheme';
 import { ApiError } from '~/services/api';
 import { errorMessage } from '~/services/errorMessage';
-import { Heatmap } from './Heatmap';
+import { HeatLegend, Heatmap } from './Heatmap';
 
 // The API's limits, in LIMITS in src/lib/validation.ts, which cannot be imported here because it uses crypto.
 const MAX_NAME_LENGTH = 50;
@@ -64,6 +66,7 @@ export function Schedule({
   onDraggingChange,
 }: ScheduleProps) {
   const { lang, t } = useI18n();
+  const { colors } = useTheme();
   const { store, slots, outsideVersion } = useSelectionStore();
   const save = useSaveVote(event.slug, event.title);
 
@@ -134,16 +137,37 @@ export function Schedule({
 
   return (
     <View style={styles.schedule}>
-      <View style={styles.tabs}>
-        <NeoChip
-          label={t('tabVote', { count: slots.length })}
-          selected={tab === 'vote'}
-          onPress={() => {
-            setJustSaved(false);
-            onTabChange('vote');
-          }}
-        />
-        <NeoChip label={t('tabHeatmap', { count: participants.length })} selected={tab === 'heatmap'} onPress={() => onTabChange('heatmap')} />
+      <View style={[styles.tabBar, { borderColor: colors.ink, backgroundColor: colors.surface }]}>
+        <View accessibilityRole="tablist" style={styles.tabs}>
+          {(
+            [
+              { id: 'vote', label: t('tabVote', { count: slots.length }) },
+              { id: 'heatmap', label: t('tabHeatmap', { count: participants.length }) },
+            ] as const
+          ).map(item => {
+            const selected = tab === item.id;
+            return (
+              <Pressable
+                key={item.id}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                onPress={() => {
+                  if (item.id === 'vote') setJustSaved(false);
+                  onTabChange(item.id);
+                }}
+                style={({ pressed }) => [
+                  styles.tab,
+                  { borderColor: colors.ink, backgroundColor: selected ? colors.ink : pressed ? colors.sunken : colors.surface },
+                ]}
+              >
+                <NeoText variant="caption" style={{ color: selected ? colors.surface : colors.ink }}>
+                  {item.label}
+                </NeoText>
+              </Pressable>
+            );
+          })}
+        </View>
+        {tab === 'heatmap' && <HeatLegend />}
       </View>
 
       {justSaved && tab === 'heatmap' && <NeoNotice tone="sunken" message={t('saveSuccessMsg')} />}
@@ -165,43 +189,56 @@ export function Schedule({
         />
       )}
 
-      {tab === 'vote' && event.isClosed && <NeoNotice tone="sunken" message={t('votingClosedAlert')} />}
-      {tab === 'vote' && !event.isClosed && selectable.length === 0 && <NeoNotice tone="sunken" message={t('eventPastNotice')} />}
+      {tab === 'vote' && (event.isClosed || selectable.length === 0) && (
+        <NeoCard>
+          <View style={[styles.closed, { backgroundColor: colors.sunken, borderColor: colors.ink }]}>
+            <NeoText variant="label" style={styles.center}>
+              {event.isClosed ? t('votingClosedAlert') : t('eventPastNotice')}
+            </NeoText>
+          </View>
+        </NeoCard>
+      )}
 
       {tab === 'vote' && !event.isClosed && selectable.length > 0 && (
         <NeoCard style={styles.card}>
-          <NeoInput
-            label={t('yourNameLabel')}
-            placeholder={t('yourNamePlaceholder')}
-            value={name}
-            onChangeText={setNameDraft}
-            maxLength={MAX_NAME_LENGTH}
-            autoComplete="off"
-          />
-          {mine && <NeoText variant="caption">{t('editResponseNote')}</NeoText>}
-          <NeoInput
-            label={t('yourNoteLabel')}
-            placeholder={t('yourNotePlaceholder')}
-            value={note}
-            onChangeText={setNoteDraft}
-            maxLength={MAX_NOTE_LENGTH}
-          />
+          <View style={[styles.who, { borderBottomColor: colors.ink }]}>
+            <View style={styles.field}>
+              <NeoInput
+                label={t('yourNameLabel')}
+                placeholder={t('yourNamePlaceholder')}
+                value={name}
+                onChangeText={setNameDraft}
+                maxLength={MAX_NAME_LENGTH}
+                autoComplete="off"
+              />
+              {mine && <NeoText variant="caption">{t('editResponseNote')}</NeoText>}
+            </View>
+            <NeoInput
+              label={t('yourNoteLabel')}
+              placeholder={t('yourNotePlaceholder')}
+              value={note}
+              onChangeText={setNoteDraft}
+              maxLength={MAX_NOTE_LENGTH}
+            />
+          </View>
           <PrivacyNote text={t('voteVisibilityNote')} />
 
-          <NeoText variant="caption">
-            {granularity === 'day' ? t('voteCalendarPrompt') : granularity === 'daypart' ? t('votePromptDaypart') : t('dragInstructions')}
-          </NeoText>
-          <View style={styles.shortcuts}>
-            <NeoChip
-              label={t('shortcutWeekendsOnly')}
-              onPress={() => store.replace(new Set([...slots, ...selectable.filter(slot => isWeekend(slot.date)).map(slot => slot.id)]))}
-            />
-            <NeoChip
-              label={t('btnSelectAll')}
-              // Adds to the selection, so days already gone in an earlier answer are not silently dropped.
-              onPress={() => store.replace(new Set([...slots, ...selectable.map(slot => slot.id)]))}
-            />
-            {slots.length > 0 && <NeoChip label={t('shortcutClearSelection')} onPress={() => store.replace([])} />}
+          <View style={[styles.instructions, { backgroundColor: colors.sunken, borderColor: colors.ink }]}>
+            <NeoText variant="caption">
+              {granularity === 'day' ? t('voteCalendarPrompt') : granularity === 'daypart' ? t('votePromptDaypart') : t('dragInstructions')}
+            </NeoText>
+            <View style={styles.shortcuts}>
+              <NeoChip
+                label={t('shortcutWeekendsOnly')}
+                onPress={() => store.replace(new Set([...slots, ...selectable.filter(slot => isWeekend(slot.date)).map(slot => slot.id)]))}
+              />
+              <NeoChip
+                label={t('btnSelectAll')}
+                // Adds to the selection, so days already gone in an earlier answer are not silently dropped.
+                onPress={() => store.replace(new Set([...slots, ...selectable.map(slot => slot.id)]))}
+              />
+              {slots.length > 0 && <NeoChip label={t('shortcutClearSelection')} onPress={() => store.replace([])} />}
+            </View>
           </View>
 
           {granularity === 'day' ? (
@@ -238,13 +275,15 @@ export function Schedule({
 
           {shownError && <NeoNotice message={shownError} />}
 
-          <NeoText variant="label">{t(granularity === 'day' ? 'selectedDaysCount' : 'selectedSlotsCount', { count: slots.length })}</NeoText>
-          <NeoButton
-            fullWidth
-            label={save.isPending ? t('savingDataBtn') : t('saveMyAvailabilityBtn')}
-            disabled={save.isPending}
-            onPress={submit}
-          />
+          <View style={[styles.footer, { borderTopColor: colors.ink }]}>
+            <NeoText variant="label">{t(granularity === 'day' ? 'selectedDaysCount' : 'selectedSlotsCount', { count: slots.length })}</NeoText>
+            <NeoButton
+              fullWidth
+              label={save.isPending ? t('savingDataBtn') : t('saveMyAvailabilityBtn')}
+              disabled={save.isPending}
+              onPress={submit}
+            />
+          </View>
         </NeoCard>
       )}
     </View>
@@ -252,8 +291,16 @@ export function Schedule({
 }
 
 const styles = StyleSheet.create({
-  schedule: { gap: 12 },
+  schedule: { gap: 16 },
+  tabBar: { gap: 10, padding: 10, borderWidth: borderWidths.regular },
   tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tab: { minHeight: 40, paddingHorizontal: 14, justifyContent: 'center', borderWidth: borderWidths.regular },
+  closed: { padding: 16, borderWidth: borderWidths.regular },
+  center: { textAlign: 'center' },
+  card: { gap: 16 },
+  who: { gap: 12, paddingBottom: 16, borderBottomWidth: borderWidths.regular },
+  field: { gap: 4 },
+  instructions: { gap: 10, padding: 12, borderWidth: borderWidths.thin },
   shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  card: { padding: 12, gap: 12 },
+  footer: { gap: 10, paddingTop: 12, borderTopWidth: borderWidths.regular },
 });
