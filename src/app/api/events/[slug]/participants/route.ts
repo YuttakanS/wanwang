@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEventBySlug, upsertParticipant, deleteParticipant } from '@/lib/db';
+import { getEventBySlug, getParticipantsByEventId, upsertParticipant, deleteParticipant } from '@/lib/db';
 import { rateLimit } from '@/lib/rateLimit';
-import { validateParticipantInput, ValidationError, verifySecret } from '@/lib/validation';
+import { LIMITS, validateParticipantInput, ValidationError, verifySecret } from '@/lib/validation';
 
 export async function POST(
   req: NextRequest,
@@ -34,6 +34,13 @@ export async function POST(
     }
 
     const input = validateParticipantInput(body, event);
+    // Vercel cuts responses at 4.5 MB and GET /api/events/[slug] returns every vote, so stop taking
+    // votes while the full list still fits.
+    const existing = await getParticipantsByEventId(event.id);
+    const others = existing.filter(p => p.id !== input.id);
+    if (JSON.stringify(others).length + JSON.stringify(input).length > LIMITS.maxEventPayloadBytes) {
+      return NextResponse.json({ error: 'กิจกรรมนี้มีผู้โหวตเต็มแล้ว (Event is full)' }, { status: 409 });
+    }
     const participant = await upsertParticipant(event.id, input);
 
     return NextResponse.json({ success: true, participant });

@@ -10,6 +10,7 @@ export const LIMITS = {
   note: 300,
   maxRangeDays: 366,
   maxSlots: MAX_EVENT_SLOTS,
+  maxEventPayloadBytes: 3_500_000,
 } as const;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
