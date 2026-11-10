@@ -198,6 +198,17 @@ describe('updateEvent', () => {
       .rejects.toThrow('CANNOT_SHRINK_RANGE_WITH_VOTES');
     expect(didWrite()).toBe(false);
   });
+
+  it('allows widening the range once people have voted', async () => {
+    state.results.push({ data: { ...stored, granularity: 'day', dates: ['2026-12-01', '2026-12-02'] }, error: null });
+    state.results.push({ data: [{ id: 'p1', event_id: 'event-1', availability: [] }], error: null });
+    state.results.push({ data: { id: 'event-1', dates: [] }, error: null });
+
+    await updateEvent('abc123', CURRENT_KEY, { dateRangeStart: '2026-11-30', dateRangeEnd: '2026-12-03' });
+
+    const update = state.calls.find(c => stepsNamed(c, 'update').length > 0)!;
+    expect(argsOf(update, 'update').dates).toEqual(['2026-11-30', '2026-12-01', '2026-12-02', '2026-12-03']);
+  });
 });
 
 describe('updateEvent slot cap', () => {
