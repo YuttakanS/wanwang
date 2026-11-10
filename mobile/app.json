@@ -69,6 +69,12 @@
     ],
     "experiments": {
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ead420f2-c961-4700-bb75-df65d7eef013"
+      }
+    },
+    "owner": "yutaqqq"
   }
 }
