@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { buildAdminLink, forgetEvent, getStoredAdminKey } from '@/lib/adminAccess';
 import { copyText } from '@/lib/clipboard';
 import ConfirmModal from '@/components/ConfirmModal';
+import EditEventForm from '@/components/EditEventForm';
 import { useI18n } from '@/lib/i18n';
 
 interface EventShareBarProps {
@@ -53,6 +54,7 @@ export default function EventShareBar({
   const [deleteFailed, setDeleteFailed] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const closeDeleteConfirm = useCallback(() => setConfirmingDelete(false), []);
+  const [isEditing, setIsEditing] = useState(false);
   const [confirmingRotate, setConfirmingRotate] = useState(false);
   const closeRotateConfirm = useCallback(() => setConfirmingRotate(false), []);
   const router = useRouter();
@@ -273,6 +275,16 @@ export default function EventShareBar({
 
           <button
             type="button"
+            aria-expanded={isEditing}
+            disabled={isUpdating}
+            onClick={() => setIsEditing(editing => !editing)}
+            className="px-2 py-1 bg-surface hover:bg-ink hover:text-surface border-2 border-ink font-mono text-xs transition-none"
+          >
+            {t('editEventBtn')}
+          </button>
+
+          <button
+            type="button"
             onClick={handleCopyAdminLink}
             className="px-2 py-1 bg-surface hover:bg-ink hover:text-surface border-2 border-ink font-mono text-xs transition-none"
           >
@@ -310,6 +322,18 @@ export default function EventShareBar({
             {t('deleteEventBtn')}
           </button>
         </div>
+      )}
+
+      {isAdmin && openPanel === 'admin' && isEditing && (
+        <EditEventForm
+          event={event}
+          hasVotes={participants.length > 0}
+          onCancel={() => setIsEditing(false)}
+          onSaved={() => {
+            setIsEditing(false);
+            onEventUpdated();
+          }}
+        />
       )}
 
       {manualCopy && (
