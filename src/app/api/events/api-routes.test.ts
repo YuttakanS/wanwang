@@ -269,6 +269,7 @@ describe('POST /api/events/[slug]/participants', () => {
 
   beforeEach(() => {
     db.getEventBySlug.mockResolvedValue(makeEvent());
+    db.getParticipantsByEventId.mockResolvedValue([]);
   });
 
   it('answers 404 for an unknown event', async () => {
