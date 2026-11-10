@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ReducedMotionConfig, ReduceMotion } from 'react-native-reanimated';
 import { I18nProvider } from '~/components/I18nProvider';
 import { ThemeProvider } from '~/components/ThemeProvider';
 import { fontAssets } from '~/constants/fonts';
@@ -39,6 +40,7 @@ function AppShell() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <ReducedMotionConfig mode={ReduceMotion.System} />
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <I18nProvider>

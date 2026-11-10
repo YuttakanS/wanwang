@@ -151,6 +151,7 @@ export function Schedule({
                 key={item.id}
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
+                hitSlop={{ top: 4, bottom: 4 }}
                 onPress={() => {
                   if (item.id === 'vote') setJustSaved(false);
                   onTabChange(item.id);

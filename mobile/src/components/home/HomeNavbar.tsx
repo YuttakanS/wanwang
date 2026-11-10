@@ -41,7 +41,8 @@ export function HomeNavbar() {
               key={code}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              hitSlop={4}
+              accessibilityLabel={label === 'TH' ? 'ภาษาไทย' : 'English'}
+              hitSlop={{ top: 9, bottom: 9, left: 4, right: 4 }}
               onPress={() => setLang(code)}
               style={[
                 styles.language,
@@ -60,7 +61,7 @@ export function HomeNavbar() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t(THEME_LABEL_KEYS[preference])}
-        hitSlop={4}
+        hitSlop={6}
         onPress={() => setPreference(NEXT_THEME[preference])}
         style={({ pressed }) => [styles.theme, { borderColor: colors.ink, backgroundColor: pressed ? colors.sunken : colors.surface }]}
       >

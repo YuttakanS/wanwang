@@ -23,7 +23,7 @@ export function NeoChip({ label, selected = false, disabled = false, accessibili
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
-      hitSlop={4}
+      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
