@@ -30,6 +30,7 @@ export function ManagePanel({ event, hasVotes, onAdminKeyRotated, onAdminLost }:
   const { update, rotate, remove } = useAdminActions(event.slug, onAdminLost);
   const [editing, setEditing] = useState(false);
 
+  // One set of actions for the whole panel, edit form included, so nothing runs alongside a save.
   const failed = update.error ?? rotate.error ?? remove.error;
   const isBusy = update.isPending || rotate.isPending || remove.isPending;
 
@@ -96,7 +97,9 @@ export function ManagePanel({ event, hasVotes, onAdminKeyRotated, onAdminLost }:
           onPress={confirmDelete}
         />
       </View>
-      {editing && <EditEventPanel event={event} hasVotes={hasVotes} onDone={() => setEditing(false)} onAdminLost={onAdminLost} />}
+      {editing && (
+        <EditEventPanel event={event} hasVotes={hasVotes} update={update} busy={isBusy} onDone={() => setEditing(false)} />
+      )}
       {failed ? <NeoNotice message={errorMessage(failed, t)} /> : null}
       {failedText && (
         <>

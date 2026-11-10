@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { countEventSlots, formatDateToISO, formatLocalizedDateRange, generateDatesInRange } from '@/lib/timeUtils';
-import { EVENT_CATEGORIES, type EventCategory, MAX_EVENT_SLOTS, type WanWangEvent } from '@/types';
+import { formatDateToISO, formatLocalizedDateRange } from '@/lib/timeUtils';
+import { EVENT_CATEGORIES, type EventCategory, type WanWangEvent } from '@/types';
 import type { DateRange } from '~/calendar/rangePick';
 import { RangeCalendar } from '~/components/calendar/RangeCalendar';
 import { ChoiceGrid } from '~/components/create/Choices';
@@ -10,73 +10,51 @@ import { NeoButton } from '~/components/neo/NeoButton';
 import { NeoInput } from '~/components/neo/NeoInput';
 import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
-import { MAX_DESCRIPTION_LENGTH, MAX_LOCATION_LENGTH, MAX_RANGE_DAYS, MAX_TITLE_LENGTH } from '~/constants/limits';
+import { MAX_DESCRIPTION_LENGTH, MAX_LOCATION_LENGTH, MAX_TITLE_LENGTH } from '~/constants/limits';
 import { CATEGORY_LABEL_KEYS } from '~/constants/strings';
-import { useAdminActions } from '~/hooks/useAdminActions';
+import type { useAdminActions } from '~/hooks/useAdminActions';
 import { useI18n } from '~/hooks/useI18n';
-import type { EventPatch } from '~/services/api';
-import { errorMessage } from '~/services/errorMessage';
+import { buildEventPatch, editEventProblem, initialEventRange } from '~/services/editEvent';
 
 interface EditEventPanelProps {
   event: WanWangEvent;
   /** Once anyone has answered, the server only lets the range grow, so their slots stay valid. */
   hasVotes: boolean;
+  /** The manage panel's own, so its other buttons wait for a save and it shows the save's error. */
+  update: ReturnType<typeof useAdminActions>['update'];
+  /** True while any organizer action is running, such as a key rotation the save would race. */
+  busy: boolean;
   onDone: () => void;
-  onAdminLost: () => void;
 }
 
 /** The website's edit form: text, category and date range. The time format stays as created. */
-export function EditEventPanel({ event, hasVotes, onDone, onAdminLost }: EditEventPanelProps) {
+export function EditEventPanel({ event, hasVotes, update, busy, onDone }: EditEventPanelProps) {
   const { lang, t } = useI18n();
-  const { update } = useAdminActions(event.slug, onAdminLost);
 
   const today = formatDateToISO(new Date());
-  const initialStart = event.dateRangeStart || event.dates[0] || today;
-  const initialEnd = event.dateRangeEnd || event.dates[event.dates.length - 1] || initialStart;
+  const initial = initialEventRange(event, today);
 
   const [title, setTitle] = useState(event.title);
   const [location, setLocation] = useState(event.location ?? '');
   const [description, setDescription] = useState(event.description ?? '');
   const [category, setCategory] = useState<EventCategory>(event.category);
-  const [range, setRange] = useState<DateRange>({ start: initialStart, end: initialEnd });
+  const [range, setRange] = useState<DateRange>(initial);
   const [triedSaving, setTriedSaving] = useState(false);
 
-  const dayCount = range.end ? generateDatesInRange(range.start, range.end).length : 0;
-  const shrinks = hasVotes && range.end !== null && (range.start > initialStart || range.end < initialEnd);
-
+  const form = { title, location, description, category, range };
   // Worked out on each render, so the message goes away as soon as the person fixes the problem.
-  const problem = !title.trim()
-    ? t('formErrorTitle')
-    : !range.end
-      ? t('rangePickEnd')
-      : dayCount > MAX_RANGE_DAYS
-        ? t('rangeTooLong', { max: MAX_RANGE_DAYS })
-        : shrinks
-          ? t('editRangeExpandOnly')
-          : countEventSlots(event.granularity || 'day', dayCount, event.startTime, event.endTime, event.slotInterval) > MAX_EVENT_SLOTS
-            ? t('formErrorTooManySlots')
-            : null;
+  const problem = editEventProblem(form, event, hasVotes, today);
+  const shownProblem = triedSaving ? problem : null;
 
   const save = () => {
-    if (problem || !range.end) {
+    if (problem) {
       update.reset();
       return setTriedSaving(true);
     }
-    const patch: EventPatch = {};
-    if (title.trim() !== event.title) patch.title = title.trim();
-    if (location.trim() !== (event.location ?? '')) patch.location = location.trim();
-    if (description.trim() !== (event.description ?? '')) patch.description = description.trim();
-    if (category !== event.category) patch.category = category;
-    // The API takes the range only as a pair.
-    if (range.start !== initialStart || range.end !== initialEnd) {
-      patch.dateRangeStart = range.start;
-      patch.dateRangeEnd = range.end;
-    }
+    const patch = buildEventPatch(form, event, today);
     if (Object.keys(patch).length === 0) return onDone();
     update.mutate(patch, { onSuccess: onDone });
   };
-
-  const shownError = triedSaving && problem ? problem : update.error ? errorMessage(update.error, t) : null;
 
   return (
     <View style={styles.panel}>
@@ -104,23 +82,24 @@ export function EditEventPanel({ event, hasVotes, onDone, onAdminLost }: EditEve
         onChangeText={setDescription}
         maxLength={MAX_DESCRIPTION_LENGTH}
       />
-      <RangeCalendar range={range} today={today} minDate={initialStart < today ? initialStart : today} onChange={setRange} />
+      <RangeCalendar range={range} today={today} minDate={initial.start < today ? initial.start : today} onChange={setRange} />
       <RangeSummary
         label={range.end ? t('rangeSummaryLabel') : ''}
         text={range.end ? formatLocalizedDateRange(range.start, range.end, lang) : t('rangePickEnd')}
       />
       <NeoText variant="caption" tone="muted">
-        {hasVotes ? t('editRangeExpandOnly') : t('rangePickHint')}
+        {/* Not twice when the notice below already says it. */}
+        {hasVotes && shownProblem?.key !== 'editRangeExpandOnly' ? t('editRangeExpandOnly') : t('rangePickHint')}
       </NeoText>
-      {shownError && <NeoNotice message={shownError} />}
+      {shownProblem && <NeoNotice message={t(shownProblem.key, shownProblem.params)} />}
       <View style={styles.buttons}>
         <NeoButton
           label={update.isPending ? t('savingChangesBtn') : t('saveChangesBtn')}
           size="sm"
-          disabled={update.isPending}
+          disabled={busy}
           onPress={save}
         />
-        <NeoButton label={t('confirmCancelBtn')} variant="secondary" size="sm" disabled={update.isPending} onPress={onDone} />
+        <NeoButton label={t('confirmCancelBtn')} variant="secondary" size="sm" disabled={busy} onPress={onDone} />
       </View>
     </View>
   );
