@@ -15,6 +15,8 @@ export function errorMessage(error: unknown, t: Translate): string {
       return error.message;
     case 403:
       return t('forbiddenError');
+    case 409:
+      return t('eventFullError');
     case 404:
       return t('notFoundDesc');
     case 429:

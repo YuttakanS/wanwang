@@ -21,6 +21,7 @@ describe('errorMessage', () => {
   it('explains network failures and other known states', () => {
     expect(errorMessage(new ApiError('x', 0), t)).toBe(t('networkError'));
     expect(errorMessage(new ApiError('x', 403), t)).toBe(t('forbiddenError'));
+    expect(errorMessage(new ApiError('x', 409), t)).toBe(t('eventFullError'));
     expect(errorMessage(new ApiError('x', 404), t)).toBe(t('notFoundDesc'));
   });
 
