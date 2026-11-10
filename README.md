@@ -10,7 +10,7 @@
 
 - **เว็บ:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
 - **ฐานข้อมูล:** Supabase (Postgres) เข้าถึงผ่าน API route ด้วย service role เท่านั้น, pg_cron ลบข้อมูลที่หมดอายุ
-- **แอปมือถือ:** Expo SDK 58 / React Native 0.88 ใน [](mobile/) เรียก API เดียวกับเว็บ และใช้โค้ดคำนวณร่วมกันจาก  (Reanimated, Gesture Handler, Expo Router, deep link )
+- **แอปมือถือ:** Expo SDK 58 / React Native 0.88 ใน [`mobile/`](mobile/) เรียก API เดียวกับเว็บ และใช้โค้ดคำนวณร่วมกันจาก `src/lib` (Reanimated, Gesture Handler, Expo Router, deep link `/e/<slug>`)
 - **คุณภาพ:** Vitest, ESLint, GitHub Actions CI, Content Security Policy แบบ nonce, rate limit ด้วย IP hash
 - **Deploy:** Vercel (Singapore) + Supabase
 
