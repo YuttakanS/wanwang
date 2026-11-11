@@ -14,6 +14,10 @@ export default function SiteFooter() {
         <Link href="/privacy" className="underline hover:text-ink">
           {t('privacyLink')}
         </Link>
+        {' // '}
+        <Link href="/feedback" className="underline hover:text-ink">
+          {t('feedbackLink')}
+        </Link>
       </p>
     </footer>
   );
