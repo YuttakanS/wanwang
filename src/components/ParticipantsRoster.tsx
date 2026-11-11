@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { WanWangEvent, Participant, AnswerValue, FileAnswer, isFileAnswer } from '@/types';
 import { formatFileSize } from '@/components/QuestionFields';
+import { NO_ANSWER, RosterFilter, activeFilter, filterableQuestions, matchesFilter, optionCounts } from '@/lib/rosterFilter';
 import { useI18n } from '@/lib/i18n';
 
 const answerText = (a: AnswerValue | undefined): string =>
@@ -33,10 +34,25 @@ export default function ParticipantsRoster({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
   const [fileFailed, setFileFailed] = useState(false);
+  const [chosen, setChosen] = useState<RosterFilter>({});
   const closeConfirm = useCallback(() => setPendingDelete(null), []);
   const questions = event.questions ?? [];
 
   if (participants.length === 0) return null;
+
+  // Only the creator is sent everyone's answers, so only the creator can filter on them.
+  const filterQuestions = isAdmin ? filterableQuestions(questions) : [];
+  const filter = activeFilter(chosen, filterQuestions);
+  const isFiltered = Object.keys(filter).length > 0;
+  const shown = isFiltered ? participants.filter(p => matchesFilter(p, filter)) : participants;
+
+  const setFilter = (questionId: string, option: string | undefined) =>
+    setChosen(prev => {
+      const next = { ...prev };
+      if (option === undefined) delete next[questionId];
+      else next[questionId] = option;
+      return next;
+    });
 
   const currentToken = typeof window !== 'undefined'
     ? localStorage.getItem(`wanwang_token_${event.slug}`)
@@ -102,7 +118,8 @@ export default function ParticipantsRoster({
 
   const handleExport = () => {
     const header = [t('exportColName'), t('exportColNote'), t('exportColSlots'), ...questions.map(q => q.label)];
-    const rows = participants.map(p => [
+    // What is on screen: with a filter on, the file holds just that group.
+    const rows = shown.map(p => [
       p.name,
       p.note ?? '',
       (p.availability || p.availableDates || []).join(' '),
@@ -137,8 +154,64 @@ export default function ParticipantsRoster({
 
       {isAdmin && questions.length > 0 && <p className="text-xs text-muted">{t('answersAdminNote')}</p>}
 
+      {filterQuestions.length > 0 && (
+        <div className="space-y-3 p-3 bg-sunken border-2 border-ink">
+          {filterQuestions.map(q => {
+            const counts = optionCounts(participants, q);
+            const current = filter[q.id];
+            const chips: { value: string | undefined; label: string; count: number }[] = [
+              { value: undefined, label: t('filterAll'), count: participants.length },
+              ...(q.options ?? []).map(o => ({ value: o, label: o, count: counts.get(o) ?? 0 })),
+              ...(counts.get(NO_ANSWER) ? [{ value: NO_ANSWER, label: t('filterNoAnswer'), count: counts.get(NO_ANSWER)! }] : []),
+            ];
+            return (
+              <div key={q.id} role="group" aria-label={t('filterGroupLabel', { label: q.label })}>
+                <span className="block text-xs font-bold text-ink mb-1.5">{q.label}</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {chips.map(chip => {
+                    const isOn = current === chip.value;
+                    return (
+                      <button
+                        key={chip.value ?? '__all'}
+                        type="button"
+                        aria-pressed={isOn}
+                        onClick={() => setFilter(q.id, chip.value)}
+                        className={`px-2.5 py-1 border-2 border-ink text-xs font-semibold transition-none cursor-pointer ${
+                          isOn ? 'bg-ink text-on-ink-accent' : 'bg-surface text-ink hover:bg-ink hover:text-surface'
+                        }`}
+                      >
+                        {chip.label} <span className="font-mono font-normal">({chip.count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {isFiltered && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-ink pt-2" aria-live="polite">
+              <span className="font-mono text-xs font-bold text-ink">
+                {t('filterShowing', { shown: shown.length, total: participants.length })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setChosen({})}
+                className="px-2.5 py-1 bg-surface hover:bg-ink hover:text-surface text-ink border-2 border-ink font-mono text-xs font-bold transition-none cursor-pointer"
+              >
+                {t('filterClearBtn')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isFiltered && shown.length === 0 && (
+        <p className="py-4 text-center text-sm text-muted border-2 border-dashed border-ink">{t('filterEmpty')}</p>
+      )}
+
       <div className="divide-y-3 divide-ink">
-        {participants.map(p => {
+        {shown.map(p => {
           const isMyEntry = Boolean(p.isMine);
           const canDelete = isMyEntry || isAdmin;
           const count = p.availability?.length || p.availableDates?.length || 0;

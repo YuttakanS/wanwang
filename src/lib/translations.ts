@@ -309,6 +309,12 @@ export const translations: Record<Language, Translations> = {
     exportColNote: 'โน้ต',
     exportColSlots: 'เวลาที่เลือก',
     answersAdminNote: 'คำตอบและไฟล์แนบเห็นได้เฉพาะคุณ (ผู้สร้างนัด) และคนที่ตอบ',
+    filterAll: 'ทั้งหมด',
+    filterNoAnswer: 'ไม่ได้ตอบ',
+    filterGroupLabel: 'กรองตาม {label}',
+    filterShowing: 'แสดง {shown} จาก {total} คน',
+    filterClearBtn: 'ล้างตัวกรอง',
+    filterEmpty: 'ไม่มีใครตรงกับตัวกรองนี้',
 
     // Feedback
     feedbackLink: 'ส่งความคิดเห็น',
@@ -648,6 +654,12 @@ export const translations: Record<Language, Translations> = {
     exportColNote: 'Note',
     exportColSlots: 'Selected times',
     answersAdminNote: 'Only you (the creator) and the person who answered can see answers and attached files',
+    filterAll: 'All',
+    filterNoAnswer: 'No answer',
+    filterGroupLabel: 'Filter by {label}',
+    filterShowing: 'Showing {shown} of {total}',
+    filterClearBtn: 'Clear filter',
+    filterEmpty: 'Nobody matches this filter',
 
     // Feedback
     feedbackLink: 'Send feedback',
