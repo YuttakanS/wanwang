@@ -6,6 +6,7 @@ import { countEventSlots, formatLocalizedDateRange } from '@/lib/timeUtils';
 import { getStoredAdminKey } from '@/lib/adminAccess';
 import { useI18n } from '@/lib/i18n';
 import CategoryPicker from '@/components/CategoryPicker';
+import EventExtrasEditor, { extrasError, extrasFromEvent, extrasToPayload } from '@/components/EventExtrasEditor';
 
 interface EditEventFormProps {
   event: WanWangEvent;
@@ -31,6 +32,8 @@ export default function EditEventForm({ event, hasVotes, onSaved, onCancel }: Ed
   const [category, setCategory] = useState<EventCategory>(event.category);
   const [startDate, setStartDate] = useState(initialStart);
   const [endDate, setEndDate] = useState(initialEnd);
+  const [initialExtras] = useState(() => extrasFromEvent(event));
+  const [extras, setExtras] = useState(initialExtras);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -49,6 +52,12 @@ export default function EditEventForm({ event, hasVotes, onSaved, onCancel }: Ed
       patch.dateRangeStart = startDate;
       patch.dateRangeEnd = endDate;
     }
+    // Each part is sent only if it changed, as with the fields above.
+    const before = extrasToPayload(initialExtras);
+    const after = extrasToPayload(extras);
+    if (after.maxPerSlot !== before.maxPerSlot) patch.maxPerSlot = after.maxPerSlot;
+    if (after.maxPicks !== before.maxPicks) patch.maxPicks = after.maxPicks;
+    if (JSON.stringify(after.questions) !== JSON.stringify(before.questions)) patch.questions = after.questions;
     return patch;
   };
 
@@ -70,6 +79,11 @@ export default function EditEventForm({ event, hasVotes, onSaved, onCancel }: Ed
     }
     if (countEventSlots(event.granularity || 'day', totalDays, event.startTime, event.endTime, event.slotInterval) > MAX_EVENT_SLOTS) {
       setErrorMsg(t('formErrorTooManySlots'));
+      return;
+    }
+    const extrasProblem = extrasError(extras);
+    if (extrasProblem) {
+      setErrorMsg(t(extrasProblem));
       return;
     }
 
@@ -198,6 +212,11 @@ export default function EditEventForm({ event, hasVotes, onSaved, onCancel }: Ed
         </p>
       )}
       {hasVotes && <p className="text-xs text-muted">{t('editRangeExpandOnly')}</p>}
+
+      <div className="border-t-3 border-ink pt-4 space-y-3">
+        <EventExtrasEditor value={extras} onChange={setExtras} />
+        {hasVotes && <p className="text-xs text-muted">{t('editExtrasWithVotesNote')}</p>}
+      </div>
 
       {errorMsg && (
         <p role="alert" className="p-3 bg-accent border-2 border-ink text-ink font-mono text-xs motion-shake">

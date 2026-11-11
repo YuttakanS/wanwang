@@ -24,6 +24,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         paragraphs: [
           'ตอนสร้างนัด: ชื่อนัด รายละเอียด สถานที่ และช่วงวันเวลา',
           'ตอนลงเวลา: ชื่อที่คุณพิมพ์ โน้ต และเวลาที่คุณเลือก คุณจะใช้ชื่อเล่นก็ได้',
+          'ผู้สร้างนัดอาจตั้งคำถามเพิ่มเติมให้คุณตอบ เราเก็บคำตอบและไฟล์ที่คุณแนบไว้กับนัดนั้น สิ่งที่ถูกถามเป็นการตัดสินใจของผู้สร้างนัด ไม่ใช่ของเรา',
           'ตอนส่งความคิดเห็น: ประเภท คะแนน และข้อความที่คุณพิมพ์ โดยไม่ผูกกับชื่อ นัด หรืออุปกรณ์ของคุณ เราเก็บไว้ไม่เกิน 1 ปีเพื่อใช้ปรับปรุงบริการ',
           'เราไม่มีระบบสมาชิก และไม่ขออีเมลหรือเบอร์โทร รหัสผู้ดูแลและรหัสแก้ไขเก็บในฐานข้อมูลแบบ hash เท่านั้น',
           'เพื่อป้องกันการใช้งานเกินควร เราเก็บค่า hash ของ IP address ไว้ชั่วคราวเพื่อนับจำนวนคำขอ โดยไม่เก็บ IP โดยตรง',
@@ -33,6 +34,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'ใครเห็นข้อมูลบ้าง',
         paragraphs: [
           'ทุกคนที่มีลิงก์ของนัดจะเห็นรายละเอียดนัด รวมถึงชื่อ โน้ต และเวลาของทุกคนที่ลงเวลาไว้',
+          'คำตอบของคำถามเพิ่มเติมและไฟล์แนบ เห็นได้เฉพาะผู้สร้างนัดและตัวคุณเอง คนอื่นที่มีลิงก์จะไม่เห็น ผู้สร้างนัดดาวน์โหลดไฟล์และคำตอบไปเก็บไว้เองได้ ซึ่งอยู่นอกการควบคุมของเรา',
           'โปรดอย่ากรอกข้อมูลอ่อนไหว เช่น ข้อมูลสุขภาพ เลขบัตรประชาชน หรือที่อยู่บ้าน',
         ],
       },
@@ -47,6 +49,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'เราเก็บข้อมูลนานแค่ไหน',
         paragraphs: [
           'ระบบลบนัดและข้อมูลการลงเวลาทั้งหมดของนัดนั้นโดยอัตโนมัติ 90 วันหลังวันสุดท้ายของนัด หรือ 90 วันหลังวันที่สร้างนัด แล้วแต่ว่าวันใดมาทีหลัง',
+          'คำตอบถูกลบพร้อมกับนัดหรือเมื่อคุณถอนคำตอบ ส่วนไฟล์แนบจะถูกลบออกจากที่เก็บไฟล์ภายใน 2 วันหลังจากนั้น ไฟล์ที่อัปโหลดแล้วแต่ไม่ได้กดบันทึกจะถูกลบภายใน 2 วันเช่นกัน',
           'ค่า hash ของ IP หมดอายุภายในไม่เกิน 1 ชั่วโมง และถูกล้างออกอย่างน้อยวันละครั้ง ข้อมูลสำรองของผู้ให้บริการอาจคงอยู่ต่ออีกระยะหนึ่ง',
           'เมื่อแชร์ลิงก์นัดในแอปแชทหรือบริการภายนอก บริการนั้นอาจดึงชื่อนัดไปแสดงเป็นตัวอย่างลิงก์ และอาจเก็บไว้ต่อหลังจากนัดถูกลบแล้ว เราไม่สามารถลบข้อมูลในส่วนนั้นได้',
         ],
@@ -54,7 +57,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'ผู้ให้บริการที่เกี่ยวข้อง',
         paragraphs: [
-          'Vercel ให้บริการเว็บและอาจบันทึกข้อมูลการเข้าถึง เช่น IP address ส่วน Supabase ให้บริการฐานข้อมูล',
+          'Vercel ให้บริการเว็บและอาจบันทึกข้อมูลการเข้าถึง เช่น IP address ส่วน Supabase ให้บริการฐานข้อมูลและที่เก็บไฟล์แนบ',
           'ผู้ให้บริการเหล่านี้อาจเก็บหรือประมวลผลข้อมูลบนเซิร์ฟเวอร์นอกประเทศไทย',
         ],
       },
@@ -96,6 +99,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         paragraphs: [
           'When you create an event: its title, description, location, and date and time range.',
           'When you respond: the name you type, your note, and the times you pick. A nickname is fine.',
+          'An event creator may ask extra questions. We store your answers and any file you attach with that event. What is asked is the creator’s decision, not ours.',
           'When you send feedback: its type, your rating, and the message you type, not linked to your name, an event, or your device. We keep it for up to 1 year to improve the service.',
           'There are no accounts, and we do not ask for an email address or phone number. Admin keys and edit tokens are stored in the database only as hashes.',
           'To prevent abuse, we temporarily keep a hash of your IP address to count requests. We do not store the IP address itself.',
@@ -105,6 +109,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'Who can see it',
         paragraphs: [
           'Anyone with an event link can see the event details and the name, note, and times of everyone who responded.',
+          'Answers to extra questions and attached files can be seen only by the event creator and by you. Other people with the link cannot see them. The creator can download answers and files and keep their own copy, which is outside our control.',
           'Please do not enter sensitive information such as health details, national ID numbers, or home addresses.',
         ],
       },
@@ -119,6 +124,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'How long we keep it',
         paragraphs: [
           'An event and all its responses are deleted automatically 90 days after its last date, or 90 days after it was created, whichever is later.',
+          'Answers are deleted with the event or when you withdraw your response. Attached files are removed from file storage within 2 days after that. A file that was uploaded but never saved with a response is also removed within 2 days.',
           'IP hashes expire within 1 hour and are cleared at least once a day. Our providers’ backups may keep data for a further period.',
           'When an event link is shared in a chat app or other outside service, that service may fetch the event title to show a link preview and may keep it after the event is deleted. We cannot delete data held there.',
         ],
@@ -126,7 +132,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'Service providers',
         paragraphs: [
-          'Vercel hosts the site and may log access data such as IP addresses. Supabase hosts the database.',
+          'Vercel hosts the site and may log access data such as IP addresses. Supabase hosts the database and attached files.',
           'These providers may store or process data on servers outside Thailand.',
         ],
       },

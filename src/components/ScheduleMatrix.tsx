@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { Dispatch, SetStateAction, useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useSlotDragSelect } from '@/components/useSlotDragSelect';
+import QuestionFields, { firstUnanswered } from '@/components/QuestionFields';
 import {
   WanWangEvent,
   Participant,
   SlotHeatmapInfo,
   DayPartId,
+  Answers,
 } from '@/types';
 import {
   generateDayTimeSlots,
@@ -45,6 +47,8 @@ export default function ScheduleMatrix({
   const selectedSet = useMemo(() => new Set(mySelectedSlots), [mySelectedSlots]);
   const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null);
   const [editToken, setEditToken] = useState<string | null>(null);
+  const [myAnswers, setMyAnswers] = useState<Answers>({});
+  const [isUploading, setIsUploading] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -91,6 +95,7 @@ export default function ScheduleMatrix({
         setParticipantName(found.name);
         setParticipantNote(found.note || '');
         setMySelectedSlots(found.availability || found.availableDates || []);
+        setMyAnswers(found.answers ?? {});
         // If already participated, switch to heatmap tab by default
         setActiveTab('heatmap');
       } else {
@@ -102,13 +107,55 @@ export default function ScheduleMatrix({
     }
   }, [event.slug, participants]);
 
+  const questions = event.questions ?? [];
+  const maxPerSlot = event.maxPerSlot || null;
+  const maxPicks = event.maxPicks || null;
+
+  // How many other people hold each slot. My own saved answer is left out, matching the server:
+  // a slot I already hold is never "full" for me, so I can still edit my answer.
+  const takenByOthers = useMemo(() => {
+    const taken = new Map<string, number>();
+    if (!maxPerSlot) return taken;
+    for (const p of participants) {
+      if (p.id === currentParticipantId) continue;
+      for (const s of p.availability || p.availableDates || []) taken.set(s, (taken.get(s) ?? 0) + 1);
+    }
+    return taken;
+  }, [participants, currentParticipantId, maxPerSlot]);
+
+  const fullSlots = useMemo(() => {
+    const full = new Set<string>();
+    if (!maxPerSlot) return full;
+    const mine = participants.find(p => p.id === currentParticipantId);
+    const held = new Set(mine?.availability || mine?.availableDates || []);
+    for (const [slot, count] of takenByOthers) {
+      if (count >= maxPerSlot && !held.has(slot)) full.add(slot);
+    }
+    return full;
+  }, [participants, currentParticipantId, maxPerSlot, takenByOthers]);
+
+  // Every way of picking slots (tap, drag, shortcuts) goes through here, so none of them can
+  // take a full slot or go over the per-person limit.
+  const setSlotsWithinLimits: Dispatch<SetStateAction<string[]>> = useCallback(
+    action =>
+      setMySelectedSlots(prev => {
+        const wanted = typeof action === 'function' ? action(prev) : action;
+        const had = new Set(prev);
+        const kept = wanted.filter(s => had.has(s));
+        let added = wanted.filter(s => !had.has(s) && !fullSlots.has(s));
+        if (maxPicks) added = added.slice(0, Math.max(0, maxPicks - kept.length));
+        return added.length === 0 && kept.length === prev.length ? prev : [...kept, ...added];
+      }),
+    [fullSlots, maxPicks]
+  );
+
   const handleToggleSlot = (slotId: string) => {
-    setMySelectedSlots(prev =>
+    setSlotsWithinLimits(prev =>
       prev.includes(slotId) ? prev.filter(id => id !== slotId) : [...prev, slotId]
     );
   };
 
-  const slotGridHandlers = useSlotDragSelect(mySelectedSlots, setMySelectedSlots);
+  const slotGridHandlers = useSlotDragSelect(mySelectedSlots, setSlotsWithinLimits);
 
   // The best-times list sits below this grid, so bring the highlighted slots into view.
   const rootRef = useRef<HTMLDivElement>(null);
@@ -125,9 +172,9 @@ export default function ScheduleMatrix({
 
   const selectAll = () => {
     if (granularity === 'day') {
-      setMySelectedSlots([...validSelectableDates]);
+      setSlotsWithinLimits([...validSelectableDates]);
     } else {
-      setMySelectedSlots(allSlots.map(s => s.id));
+      setSlotsWithinLimits(allSlots.map(s => s.id));
     }
   };
 
@@ -138,12 +185,12 @@ export default function ScheduleMatrix({
   const selectWeekends = () => {
     if (granularity === 'day') {
       const weekends = validSelectableDates.filter(d => isWeekend(d));
-      setMySelectedSlots(Array.from(new Set([...mySelectedSlots, ...weekends])));
+      setSlotsWithinLimits(Array.from(new Set([...mySelectedSlots, ...weekends])));
     } else {
       const weekendSlots = allSlots
         .filter(s => isWeekend(s.date))
         .map(s => s.id);
-      setMySelectedSlots(Array.from(new Set([...mySelectedSlots, ...weekendSlots])));
+      setSlotsWithinLimits(Array.from(new Set([...mySelectedSlots, ...weekendSlots])));
     }
   };
 
@@ -162,6 +209,12 @@ export default function ScheduleMatrix({
       return;
     }
 
+    const unanswered = firstUnanswered(questions, myAnswers);
+    if (unanswered) {
+      setErrorMsg(t('errorAnswerRequired', { label: unanswered.label }));
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -174,11 +227,19 @@ export default function ScheduleMatrix({
           note: participantNote.trim(),
           editToken: editToken || undefined,
           availability: mySelectedSlots,
+          answers: myAnswers,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
+        if (data.code === 'SLOT_FULL') {
+          // Someone took the last place while this form was open: drop those slots and reload the counts.
+          const gone = new Set<string>(data.fullSlots ?? []);
+          setMySelectedSlots(prev => prev.filter(s => !gone.has(s)));
+          onParticipantSaved();
+          throw new Error(t('errorSlotFull'));
+        }
         throw new Error(data.error || 'Failed to save');
       }
 
@@ -327,6 +388,25 @@ export default function ScheduleMatrix({
                 </div>
               </div>
 
+              <QuestionFields
+                slug={event.slug}
+                questions={questions}
+                answers={myAnswers}
+                onChange={setMyAnswers}
+                onUploadingChange={setIsUploading}
+              />
+
+              {(maxPerSlot || maxPicks) && (
+                <div className="p-3 bg-accent border-2 border-ink text-black font-mono text-xs font-bold">
+                  {[
+                    maxPerSlot ? t('limitPerSlotNote', { count: maxPerSlot }) : '',
+                    maxPicks ? t('limitPicksNote', { count: maxPicks }) : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' // ')}
+                </div>
+              )}
+
               {/* New tab: following this link must not lose what was typed. */}
               <p className="text-xs text-muted">
                 {t('voteVisibilityNote')}{' '}
@@ -417,20 +497,24 @@ export default function ScheduleMatrix({
                     className="grid grid-cols-7 gap-1.5 select-none"
                   >
                     {calendarDays.map((d, index) => {
-                      const isDisabled = !d.isInRange || d.isPast;
                       const isSelected = selectedSet.has(d.dateStr);
+                      const isFull = d.isInRange && !d.isPast && fullSlots.has(d.dateStr) && !isSelected;
+                      const isDisabled = !d.isInRange || d.isPast || isFull;
 
                       if (isDisabled) {
                         return (
                           <div
                             key={`${d.dateStr}-${index}`}
-                            title={d.isPast ? t('pastDateNote') : t('outOfRangeNote')}
+                            title={isFull ? t('slotFullNote') : d.isPast ? t('pastDateNote') : t('outOfRangeNote')}
                             className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-line-soft bg-sunken text-faint cursor-not-allowed select-none"
                           >
                             <span>{d.dayNum}</span>
+                            {isFull && <span className="text-[10px] leading-none font-bold">{t('slotFullTag')}</span>}
                           </div>
                         );
                       }
+
+                      const placesLeft = maxPerSlot ? maxPerSlot - (takenByOthers.get(d.dateStr) ?? 0) : null;
 
                       return (
                         <div
@@ -443,7 +527,15 @@ export default function ScheduleMatrix({
                           }`}
                         >
                           <span className="text-xs sm:text-sm">{d.dayNum}</span>
-                          {isSelected && <span className="text-[10px] leading-none font-bold">✓</span>}
+                          {isSelected ? (
+                            <span className="text-[10px] leading-none font-bold">✓</span>
+                          ) : (
+                            placesLeft !== null && (
+                              <span className="text-[10px] leading-none font-normal">
+                                {t('slotLeftTag', { count: placesLeft })}
+                              </span>
+                            )
+                          )}
                         </div>
                       );
                     })}
@@ -472,18 +564,25 @@ export default function ScheduleMatrix({
                         {(['morning', 'afternoon', 'evening', 'night'] as DayPartId[]).map(part => {
                           const slotId = `${dateStr}T${part}`;
                           const isSelected = selectedSet.has(slotId);
+                          const isFull = fullSlots.has(slotId) && !isSelected;
                           return (
                             <button
                               key={slotId}
                               type="button"
+                              disabled={isFull}
+                              title={isFull ? t('slotFullNote') : undefined}
                               onClick={() => handleToggleSlot(slotId)}
-                              className={`h-12 border-r-2 border-ink last:border-r-0 flex flex-col items-center justify-center font-mono text-xs transition-none cursor-pointer ${
-                                isSelected
-                                  ? 'bg-accent text-ink font-extrabold'
-                                  : 'bg-surface hover:bg-sunken text-ink/30'
+                              className={`h-12 border-r-2 border-ink last:border-r-0 flex flex-col items-center justify-center font-mono text-xs transition-none ${
+                                isFull
+                                  ? 'bg-sunken text-faint cursor-not-allowed'
+                                  : isSelected
+                                  ? 'bg-accent text-ink font-extrabold cursor-pointer'
+                                  : 'bg-surface hover:bg-sunken text-ink/30 cursor-pointer'
                               }`}
                             >
-                              {isSelected ? (
+                              {isFull ? (
+                                <span className="text-[10px] font-bold">{t('slotFullTag')}</span>
+                              ) : isSelected ? (
                                 <span className="font-bold text-ink text-sm">[✓]</span>
                               ) : (
                                 <span className="text-sm">-</span>
@@ -530,18 +629,23 @@ export default function ScheduleMatrix({
                         {event.dates.map(dateStr => {
                           const slotId = `${dateStr}T${time}`;
                           const isSelected = selectedSet.has(slotId);
+                          const isFull = fullSlots.has(slotId) && !isSelected;
 
                           return (
                             <div
                               key={slotId}
-                              data-slot-id={slotId}
-                              className={`w-24 sm:w-28 h-8 shrink-0 border-r-2 border-ink last:border-r-0 cursor-pointer transition-none flex items-center justify-center font-mono text-xs ${
-                                isSelected
-                                  ? 'bg-accent text-ink font-extrabold border-ink'
-                                  : 'bg-surface hover:bg-sunken text-ink/25'
+                              // A full cell has no slot id, so a drag passes over it.
+                              data-slot-id={isFull ? undefined : slotId}
+                              title={isFull ? t('slotFullNote') : undefined}
+                              className={`w-24 sm:w-28 h-8 shrink-0 border-r-2 border-ink last:border-r-0 transition-none flex items-center justify-center font-mono text-xs ${
+                                isFull
+                                  ? 'bg-sunken text-faint cursor-not-allowed'
+                                  : isSelected
+                                  ? 'bg-accent text-ink font-extrabold border-ink cursor-pointer'
+                                  : 'bg-surface hover:bg-sunken text-ink/25 cursor-pointer'
                               }`}
                             >
-                              {isSelected ? '[✓]' : '-'}
+                              {isFull ? t('slotFullTag') : isSelected ? '[✓]' : '-'}
                             </div>
                           );
                         })}
@@ -573,7 +677,7 @@ export default function ScheduleMatrix({
 
                 <button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isSaving || isUploading}
                   className="btn-primary-raw px-6 py-2.5 text-sm cursor-pointer"
                 >
                   {isSaving ? t('savingDataBtn') : t('saveMyAvailabilityBtn')}

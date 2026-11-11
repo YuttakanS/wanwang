@@ -6,9 +6,12 @@ import {
   FEEDBACK_TYPES,
   FeedbackType,
   MAX_EVENT_SLOTS,
+  QUESTION_LIMITS,
+  QUESTION_TYPES,
   TimeGranularity,
   WanWangEvent,
 } from '@/types';
+import type { Answers, EventQuestion, QuestionType } from '@/types';
 import { countEventSlots, generateAllEventSlots } from './timeUtils';
 
 export const LIMITS = {
@@ -99,6 +102,63 @@ export interface ValidEventInput {
   startTime: string;
   endTime: string;
   slotInterval: number;
+  questions: EventQuestion[];
+  maxPerSlot: number | null;
+  maxPicks: number | null;
+}
+
+const QUESTION_ID_RE = /^[a-z0-9]{6,12}$/;
+
+/**
+ * The creator's question list. Ids the client sends are kept so answers already given stay
+ * attached to their question when the list is edited; a new question gets an id here.
+ */
+export function validateQuestions(raw: unknown): EventQuestion[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) throw new ValidationError('questions must be a list');
+  if (raw.length > QUESTION_LIMITS.maxQuestions) {
+    throw new ValidationError(`Too many questions (max ${QUESTION_LIMITS.maxQuestions})`);
+  }
+
+  const seen = new Set<string>();
+  return raw.map((item, i) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ValidationError('Invalid question');
+    const q = item as Record<string, unknown>;
+
+    if (typeof q.type !== 'string' || !(QUESTION_TYPES as readonly string[]).includes(q.type)) {
+      throw new ValidationError('Invalid question type');
+    }
+    const type = q.type as QuestionType;
+    const label = str(q.label, QUESTION_LIMITS.label, `question ${i + 1}`, true);
+
+    let id = typeof q.id === 'string' && QUESTION_ID_RE.test(q.id) ? q.id : generateSlug(8);
+    while (seen.has(id)) id = generateSlug(8);
+    seen.add(id);
+
+    const question: EventQuestion = { id, type, label, required: q.required === true };
+
+    if (type === 'choice' || type === 'multi') {
+      if (!Array.isArray(q.options)) throw new ValidationError(`question ${i + 1} needs options`);
+      const options = Array.from(
+        new Set(q.options.map(o => str(o, QUESTION_LIMITS.option, 'option')).filter(Boolean))
+      );
+      if (options.length === 0) throw new ValidationError(`question ${i + 1} needs options`);
+      if (options.length > QUESTION_LIMITS.maxOptions) {
+        throw new ValidationError(`Too many options (max ${QUESTION_LIMITS.maxOptions})`);
+      }
+      question.options = options;
+    }
+    return question;
+  });
+}
+
+/** A whole number from 1 to max; null, '' or missing means "no limit". */
+function optionalLimit(v: unknown, max: number, field: string): number | null {
+  if (v === undefined || v === null || v === '') return null;
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < 1 || v > max) {
+    throw new ValidationError(`${field} must be a whole number from 1 to ${max}`);
+  }
+  return v;
 }
 
 export function validateEventInput(body: Record<string, unknown>): ValidEventInput {
@@ -138,6 +198,9 @@ export function validateEventInput(body: Record<string, unknown>): ValidEventInp
     startTime,
     endTime,
     slotInterval,
+    questions: validateQuestions(body.questions),
+    maxPerSlot: optionalLimit(body.maxPerSlot, QUESTION_LIMITS.maxPerSlot, 'maxPerSlot'),
+    maxPicks: optionalLimit(body.maxPicks, LIMITS.maxSlots, 'maxPicks'),
   };
 }
 
@@ -151,11 +214,20 @@ export interface ValidEventPatch {
   confirmedDate?: string;
   dateRangeStart?: string;
   dateRangeEnd?: string;
+  questions?: EventQuestion[];
+  maxPerSlot?: number | null;
+  maxPicks?: number | null;
 }
 
 /** Whitelist PATCH fields (blocks overriding id/slug/adminKey). */
 export function validateEventPatch(body: Record<string, unknown>): ValidEventPatch {
   const out: ValidEventPatch = {};
+  if (body.questions !== undefined) out.questions = validateQuestions(body.questions);
+  // null clears a limit.
+  if (body.maxPerSlot !== undefined) {
+    out.maxPerSlot = optionalLimit(body.maxPerSlot, QUESTION_LIMITS.maxPerSlot, 'maxPerSlot');
+  }
+  if (body.maxPicks !== undefined) out.maxPicks = optionalLimit(body.maxPicks, LIMITS.maxSlots, 'maxPicks');
   if (body.title !== undefined) out.title = str(body.title, LIMITS.title, 'title', true);
   if (body.description !== undefined) out.description = str(body.description, LIMITS.description, 'description');
   if (body.location !== undefined) out.location = str(body.location, LIMITS.location, 'location');
@@ -194,6 +266,60 @@ export interface ValidParticipantInput {
   note: string;
   editToken?: string;
   availability: string[];
+  answers: Answers;
+}
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const FILE_PATH_RE = new RegExp(`^(${UUID})/${UUID}(\\.[a-z0-9]{1,10})?$`);
+
+/** True for a storage path this event could have issued. Stops an answer pointing at another event's file. */
+export function isEventFilePath(path: unknown, eventId: string): path is string {
+  if (typeof path !== 'string') return false;
+  const match = FILE_PATH_RE.exec(path);
+  return Boolean(match) && match![1] === eventId;
+}
+
+/** Keeps only answers to this event's questions, each checked against its question. */
+export function validateAnswers(raw: unknown, event: WanWangEvent): Answers {
+  const questions = event.questions ?? [];
+  if (questions.length === 0) return {};
+  const given: Record<string, unknown> =
+    raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+
+  const answers: Answers = {};
+  for (const q of questions) {
+    const v = given[q.id];
+    const missing = () => {
+      if (q.required) throw new ValidationError(`Please answer: ${q.label}`);
+    };
+
+    if (q.type === 'text') {
+      const text = str(v, QUESTION_LIMITS.textAnswer, q.label);
+      if (text) answers[q.id] = text;
+      else missing();
+    } else if (q.type === 'choice') {
+      if (v === undefined || v === null || v === '') missing();
+      else if (typeof v === 'string' && q.options?.includes(v)) answers[q.id] = v;
+      else throw new ValidationError(`Invalid answer: ${q.label}`);
+    } else if (q.type === 'multi') {
+      if (v === undefined || v === null || (Array.isArray(v) && v.length === 0)) missing();
+      else if (Array.isArray(v) && v.every(o => typeof o === 'string' && q.options?.includes(o))) {
+        answers[q.id] = Array.from(new Set(v as string[]));
+      } else throw new ValidationError(`Invalid answer: ${q.label}`);
+    } else {
+      if (v === undefined || v === null) missing();
+      else {
+        const f = v as Record<string, unknown>;
+        if (typeof v !== 'object' || !isEventFilePath(f.path, event.id)) {
+          throw new ValidationError(`Invalid file: ${q.label}`);
+        }
+        const name = str(f.name, QUESTION_LIMITS.fileName, 'file name', true);
+        const size = typeof f.size === 'number' && f.size >= 0 ? f.size : 0;
+        answers[q.id] = { path: f.path, name, size };
+      }
+    }
+  }
+  return answers;
 }
 
 export function validateParticipantInput(
@@ -214,11 +340,14 @@ export function validateParticipantInput(
     throw new ValidationError('availability contains a slot that is not in this event');
   }
   const availability = Array.from(new Set(raw as string[]));
+  if (event.maxPicks && availability.length > event.maxPicks) {
+    throw new ValidationError(`Pick at most ${event.maxPicks} slots`);
+  }
 
   const id = typeof body.id === 'string' && body.id ? body.id : undefined;
   const editToken = typeof body.editToken === 'string' && body.editToken ? body.editToken : undefined;
 
-  return { id, name, note, editToken, availability };
+  return { id, name, note, editToken, availability, answers: validateAnswers(body.answers, event) };
 }
 
 export interface ValidFeedbackInput {
