@@ -293,3 +293,148 @@ BEGIN
         RAISE WARNING 'pg_cron is not available: purge_expired_events() must be scheduled another way';
     END IF;
 END $$;
+
+-- 13. Usage statistics for the owner: one running total per day and metric, nothing else.
+--     No names, addresses, or content, so a total says nothing about any person. It has to live
+--     apart from the rows it counts, because the retention job in section 12 deletes those.
+--     Read by scripts/owner-stats.mjs through owner_stats(); the website never reads it.
+--     Metrics: events_created, events_with_questions, events_with_limit, responses,
+--              files_attached, feedback_received.
+CREATE TABLE IF NOT EXISTS stats_daily (
+    day DATE NOT NULL,                     -- Thai calendar day
+    metric TEXT NOT NULL,
+    count BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, metric)
+);
+ALTER TABLE stats_daily ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON stats_daily FROM anon, authenticated;
+GRANT ALL ON stats_daily TO service_role;
+
+-- Counts what is stored right now, once, so the totals do not start from zero on the day this is
+-- installed. Skipped on every later run: by then the triggers below are keeping count.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM stats_daily) THEN
+        INSERT INTO stats_daily (day, metric, count)
+        SELECT (created_at AT TIME ZONE 'Asia/Bangkok')::date, 'events_created', count(*)
+        FROM events GROUP BY 1
+        UNION ALL
+        SELECT (created_at AT TIME ZONE 'Asia/Bangkok')::date, 'events_with_questions', count(*)
+        FROM events WHERE jsonb_array_length(questions) > 0 GROUP BY 1
+        UNION ALL
+        SELECT (created_at AT TIME ZONE 'Asia/Bangkok')::date, 'events_with_limit', count(*)
+        FROM events WHERE max_per_slot IS NOT NULL GROUP BY 1
+        UNION ALL
+        SELECT (created_at AT TIME ZONE 'Asia/Bangkok')::date, 'responses', count(*)
+        FROM participants GROUP BY 1
+        UNION ALL
+        SELECT (p.created_at AT TIME ZONE 'Asia/Bangkok')::date, 'files_attached', count(*)
+        FROM participants p
+        CROSS JOIN LATERAL jsonb_each(p.answers) AS a
+        WHERE jsonb_typeof(a.value) = 'object' AND a.value ? 'path'
+        GROUP BY 1
+        UNION ALL
+        SELECT (created_at AT TIME ZONE 'Asia/Bangkok')::date, 'feedback_received', count(*)
+        FROM feedback GROUP BY 1;
+    END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION bump_stat(p_metric TEXT, p_by BIGINT DEFAULT 1)
+RETURNS VOID
+LANGUAGE sql
+SET search_path = ''
+AS $$
+    INSERT INTO public.stats_daily AS s (day, metric, count)
+    VALUES ((now() AT TIME ZONE 'Asia/Bangkok')::date, p_metric, p_by)
+    ON CONFLICT (day, metric) DO UPDATE SET count = s.count + EXCLUDED.count;
+$$;
+REVOKE ALL ON FUNCTION bump_stat(TEXT, BIGINT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION bump_stat(TEXT, BIGINT) TO service_role;
+
+-- One trigger function for the three tables. Counting must never be the reason a save fails,
+-- so any error here is swallowed: a missed count is better than a lost event or answer.
+CREATE OR REPLACE FUNCTION count_new_row()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+    v_files BIGINT;
+BEGIN
+    IF TG_TABLE_NAME = 'events' THEN
+        PERFORM public.bump_stat('events_created');
+        IF pg_catalog.jsonb_array_length(NEW.questions) > 0 THEN
+            PERFORM public.bump_stat('events_with_questions');
+        END IF;
+        IF NEW.max_per_slot IS NOT NULL THEN
+            PERFORM public.bump_stat('events_with_limit');
+        END IF;
+    ELSIF TG_TABLE_NAME = 'participants' THEN
+        PERFORM public.bump_stat('responses');
+        SELECT count(*) INTO v_files
+        FROM pg_catalog.jsonb_each(NEW.answers) AS a
+        WHERE pg_catalog.jsonb_typeof(a.value) = 'object' AND a.value ? 'path';
+        IF v_files > 0 THEN
+            PERFORM public.bump_stat('files_attached', v_files);
+        END IF;
+    ELSIF TG_TABLE_NAME = 'feedback' THEN
+        PERFORM public.bump_stat('feedback_received');
+    END IF;
+    RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'count_new_row failed on %: %', TG_TABLE_NAME, SQLERRM;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS events_count_new ON events;
+CREATE TRIGGER events_count_new AFTER INSERT ON events
+    FOR EACH ROW EXECUTE FUNCTION count_new_row();
+DROP TRIGGER IF EXISTS participants_count_new ON participants;
+CREATE TRIGGER participants_count_new AFTER INSERT ON participants
+    FOR EACH ROW EXECUTE FUNCTION count_new_row();
+DROP TRIGGER IF EXISTS feedback_count_new ON feedback;
+CREATE TRIGGER feedback_count_new AFTER INSERT ON feedback
+    FOR EACH ROW EXECUTE FUNCTION count_new_row();
+
+-- Everything the owner's report shows, in one call.
+--   totals / daily: all-time, from stats_daily.
+--   stored_now: what is in the tables at this moment (older events have been deleted).
+CREATE OR REPLACE FUNCTION owner_stats()
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
+    SELECT jsonb_build_object(
+        'generated_at', now(),
+        'first_day', (SELECT min(day) FROM public.stats_daily),
+        'totals', COALESCE((
+            SELECT jsonb_object_agg(t.metric, t.total)
+            FROM (SELECT metric, sum(count) AS total FROM public.stats_daily GROUP BY metric) t
+        ), '{}'::jsonb),
+        'daily', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object('day', d.day, 'metric', d.metric, 'count', d.count) ORDER BY d.day, d.metric)
+            FROM public.stats_daily d
+        ), '[]'::jsonb),
+        'stored_now', jsonb_build_object(
+            'events', (SELECT count(*) FROM public.events),
+            'responses', (SELECT count(*) FROM public.participants),
+            'events_with_responses', (SELECT count(DISTINCT event_id) FROM public.participants),
+            'biggest_event', COALESCE((
+                SELECT max(x.n) FROM (SELECT count(*) AS n FROM public.participants GROUP BY event_id) x
+            ), 0)
+        ),
+        'feedback', jsonb_build_object(
+            'count', (SELECT count(*) FROM public.feedback),
+            'rated', (SELECT count(*) FROM public.feedback WHERE rating IS NOT NULL),
+            'avg_rating', (SELECT round(avg(rating), 2) FROM public.feedback WHERE rating IS NOT NULL),
+            'by_type', COALESCE((
+                SELECT jsonb_object_agg(f.type, f.n)
+                FROM (SELECT type, count(*) AS n FROM public.feedback GROUP BY type) f
+            ), '{}'::jsonb)
+        )
+    );
+$$;
+REVOKE ALL ON FUNCTION owner_stats() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION owner_stats() TO service_role;
