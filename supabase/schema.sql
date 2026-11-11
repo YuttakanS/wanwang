@@ -159,7 +159,26 @@ SET edit_token = encode(sha256(convert_to(edit_token, 'UTF8')), 'hex')
 WHERE edit_token !~ '^[0-9a-f]{64}$';
 ALTER TABLE participants ADD CONSTRAINT participants_edit_token_hashed CHECK (edit_token ~ '^[0-9a-f]{64}$');
 
--- 9. Retention: delete events 90 days after their last date, votes included (ON DELETE CASCADE).
+-- 9. Feedback from the /feedback form. Holds no name, contact, or IP: only what the sender typed.
+CREATE TABLE IF NOT EXISTS feedback (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL DEFAULT 'other',
+    rating SMALLINT,
+    message TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE feedback DROP CONSTRAINT IF EXISTS feedback_limits;
+ALTER TABLE feedback ADD CONSTRAINT feedback_limits CHECK (
+    type IN ('bug', 'idea', 'praise', 'other')
+    AND (rating IS NULL OR rating BETWEEN 1 AND 5)
+    AND char_length(message) BETWEEN 1 AND 1000
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at);
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON feedback FROM anon, authenticated;
+GRANT ALL ON feedback TO service_role;
+
+-- 10. Retention: delete events 90 days after their last date, votes included (ON DELETE CASCADE).
 --    Counted from the last date, not creation: a 1-year event must survive until it has happened.
 --    created_at protects a new event whose dates are already in the past.
 --    src/lib/privacyContent.ts promises this period, so change them together.
@@ -179,6 +198,9 @@ BEGIN
     GET DIAGNOSTICS v_deleted = ROW_COUNT;
 
     DELETE FROM public.rate_limits WHERE reset_at <= now();
+
+    -- src/lib/privacyContent.ts promises this period too.
+    DELETE FROM public.feedback WHERE created_at < now() - INTERVAL '1 year';
 
     RETURN v_deleted;
 END;

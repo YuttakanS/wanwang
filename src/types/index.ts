@@ -158,3 +158,8 @@ export interface BestTimeMatch {
   formattedThai: string;
   dayPartLabel?: string;
 }
+
+export const FEEDBACK_TYPES = ['bug', 'idea', 'praise', 'other'] as const;
+export type FeedbackType = (typeof FEEDBACK_TYPES)[number];
+// supabase/schema.sql enforces the same limit.
+export const FEEDBACK_MAX_LENGTH = 1000;

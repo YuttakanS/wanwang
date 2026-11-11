@@ -17,13 +17,14 @@ interface PrivacyContent {
 export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
   th: {
     title: 'นโยบายความเป็นส่วนตัว',
-    updated: 'ปรับปรุงล่าสุด 9 พฤศจิกายน 2569',
+    updated: 'ปรับปรุงล่าสุด 11 พฤศจิกายน 2569',
     sections: [
       {
         title: 'ข้อมูลที่เราเก็บ',
         paragraphs: [
           'ตอนสร้างนัด: ชื่อนัด รายละเอียด สถานที่ และช่วงวันเวลา',
           'ตอนลงเวลา: ชื่อที่คุณพิมพ์ โน้ต และเวลาที่คุณเลือก คุณจะใช้ชื่อเล่นก็ได้',
+          'ตอนส่งความคิดเห็น: ประเภท คะแนน และข้อความที่คุณพิมพ์ โดยไม่ผูกกับชื่อ นัด หรืออุปกรณ์ของคุณ เราเก็บไว้ไม่เกิน 1 ปีเพื่อใช้ปรับปรุงบริการ',
           'เราไม่มีระบบสมาชิก และไม่ขออีเมลหรือเบอร์โทร รหัสผู้ดูแลและรหัสแก้ไขเก็บในฐานข้อมูลแบบ hash เท่านั้น',
           'เพื่อป้องกันการใช้งานเกินควร เราเก็บค่า hash ของ IP address ไว้ชั่วคราวเพื่อนับจำนวนคำขอ โดยไม่เก็บ IP โดยตรง',
         ],
@@ -88,13 +89,14 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
   },
   en: {
     title: 'Privacy Notice',
-    updated: 'Last updated 9 November 2026',
+    updated: 'Last updated 11 November 2026',
     sections: [
       {
         title: 'What we collect',
         paragraphs: [
           'When you create an event: its title, description, location, and date and time range.',
           'When you respond: the name you type, your note, and the times you pick. A nickname is fine.',
+          'When you send feedback: its type, your rating, and the message you type, not linked to your name, an event, or your device. We keep it for up to 1 year to improve the service.',
           'There are no accounts, and we do not ask for an email address or phone number. Admin keys and edit tokens are stored in the database only as hashes.',
           'To prevent abuse, we temporarily keep a hash of your IP address to count requests. We do not store the IP address itself.',
         ],

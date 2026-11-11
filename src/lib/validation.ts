@@ -1,5 +1,14 @@
 import crypto from 'crypto';
-import { EVENT_CATEGORIES, EventCategory, MAX_EVENT_SLOTS, TimeGranularity, WanWangEvent } from '@/types';
+import {
+  EVENT_CATEGORIES,
+  EventCategory,
+  FEEDBACK_MAX_LENGTH,
+  FEEDBACK_TYPES,
+  FeedbackType,
+  MAX_EVENT_SLOTS,
+  TimeGranularity,
+  WanWangEvent,
+} from '@/types';
 import { countEventSlots, generateAllEventSlots } from './timeUtils';
 
 export const LIMITS = {
@@ -208,4 +217,29 @@ export function validateParticipantInput(
   const editToken = typeof body.editToken === 'string' && body.editToken ? body.editToken : undefined;
 
   return { id, name, note, editToken, availability };
+}
+
+export interface ValidFeedbackInput {
+  type: FeedbackType;
+  rating: number | null;
+  message: string;
+}
+
+/** Whitelists the fields, so anything else the client sends is dropped. */
+export function validateFeedbackInput(body: Record<string, unknown>): ValidFeedbackInput {
+  const type = body.type ?? 'other';
+  if (typeof type !== 'string' || !(FEEDBACK_TYPES as readonly string[]).includes(type)) {
+    throw new ValidationError('Invalid feedback type');
+  }
+
+  let rating: number | null = null;
+  if (body.rating !== undefined && body.rating !== null) {
+    if (typeof body.rating !== 'number' || !Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5) {
+      throw new ValidationError('Invalid rating');
+    }
+    rating = body.rating;
+  }
+
+  const message = str(body.message, FEEDBACK_MAX_LENGTH, 'message', true);
+  return { type: type as FeedbackType, rating, message };
 }
