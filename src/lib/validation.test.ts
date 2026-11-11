@@ -313,3 +313,17 @@ describe('validateAnswers', () => {
     expect(validateAnswers({ anything: 'x' }, makeEvent())).toEqual({});
   });
 });
+
+describe('how many slots one person may pick', () => {
+  it('defaults to 1 when the event limits people per slot', () => {
+    expect(validateEventInput({ ...validEvent, maxPerSlot: 3 }).maxPicks).toBe(1);
+  });
+
+  it('keeps the number the creator chose', () => {
+    expect(validateEventInput({ ...validEvent, maxPerSlot: 3, maxPicks: 2 }).maxPicks).toBe(2);
+  });
+
+  it('stays unlimited on an event with no people limit', () => {
+    expect(validateEventInput(validEvent).maxPicks).toBeNull();
+  });
+});

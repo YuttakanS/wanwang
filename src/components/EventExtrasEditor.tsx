@@ -62,9 +62,11 @@ export function extrasToPayload(extras: EventExtras): {
   maxPicks: number | null;
   questions: Partial<EventQuestion>[];
 } {
+  const maxPerSlot = limitOf(extras.maxPerSlot);
   return {
-    maxPerSlot: limitOf(extras.maxPerSlot),
-    maxPicks: limitOf(extras.maxPicks),
+    maxPerSlot,
+    // Same default as the server: with a per-slot limit, one person books one slot unless told otherwise.
+    maxPicks: limitOf(extras.maxPicks) ?? (maxPerSlot ? 1 : null),
     questions: extras.questions.map(q => ({
       ...(q.id ? { id: q.id } : {}),
       type: q.type,
@@ -138,7 +140,14 @@ export default function EventExtrasEditor({ value, onChange }: EventExtrasEditor
             min={1}
             max={QUESTION_LIMITS.maxPerSlot}
             value={value.maxPerSlot}
-            onChange={e => onChange({ ...value, maxPerSlot: e.target.value })}
+            onChange={e =>
+              onChange({
+                ...value,
+                maxPerSlot: e.target.value,
+                // Show the default it brings, so the creator sees it and can change it.
+                maxPicks: e.target.value.trim() !== '' && value.maxPicks.trim() === '' ? '1' : value.maxPicks,
+              })
+            }
             placeholder={t('noLimitPlaceholder')}
             className={`${inputClass} font-mono`}
           />

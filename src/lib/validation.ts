@@ -187,6 +187,8 @@ export function validateEventInput(body: Record<string, unknown>): ValidEventInp
     throw new ValidationError(`Too many time slots (max ${LIMITS.maxSlots})`);
   }
 
+  const maxPerSlot = optionalLimit(body.maxPerSlot, QUESTION_LIMITS.maxPerSlot, 'maxPerSlot');
+
   return {
     title,
     description,
@@ -199,8 +201,10 @@ export function validateEventInput(body: Record<string, unknown>): ValidEventInp
     endTime,
     slotInterval,
     questions: validateQuestions(body.questions),
-    maxPerSlot: optionalLimit(body.maxPerSlot, QUESTION_LIMITS.maxPerSlot, 'maxPerSlot'),
-    maxPicks: optionalLimit(body.maxPicks, LIMITS.maxSlots, 'maxPicks'),
+    maxPerSlot,
+    // A limited event is a queue: unless the creator says otherwise, one person books one slot,
+    // or the first to arrive could take every day.
+    maxPicks: optionalLimit(body.maxPicks, LIMITS.maxSlots, 'maxPicks') ?? (maxPerSlot ? 1 : null),
   };
 }
 

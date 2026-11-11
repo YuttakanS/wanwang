@@ -56,7 +56,9 @@ export default function EditEventForm({ event, hasVotes, onSaved, onCancel }: Ed
     const before = extrasToPayload(initialExtras);
     const after = extrasToPayload(extras);
     if (after.maxPerSlot !== before.maxPerSlot) patch.maxPerSlot = after.maxPerSlot;
-    if (after.maxPicks !== before.maxPicks) patch.maxPicks = after.maxPicks;
+    // Against the stored value, not the form's starting value: an older limited event has no
+    // per-person limit stored, and saving it should give it the default of 1.
+    if (after.maxPicks !== (event.maxPicks ?? null)) patch.maxPicks = after.maxPicks;
     if (JSON.stringify(after.questions) !== JSON.stringify(before.questions)) patch.questions = after.questions;
     return patch;
   };
