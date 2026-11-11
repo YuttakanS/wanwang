@@ -15,6 +15,7 @@ const RULES = {
   lookup: { limit: 30, windowSeconds: 60 },
   read: { limit: 120, windowSeconds: 60 },
   feedback: { limit: 5, windowSeconds: 3600 },
+  upload: { limit: 30, windowSeconds: 3600 },
 } satisfies Record<string, Rule>;
 
 export type RateLimitBucket = keyof typeof RULES;

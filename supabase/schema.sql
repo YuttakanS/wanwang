@@ -178,7 +178,81 @@ ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON feedback FROM anon, authenticated;
 GRANT ALL ON feedback TO service_role;
 
--- 10. Retention: delete events 90 days after their last date, votes included (ON DELETE CASCADE).
+-- 10. Questions the creator asks, the answers, and limits on picking slots.
+--     questions: [{id, type: text|choice|multi|file, label, required, options?}]
+--     answers:   {"<question id>": "text" | ["option", ...] | {path, name, size}}
+--     Answers are returned only to the event's creator and to the person who gave them (API-side).
+ALTER TABLE events ADD COLUMN IF NOT EXISTS questions JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS max_per_slot INTEGER;   -- people per slot; NULL = no limit
+ALTER TABLE events ADD COLUMN IF NOT EXISTS max_picks INTEGER;      -- slots per person; NULL = no limit
+ALTER TABLE participants ADD COLUMN IF NOT EXISTS answers JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE events DROP CONSTRAINT IF EXISTS events_question_limits;
+ALTER TABLE events ADD CONSTRAINT events_question_limits CHECK (
+    jsonb_typeof(questions) = 'array'
+    AND jsonb_array_length(questions) <= 10
+    AND (max_per_slot IS NULL OR max_per_slot BETWEEN 1 AND 1000)
+    AND (max_picks IS NULL OR max_picks BETWEEN 1 AND 10000)
+);
+
+-- The API checks the per-slot limit before saving, but two saves arriving together would both
+-- pass that check. This trigger is what makes the limit hold: saves for one event take a lock
+-- and are counted one at a time. A slot the person already held is not counted again, so people
+-- in a full slot can still edit their answer.
+CREATE OR REPLACE FUNCTION enforce_slot_capacity()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+    v_cap INTEGER;
+    v_old JSONB := '[]'::jsonb;
+    v_full TEXT;
+BEGIN
+    SELECT e.max_per_slot INTO v_cap FROM public.events e WHERE e.id = NEW.event_id;
+    IF v_cap IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'UPDATE' THEN
+        v_old := OLD.availability;
+    END IF;
+
+    PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(NEW.event_id::text, 0));
+
+    SELECT o.slot INTO v_full
+    FROM public.participants p
+    CROSS JOIN LATERAL pg_catalog.jsonb_array_elements_text(p.availability) AS o(slot)
+    WHERE p.event_id = NEW.event_id
+      AND p.id <> NEW.id
+      AND NEW.availability ? o.slot
+      AND NOT (v_old ? o.slot)
+    GROUP BY o.slot
+    HAVING count(*) >= v_cap
+    LIMIT 1;
+
+    IF v_full IS NOT NULL THEN
+        -- src/lib/db.ts looks for this text.
+        RAISE EXCEPTION 'SLOT_FULL: %', v_full USING ERRCODE = 'P0001';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS participants_slot_capacity ON participants;
+CREATE TRIGGER participants_slot_capacity
+    BEFORE INSERT OR UPDATE OF availability ON participants
+    FOR EACH ROW EXECUTE FUNCTION enforce_slot_capacity();
+
+-- 11. Files attached to answers: a private bucket, reachable only with the service-role key.
+--     Browsers upload and download through short-lived signed URLs issued by the API.
+--     No policies on storage.objects for this bucket => anon/authenticated have no access.
+--     file_size_limit must match QUESTION_LIMITS.fileBytes in src/types/index.ts (20 MB).
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('event-files', 'event-files', FALSE, 20971520)
+ON CONFLICT (id) DO UPDATE SET public = FALSE, file_size_limit = EXCLUDED.file_size_limit;
+
+-- 12. Retention: delete events 90 days after their last date, votes included (ON DELETE CASCADE).
 --    Counted from the last date, not creation: a 1-year event must survive until it has happened.
 --    created_at protects a new event whose dates are already in the past.
 --    src/lib/privacyContent.ts promises this period, so change them together.

@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { WanWangEvent, Participant, AdminEventSummary, TimeGranularity } from '@/types';
+import type { Answers, EventQuestion } from '@/types';
 import { supabase, shouldUseSupabase } from './supabaseClient';
 import { LIMITS, ValidationError, hashSecret, rangeDays, verifySecret } from './validation';
 import { countEventSlots, generateDatesInRange, formatDateToISO, participantsHaveSlots } from './timeUtils';
@@ -56,6 +57,20 @@ async function readLocalParticipants(): Promise<Participant[]> {
 async function writeLocalParticipants(participants: Participant[]): Promise<void> {
   await ensureDataFiles();
   await fs.writeFile(PARTICIPANTS_FILE, JSON.stringify(participants, null, 2), 'utf-8');
+}
+
+/** The optional columns, read the same way everywhere an event row becomes an event. */
+function extrasFromRow(row: { questions?: unknown; max_per_slot?: number | null; max_picks?: number | null }) {
+  return {
+    questions: (Array.isArray(row.questions) ? row.questions : []) as EventQuestion[],
+    maxPerSlot: row.max_per_slot ?? null,
+    maxPicks: row.max_picks ?? null,
+  };
+}
+
+/** The database trigger's error, or null. See enforce_slot_capacity() in schema.sql. */
+function slotFullError(message: string | undefined): Error | null {
+  return message?.includes('SLOT_FULL') ? new Error('SLOT_FULL') : null;
 }
 
 /**
@@ -121,6 +136,10 @@ export async function createEvent(
         slot_interval: newEvent.slotInterval,
         admin_key: newEvent.adminKey,
         is_closed: newEvent.isClosed,
+        // Sent only when used, so a plain event still saves before schema.sql has been re-run.
+        ...(newEvent.questions?.length ? { questions: newEvent.questions } : {}),
+        ...(newEvent.maxPerSlot ? { max_per_slot: newEvent.maxPerSlot } : {}),
+        ...(newEvent.maxPicks ? { max_picks: newEvent.maxPicks } : {}),
       })
       .select()
       .single();
@@ -148,6 +167,7 @@ export async function createEvent(
       slotInterval: data.slot_interval || 60,
       adminKey: params.adminKey,
       isClosed: data.is_closed,
+      ...extrasFromRow(data),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -197,6 +217,7 @@ export async function getEventBySlug(slug: string): Promise<WanWangEvent | null>
       slotInterval: data.slot_interval || 60,
       adminKey: data.admin_key,
       isClosed: data.is_closed,
+      ...extrasFromRow(data),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -296,6 +317,9 @@ export async function updateEvent(
     if (updates.granularity !== undefined) payload.granularity = updates.granularity;
     if (updates.isClosed !== undefined) payload.is_closed = updates.isClosed;
     if (updates.confirmedDate !== undefined) payload.confirmed_date = updates.confirmedDate || null;
+    if (updates.questions !== undefined) payload.questions = updates.questions;
+    if (updates.maxPerSlot !== undefined) payload.max_per_slot = updates.maxPerSlot;
+    if (updates.maxPicks !== undefined) payload.max_picks = updates.maxPicks;
 
     if (updates.dateRangeStart && updates.dateRangeEnd) {
       const oldDates: string[] = existing.dates || [];
@@ -345,6 +369,7 @@ export async function updateEvent(
       slotInterval: data.slot_interval || 60,
       adminKey,
       isClosed: data.is_closed,
+      ...extrasFromRow(data),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -404,6 +429,9 @@ export async function updateEvent(
     ...(updates.location !== undefined && { location: updates.location }),
     ...(updates.category !== undefined && { category: updates.category }),
     ...(updates.isClosed !== undefined && { isClosed: updates.isClosed }),
+    ...(updates.questions !== undefined && { questions: updates.questions }),
+    ...(updates.maxPerSlot !== undefined && { maxPerSlot: updates.maxPerSlot }),
+    ...(updates.maxPicks !== undefined && { maxPicks: updates.maxPicks }),
     dateRangeStart: newStart,
     dateRangeEnd: newEnd,
     dates: newDates,
@@ -437,6 +465,7 @@ export async function getParticipantsByEventId(eventId: string): Promise<Partici
       note: p.note,
       editToken: p.edit_token,
       availability: p.availability || p.available_dates || [],
+      answers: p.answers || {},
       createdAt: p.created_at,
       updatedAt: p.updated_at,
     }));
@@ -455,8 +484,12 @@ export async function upsertParticipant(
     note?: string;
     editToken?: string;
     availability: string[];
+    answers?: Answers;
   }
 ): Promise<Participant> {
+  // Sent only when there are answers, so plain events still save before schema.sql has been re-run.
+  const answerColumn = data.answers && Object.keys(data.answers).length > 0 ? { answers: data.answers } : {};
+
   const now = new Date().toISOString();
 
   if (shouldUseSupabase() && supabase) {
@@ -468,6 +501,8 @@ export async function upsertParticipant(
           name: data.name,
           note: data.note,
           availability: data.availability,
+          // An edit always writes answers, or an answer the person cleared would stay.
+          answers: data.answers ?? {},
           updated_at: now,
         })
         .eq('id', data.id)
@@ -476,7 +511,7 @@ export async function upsertParticipant(
         .select()
         .maybeSingle();
 
-      if (error) throw new Error(error.message);
+      if (error) throw slotFullError(error.message) ?? new Error(error.message);
       if (!updated) throw new Error('FORBIDDEN');
 
       return {
@@ -486,6 +521,7 @@ export async function upsertParticipant(
         note: updated.note,
         editToken: data.editToken,
         availability: updated.availability,
+        answers: updated.answers || {},
         createdAt: updated.created_at,
         updatedAt: updated.updated_at,
       };
@@ -499,11 +535,12 @@ export async function upsertParticipant(
           note: data.note,
           edit_token: hashSecret(editToken),
           availability: data.availability,
+          ...answerColumn,
         })
         .select()
         .single();
 
-      if (error) throw new Error(error.message);
+      if (error) throw slotFullError(error.message) ?? new Error(error.message);
 
       return {
         id: inserted.id,
@@ -512,6 +549,7 @@ export async function upsertParticipant(
         note: inserted.note,
         editToken,
         availability: inserted.availability,
+        answers: inserted.answers || {},
         createdAt: inserted.created_at,
         updatedAt: inserted.updated_at,
       };
@@ -529,6 +567,7 @@ export async function upsertParticipant(
       name: data.name,
       note: data.note,
       availability: data.availability,
+      answers: data.answers ?? {},
       updatedAt: now,
     };
     await writeLocalParticipants(participants);
@@ -543,6 +582,7 @@ export async function upsertParticipant(
     note: data.note,
     editToken: hashSecret(editToken),
     availability: data.availability,
+    answers: data.answers ?? {},
     createdAt: now,
     updatedAt: now,
   };
