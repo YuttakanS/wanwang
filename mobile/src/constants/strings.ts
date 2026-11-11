@@ -86,7 +86,9 @@ const appStrings: Record<Language, Record<string, string>> = {
     openLinkInvalid: 'This is not a WanWang event link',
     createTitle: 'New event',
     rangeDaysBadge: '{count} days',
+    rangeDaysBadge_one: '{count} day',
     responsesBadge: '{count} responses',
+    responsesBadge_one: '{count} response',
     backBtn: 'Back',
     rangePickHint: 'Tap the first day, then the last day',
     rangePickEnd: 'Tap the last day',
@@ -123,7 +125,9 @@ export type TranslateParams = Record<string, string | number>;
 export type Translate = (key: string, params?: TranslateParams) => string;
 
 export function translate(lang: Language, key: string, params?: TranslateParams): string {
-  let text = appStrings[lang][key] ?? translations[lang][key] ?? appStrings.th[key] ?? translations.th[key] ?? key;
+  // A `<key>_one` text, where a language has one, is used when the count is 1 (Thai needs none).
+  const singular = params?.count === 1 ? appStrings[lang][`${key}_one`] : undefined;
+  let text = singular ?? appStrings[lang][key] ?? translations[lang][key] ?? appStrings.th[key] ?? translations.th[key] ?? key;
   if (params) {
     for (const [name, value] of Object.entries(params)) text = text.split(`{${name}}`).join(String(value));
   }

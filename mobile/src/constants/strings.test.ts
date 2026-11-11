@@ -19,4 +19,11 @@ describe('translate', () => {
   it('shows the key rather than nothing when text is missing', () => {
     expect(translate('th', 'noSuchKey')).toBe('noSuchKey');
   });
+
+  it('uses the singular English text for a count of 1', () => {
+    expect(translate('en', 'responsesBadge', { count: 1 })).toBe('1 response');
+    expect(translate('en', 'responsesBadge', { count: 2 })).toBe('2 responses');
+    expect(translate('en', 'responsesBadge', { count: 0 })).toBe('0 responses');
+    expect(translate('th', 'responsesBadge', { count: 1 })).toBe('1 คำตอบ');
+  });
 });

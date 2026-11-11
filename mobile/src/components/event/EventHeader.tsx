@@ -104,7 +104,7 @@ export function EventHeader({ event, participants, isAdmin, onAdminKeyRotated, o
             )}
           </View>
           {panel === 'share' && <SharePanel event={event} participants={participants} />}
-          {panel === 'manage' && isAdmin && <ManagePanel event={event} onAdminKeyRotated={onAdminKeyRotated} onAdminLost={onAdminLost} />}
+          {panel === 'manage' && isAdmin && <ManagePanel event={event} hasVotes={participants.length > 0} onAdminKeyRotated={onAdminKeyRotated} onAdminLost={onAdminLost} />}
         </View>
       </NeoCard>
     </>
