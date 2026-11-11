@@ -203,15 +203,17 @@ export function validateParticipantInput(
   const name = str(body.name, LIMITS.name, 'name', true);
   const note = str(body.note, LIMITS.note, 'note');
 
-  const raw = Array.isArray(body.availability)
-    ? body.availability
-    : Array.isArray(body.availableDates)
-    ? body.availableDates
-    : [];
+  // A save is always a full answer, so it must pick at least one of this event's own slots.
+  const raw = body.availability !== undefined ? body.availability : body.availableDates;
+  if (!Array.isArray(raw)) throw new ValidationError('availability must be an array of slot ids');
+  if (raw.length === 0) throw new ValidationError('Pick at least one slot');
   if (raw.length > LIMITS.maxSlots) throw new ValidationError('Too many slots');
 
   const valid = new Set(generateAllEventSlots(event).map(s => s.id));
-  const availability = Array.from(new Set(raw.filter((s): s is string => typeof s === 'string' && valid.has(s))));
+  if (!raw.every(s => typeof s === 'string' && valid.has(s))) {
+    throw new ValidationError('availability contains a slot that is not in this event');
+  }
+  const availability = Array.from(new Set(raw as string[]));
 
   const id = typeof body.id === 'string' && body.id ? body.id : undefined;
   const editToken = typeof body.editToken === 'string' && body.editToken ? body.editToken : undefined;

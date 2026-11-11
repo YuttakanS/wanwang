@@ -290,7 +290,7 @@ describe('POST /api/events/[slug]/participants', () => {
     db.upsertParticipant.mockRejectedValue(new Error('FORBIDDEN'));
 
     const res = await saveParticipant(
-      request('POST', path, { body: { id: 'p1', editToken: 'wrong', name: 'Ann' } }),
+      request('POST', path, { body: { id: 'p1', editToken: 'wrong', name: 'Ann', availability: ['2026-12-01'] } }),
       params
     );
 
@@ -306,15 +306,30 @@ describe('POST /api/events/[slug]/participants', () => {
     expect(db.upsertParticipant).not.toHaveBeenCalled();
   });
 
-  it('saves only slots that belong to the event', async () => {
+  it('saves the picked slots, without duplicates', async () => {
     db.upsertParticipant.mockResolvedValue(makeParticipant());
 
-    await saveParticipant(
-      request('POST', path, { body: { name: 'Ann', availability: ['2026-12-01', '2030-01-01'] } }),
+    const res = await saveParticipant(
+      request('POST', path, { body: { name: 'Ann', availability: ['2026-12-01', '2026-12-03', '2026-12-01'] } }),
       params
     );
 
-    expect(db.upsertParticipant.mock.calls[0][1].availability).toEqual(['2026-12-01']);
+    expect(res.status).toBe(200);
+    expect(db.upsertParticipant.mock.calls[0][1].availability).toEqual(['2026-12-01', '2026-12-03']);
+  });
+
+  it.each([
+    ['no availability', { name: 'Ann' }],
+    ['an empty list', { name: 'Ann', availability: [] }],
+    ['a string', { name: 'Ann', availability: 'x' }],
+    ['a slot outside the event', { name: 'Ann', availability: ['2026-12-01', '2030-01-01'] }],
+    ['an edit that empties the answer', { id: 'p1', editToken: TOKEN, name: 'Ann', availability: [] }],
+    ['an edit with a foreign slot', { id: 'p1', editToken: TOKEN, name: 'Ann', availability: ['2030-01-01'] }],
+  ])('answers 400 and saves nothing for %s', async (_name, body) => {
+    const res = await saveParticipant(request('POST', path, { body }), params);
+
+    expect(res.status).toBe(400);
+    expect(db.upsertParticipant).not.toHaveBeenCalled();
   });
 });
 

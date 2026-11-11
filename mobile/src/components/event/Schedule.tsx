@@ -107,8 +107,13 @@ export function Schedule({
   // Past days cannot be chosen, so the shortcuts leave them out too.
   const selectable = useMemo(() => generateAllEventSlots(event).filter(slot => slot.date >= today), [event, today]);
 
+  // The API refuses slots the event does not have, which picks can hold after the range changes
+  // on the website while this screen is open.
+  const eventSlotIds = useMemo(() => new Set(generateAllEventSlots(event).map(slot => slot.id)), [event]);
+  const picked = slots.filter(id => eventSlotIds.has(id));
+
   // Worked out on each render, so the message goes away as soon as the person fixes the problem.
-  const problem = !name.trim() ? t('errorNameRequired') : slots.length === 0 ? t('errorSlotRequired') : null;
+  const problem = !name.trim() ? t('errorNameRequired') : picked.length === 0 ? t('errorSlotRequired') : null;
 
   const submit = () => {
     setJustSaved(false);
@@ -118,7 +123,7 @@ export function Schedule({
     }
 
     save.mutate(
-      { participantId: mineId ?? savedId.current ?? undefined, name: name.trim(), note: note.trim(), availability: [...slots] },
+      { participantId: mineId ?? savedId.current ?? undefined, name: name.trim(), note: note.trim(), availability: picked },
       {
         onSuccess: id => {
           savedId.current = id;

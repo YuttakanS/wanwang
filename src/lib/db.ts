@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { WanWangEvent, Participant, AdminEventSummary, TimeGranularity } from '@/types';
 import { supabase, shouldUseSupabase } from './supabaseClient';
 import { LIMITS, ValidationError, hashSecret, rangeDays, verifySecret } from './validation';
-import { countEventSlots, generateDatesInRange, formatDateToISO } from './timeUtils';
+import { countEventSlots, generateDatesInRange, formatDateToISO, participantsHaveSlots } from './timeUtils';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
@@ -245,6 +245,11 @@ function assertSlotCapAfterUpdate(
   }
 }
 
+/** Every format's slot id starts with its YYYY-MM-DD day, and so does a confirmed date. */
+function confirmedDayStillInRange(confirmed: string | null | undefined, dates: string[]): boolean {
+  return !confirmed || dates.includes(confirmed.slice(0, 10));
+}
+
 export async function updateEvent(
   slug: string,
   adminKey: string,
@@ -256,7 +261,7 @@ export async function updateEvent(
     // A failed read must not look like a wrong key: apps forget a key the server rejects, for good.
     const { data: existing, error: readError } = await supabase
       .from('events')
-      .select('id, admin_key, granularity, dates, start_time, end_time, slot_interval')
+      .select('id, admin_key, granularity, dates, start_time, end_time, slot_interval, confirmed_date')
       .eq('slug', slug)
       .maybeSingle();
 
@@ -297,13 +302,16 @@ export async function updateEvent(
       if (oldDates.length > 0) {
         const participants = await getParticipantsByEventId(existing.id);
         if (
-          participants.length > 0 &&
+          participantsHaveSlots(participants) &&
           (updates.dateRangeStart > oldDates[0] || updates.dateRangeEnd < oldDates[oldDates.length - 1])
         ) {
           throw new Error('CANNOT_SHRINK_RANGE_WITH_VOTES');
         }
       }
-      payload.dates = generateDatesInRange(updates.dateRangeStart, updates.dateRangeEnd);
+      const newDates = generateDatesInRange(updates.dateRangeStart, updates.dateRangeEnd);
+      payload.dates = newDates;
+      const confirmed = updates.confirmedDate !== undefined ? updates.confirmedDate : existing.confirmed_date;
+      if (!confirmedDayStillInRange(confirmed, newDates)) payload.confirmed_date = null;
     }
 
     const { data, error } = await supabase
@@ -369,7 +377,7 @@ export async function updateEvent(
   // Check date range shrink when participants exist
   if (updates.dateRangeStart !== undefined || updates.dateRangeEnd !== undefined) {
     const participants = await getParticipantsByEventId(existingEvent.id);
-    if (participants.length > 0) {
+    if (participantsHaveSlots(participants)) {
       if (updates.dateRangeStart && existingEvent.dateRangeStart && updates.dateRangeStart > existingEvent.dateRangeStart) {
         throw new Error('CANNOT_SHRINK_RANGE_WITH_VOTES');
       }
@@ -384,6 +392,10 @@ export async function updateEvent(
   const newDates = (updates.dateRangeStart || updates.dateRangeEnd)
     ? generateDatesInRange(newStart, newEnd)
     : (updates.dates || existingEvent.dates);
+  const requestedConfirmed = updates.confirmedDate !== undefined ? (updates.confirmedDate || undefined) : existingEvent.confirmedDate;
+  const confirmedDate = (updates.dateRangeStart || updates.dateRangeEnd) && !confirmedDayStillInRange(requestedConfirmed, newDates)
+    ? undefined
+    : requestedConfirmed;
 
   events[index] = {
     ...existingEvent,
@@ -396,7 +408,7 @@ export async function updateEvent(
     dateRangeEnd: newEnd,
     dates: newDates,
     granularity: updates.granularity !== undefined ? updates.granularity : (existingEvent.granularity || 'day'),
-    confirmedDate: updates.confirmedDate !== undefined ? (updates.confirmedDate || undefined) : existingEvent.confirmedDate,
+    confirmedDate,
     updatedAt: now,
   };
   await writeLocalEvents(events);

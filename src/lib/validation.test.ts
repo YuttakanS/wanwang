@@ -166,12 +166,31 @@ describe('validateEventPatch', () => {
 describe('validateParticipantInput', () => {
   const event = makeEvent();
 
-  it('keeps only real slots of this event, without duplicates', () => {
-    const input = validateParticipantInput(
-      { name: 'Ann', availability: ['2026-12-01', '2026-12-01', '2030-01-01', 42, null] },
-      event
-    );
+  it('keeps the picked slots, without duplicates', () => {
+    const input = validateParticipantInput({ name: 'Ann', availability: ['2026-12-01', '2026-12-01'] }, event);
     expect(input.availability).toEqual(['2026-12-01']);
+  });
+
+  it.each([
+    ['missing', {}],
+    ['empty', { availability: [] }],
+    ['a string', { availability: 'x' }],
+    ['an object', { availability: { 0: '2026-12-01' } }],
+    ['an empty older availableDates', { availableDates: [] }],
+    ['holding a non-string', { availability: ['2026-12-01', 42] }],
+    ['holding null', { availability: ['2026-12-01', null] }],
+    ['holding a day outside the range', { availability: ['2026-12-01', '2030-01-01'] }],
+  ])('rejects availability that is %s', (_name, extra) => {
+    expect(() => validateParticipantInput({ name: 'Ann', ...extra }, event)).toThrow(ValidationError);
+  });
+
+  it.each([
+    ['day', makeEvent({ granularity: 'day' }), '2026-12-02', '2026-12-02T09:00'],
+    ['daypart', makeEvent({ granularity: 'daypart' }), '2026-12-02Tevening', '2026-12-02'],
+    ['hour', makeEvent({ granularity: 'hour', startTime: '09:00', endTime: '12:00' }), '2026-12-02T11:00', '2026-12-02T12:00'],
+  ])('checks slot ids against the %s format', (_name, ev, good, bad) => {
+    expect(validateParticipantInput({ name: 'Ann', availability: [good] }, ev).availability).toEqual([good]);
+    expect(() => validateParticipantInput({ name: 'Ann', availability: [good, bad] }, ev)).toThrow(ValidationError);
   });
 
   it('accepts the older availableDates field', () => {
@@ -180,7 +199,7 @@ describe('validateParticipantInput', () => {
   });
 
   it('ignores an id or token that is not text', () => {
-    const input = validateParticipantInput({ name: 'Ann', id: 1, editToken: {} }, event);
+    const input = validateParticipantInput({ name: 'Ann', id: 1, editToken: {}, availability: ['2026-12-01'] }, event);
     expect(input.id).toBeUndefined();
     expect(input.editToken).toBeUndefined();
   });

@@ -67,7 +67,7 @@ describe('POST /api/events/[slug]/participants payload cap', () => {
   });
 
   it('accepts a normal vote', async () => {
-    const res = await post({ name: 'Cat', note: 'hi', availability: [] });
+    const res = await post({ name: 'Cat', note: 'hi', availability: ['2026-12-01'] });
     expect(res.status).toBe(200);
     expect(stored()).toHaveLength(3);
   });
@@ -76,14 +76,14 @@ describe('POST /api/events/[slug]/participants payload cap', () => {
     cap.value = JSON.stringify([A, B]).length + 10;
     const before = files.get('participants.json');
 
-    const res = await post({ name: 'Cat', note: NOTE, availability: [] });
+    const res = await post({ name: 'Cat', note: NOTE, availability: ['2026-12-01'] });
 
     expect(res.status).toBe(409);
     expect(files.get('participants.json')).toBe(before);
   });
 
   it('lets an edit exactly at the cap through because its own old row is excluded', async () => {
-    const edit = { id: 'a', editToken: TOKEN, name: 'Ann', note: NOTE, availability: [] };
+    const edit = { id: 'a', editToken: TOKEN, name: 'Ann', note: NOTE, availability: ['2026-12-01'] };
     cap.value = JSON.stringify([B]).length + JSON.stringify(edit).length;
 
     const res = await post(edit);
@@ -93,7 +93,7 @@ describe('POST /api/events/[slug]/participants payload cap', () => {
   });
 
   it('returns 409 for an edit one byte over the cap, and saves nothing', async () => {
-    const edit = { id: 'a', editToken: TOKEN, name: 'Ann', note: NOTE, availability: [] };
+    const edit = { id: 'a', editToken: TOKEN, name: 'Ann', note: NOTE, availability: ['2026-12-01'] };
     cap.value = JSON.stringify([B]).length + JSON.stringify(edit).length - 1;
     const before = files.get('participants.json');
 
@@ -106,7 +106,7 @@ describe('POST /api/events/[slug]/participants payload cap', () => {
   it('returns 409 for a new voter when the same cap is full', async () => {
     cap.value = JSON.stringify([A, B]).length;
 
-    const res = await post({ name: 'Dan', note: '', availability: [] });
+    const res = await post({ name: 'Dan', note: '', availability: ['2026-12-01'] });
 
     expect(res.status).toBe(409);
     expect(stored()).toHaveLength(2);

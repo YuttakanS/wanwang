@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeEvent, makeParticipant } from '@/test/fixtures';
 import {
+  participantsHaveSlots,
   computeHeatmap,
   countEventSlots,
   findBestTimeMatches,
@@ -98,5 +99,14 @@ describe('generateShareMessage', () => {
     );
     expect(message).not.toContain('ADMIN-SECRET');
     expect(message).not.toContain('EDIT-SECRET');
+  });
+});
+
+describe('participantsHaveSlots', () => {
+  it('counts only answers that picked something', () => {
+    expect(participantsHaveSlots([])).toBe(false);
+    expect(participantsHaveSlots([makeParticipant({ availability: [] })])).toBe(false);
+    expect(participantsHaveSlots([makeParticipant({ availability: [] }), makeParticipant({ availability: ['2026-12-01'] })])).toBe(true);
+    expect(participantsHaveSlots([makeParticipant({ availability: undefined as never, availableDates: ['2026-12-01'] })])).toBe(true);
   });
 });

@@ -159,6 +159,14 @@ export function countEventSlots(
   return days * generateDayTimeSlots(startTime, endTime, slotInterval).length;
 }
 
+/**
+ * Shrinking an event's range is refused once anyone has picked a slot. Answers with no slots
+ * lose nothing, so they do not count. The server and the edit form both use this.
+ */
+export function participantsHaveSlots(participants: Participant[]): boolean {
+  return participants.some(p => (p.availability ?? p.availableDates ?? []).length > 0);
+}
+
 export function generateAllEventSlots(event: WanWangEvent): TimeSlot[] {
   const granularity = event.granularity || 'hour';
 
