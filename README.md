@@ -86,6 +86,18 @@ Schema อยู่ที่ [`supabase/schema.sql`](supabase/schema.sql) รั
 
 **การลบข้อมูล:** job `wanwang-cleanup` ใน pg_cron รันทุกวันเวลา 03:00 UTC และลบนัดพร้อมคำตอบ 90 วันหลังวันสุดท้ายของนัด หรือ 90 วันหลังวันที่สร้าง แล้วแต่ว่าวันใดมาทีหลัง ถ้าจะเปลี่ยนระยะเวลา ต้องแก้ทั้ง `purge_expired_events()`, `src/lib/privacyContent.ts` และ `createVisibilityNote` ใน `src/lib/translations.ts` ซึ่งมีเทสต์ตรวจว่าตรงกัน
 
+## สถิติสำหรับเจ้าของ
+
+ฐานข้อมูลนับยอดรวมรายวันไว้ในตาราง `stats_daily` (จำนวนนัด คำตอบ ไฟล์แนบ ความคิดเห็น) ด้วย trigger เป็นตัวเลขอย่างเดียว ไม่มีชื่อหรือเนื้อหา และคงอยู่หลังนัดถูกลบตามรอบ 90 วัน
+
+ดูรายงานได้จากเครื่องตัวเองเท่านั้น เว็บไม่มีหน้าที่อ่านตารางนี้:
+
+```bash
+node scripts/owner-stats.mjs --open
+```
+
+สร้างไฟล์ `.env.stats.local` ก่อน โดยใส่ `SUPABASE_URL` และ `SUPABASE_SERVICE_ROLE_KEY` ของโปรเจกต์ production (ไฟล์นี้ไม่ถูก commit) คำสั่งจะพิมพ์ยอดรวมและเขียนรายงานพร้อมกราฟไว้ที่ `data/owner-stats.html`
+
 ## ความปลอดภัยและความเป็นส่วนตัว
 
 - เก็บ admin key และ edit token เฉพาะค่า SHA-256

@@ -43,6 +43,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         paragraphs: [
           'เพื่อให้บริการหาเวลานัดตามที่คุณใช้งาน และเพื่อดูแลความปลอดภัยของระบบ ซึ่งเป็นการประมวลผลบนฐานการให้บริการตามที่คุณร้องขอ และประโยชน์โดยชอบด้วยกฎหมาย',
           'เราไม่ขายข้อมูล ไม่มีโฆษณา และไม่มีระบบติดตามผู้ใช้',
+          'เรานับจำนวนนัด คำตอบ ไฟล์แนบ และความคิดเห็นเป็นยอดรวมรายวัน เพื่อดูว่าบริการถูกใช้มากแค่ไหน ยอดรวมนี้เป็นตัวเลขอย่างเดียว ไม่มีชื่อหรือเนื้อหา ไม่ผูกกับบุคคลหรืออุปกรณ์ใด และคงอยู่หลังจากนัดถูกลบแล้ว',
         ],
       },
       {
@@ -118,6 +119,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         paragraphs: [
           'To provide the scheduling service you are using and to keep the system secure. The legal bases are providing the service you request and our legitimate interests.',
           'We do not sell data, show ads, or track users.',
+          'We keep a daily count of events, responses, attached files and feedback, to see how much the service is used. These totals are numbers only: no names or content, not linked to any person or device. They remain after an event is deleted.',
         ],
       },
       {
