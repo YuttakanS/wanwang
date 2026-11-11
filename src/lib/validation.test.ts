@@ -9,8 +9,10 @@ import {
   isValidDate,
   rangeDays,
   validateEventInput,
+  validateAnswers,
   validateEventPatch,
   validateParticipantInput,
+  validateQuestions,
   validateRange,
   verifySecret,
 } from './validation';
@@ -96,6 +98,9 @@ describe('validateEventInput', () => {
       startTime: '09:00',
       endTime: '22:00',
       slotInterval: 60,
+      questions: [],
+      maxPerSlot: null,
+      maxPicks: null,
     });
   });
 
@@ -210,5 +215,101 @@ describe('validateParticipantInput', () => {
     expect(() => validateParticipantInput({ name: 'Ann', note: 'x'.repeat(LIMITS.note + 1) }, event)).toThrow(ValidationError);
     const tooMany = Array.from({ length: LIMITS.maxSlots + 1 }, () => '2026-12-01');
     expect(() => validateParticipantInput({ name: 'Ann', availability: tooMany }, event)).toThrow(ValidationError);
+  });
+});
+
+describe('validateQuestions', () => {
+  it('keeps a valid id, gives a new question one, and tidies options', () => {
+    const [kept, added] = validateQuestions([
+      { id: 'colour01', type: 'choice', label: ' Filament ', required: true, options: [' PLA ', 'PLA', '', 'PETG'] },
+      { id: 'not a valid id!', type: 'text', label: 'Notes' },
+    ]);
+
+    expect(kept).toEqual({ id: 'colour01', type: 'choice', label: 'Filament', required: true, options: ['PLA', 'PETG'] });
+    expect(added).toMatchObject({ type: 'text', label: 'Notes', required: false });
+    expect(added.id).toMatch(/^[a-z0-9]{8}$/);
+    expect(added).not.toHaveProperty('options');
+  });
+
+  it('never returns two questions with the same id', () => {
+    const ids = validateQuestions([
+      { id: 'same0001', type: 'text', label: 'A' },
+      { id: 'same0001', type: 'text', label: 'B' },
+    ]).map(q => q.id);
+
+    expect(new Set(ids).size).toBe(2);
+  });
+
+  it('treats a missing list as no questions', () => {
+    expect(validateQuestions(undefined)).toEqual([]);
+  });
+
+  it.each([
+    ['something that is not a list', { type: 'text', label: 'A' }],
+    ['an unknown type', [{ type: 'rating', label: 'A' }]],
+    ['a blank label', [{ type: 'text', label: ' ' }]],
+    ['a choice with no options', [{ type: 'choice', label: 'A', options: [' '] }]],
+    ['a choice with too many options', [{ type: 'multi', label: 'A', options: Array.from({ length: 21 }, (_, i) => `o${i}`) }]],
+    ['too many questions', Array.from({ length: 11 }, () => ({ type: 'text', label: 'A' }))],
+  ])('rejects %s', (_name, raw) => {
+    expect(() => validateQuestions(raw)).toThrow(ValidationError);
+  });
+});
+
+describe('limits on an event', () => {
+  it('reads a blank limit as no limit', () => {
+    expect(validateEventInput({ ...validEvent, maxPerSlot: '', maxPicks: null })).toMatchObject({
+      maxPerSlot: null,
+      maxPicks: null,
+    });
+  });
+
+  it.each([0, -1, 1.5, '3', 1001])('rejects %s people per slot', bad => {
+    expect(() => validateEventInput({ ...validEvent, maxPerSlot: bad })).toThrow(ValidationError);
+  });
+
+  it('lets an edit clear a limit, and leaves limits alone when it does not mention them', () => {
+    expect(validateEventPatch({ maxPerSlot: null })).toEqual({ maxPerSlot: null });
+    expect(validateEventPatch({ title: 'New' })).toEqual({ title: 'New' });
+  });
+});
+
+describe('validateAnswers', () => {
+  const EVENT_ID = '11111111-1111-4111-8111-111111111111';
+  const FILE = `${EVENT_ID}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.stl`;
+  const ev = makeEvent({
+    id: EVENT_ID,
+    questions: [
+      { id: 'text0001', type: 'text', label: 'Notes', required: false },
+      { id: 'multi001', type: 'multi', label: 'Colours', required: false, options: ['Red', 'Blue'] },
+      { id: 'file0001', type: 'file', label: 'Model', required: true },
+    ],
+  });
+  const file = { path: FILE, name: 'part.stl', size: 12 };
+
+  it('keeps each kind of answer and leaves out the ones not given', () => {
+    expect(validateAnswers({ multi001: ['Blue', 'Blue', 'Red'], file0001: { ...file, extra: 'dropped' } }, ev)).toEqual({
+      multi001: ['Blue', 'Red'],
+      file0001: file,
+    });
+  });
+
+  it('trims text and treats blank text as not answered', () => {
+    expect(validateAnswers({ text0001: '  ', file0001: file }, ev)).toEqual({ file0001: file });
+    expect(validateAnswers({ text0001: ' hi ', file0001: file }, ev).text0001).toBe('hi');
+  });
+
+  it.each([
+    ['a required question with no answer', {}],
+    ['an option that is not offered', { file0001: file, multi001: ['Green'] }],
+    ['text over the limit', { file0001: file, text0001: 'x'.repeat(1001) }],
+    ['a file path with extra folders', { file0001: { ...file, path: `${EVENT_ID}/../${FILE}` } }],
+    ['a file with no name', { file0001: { path: FILE } }],
+  ])('rejects %s', (_name, answers) => {
+    expect(() => validateAnswers(answers, ev)).toThrow(ValidationError);
+  });
+
+  it('returns nothing for an event with no questions, whatever is sent', () => {
+    expect(validateAnswers({ anything: 'x' }, makeEvent())).toEqual({});
   });
 });

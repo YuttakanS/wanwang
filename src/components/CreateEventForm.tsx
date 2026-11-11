@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EventCategory, MAX_EVENT_SLOTS, TimeGranularity } from '@/types';
 import CategoryPicker from '@/components/CategoryPicker';
+import EventExtrasEditor, { EMPTY_EXTRAS, EventExtras, extrasError, extrasToPayload } from '@/components/EventExtrasEditor';
 import { countEventSlots, formatLocalizedDateRange, formatDateToISO } from '@/lib/timeUtils';
 import { markAdminLinkPending, storeAdminKey } from '@/lib/adminAccess';
 import { useI18n } from '@/lib/i18n';
@@ -43,6 +44,8 @@ export default function CreateEventForm() {
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('22:00');
   const [slotInterval, setSlotInterval] = useState<number>(60);
+
+  const [extras, setExtras] = useState<EventExtras>(EMPTY_EXTRAS);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -90,6 +93,12 @@ export default function CreateEventForm() {
       return;
     }
 
+    const extrasProblem = extrasError(extras);
+    if (extrasProblem) {
+      setErrorMsg(t(extrasProblem));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -108,6 +117,7 @@ export default function CreateEventForm() {
           startTime,
           endTime,
           slotInterval,
+          ...extrasToPayload(extras),
         }),
       });
 
@@ -415,6 +425,20 @@ export default function CreateEventForm() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* 4. Optional: limits and questions */}
+      <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-4">
+        <div className="border-b-3 border-ink pb-3 flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-ink leading-tight">{t('step4Title')}</h2>
+            <p className="text-sm text-muted mt-0.5">{t('step4Subtitle')}</p>
+          </div>
+          <span className="font-mono text-xs uppercase px-2 py-0.5 border-2 border-ink text-ink shrink-0">
+            {t('optionalBadge')}
+          </span>
+        </div>
+        <EventExtrasEditor value={extras} onChange={setExtras} />
       </div>
 
       {/* New tab: following this link must not lose what was typed. */}

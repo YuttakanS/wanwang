@@ -92,8 +92,53 @@ export interface WanWangEvent {
   slotInterval: number;
   adminKey: string;
   isClosed: boolean;
+  /** Extra questions each respondent answers. Answers are shown only to the creator. */
+  questions?: EventQuestion[];
+  /** Most people allowed in one slot; null or missing means no limit. */
+  maxPerSlot?: number | null;
+  /** Most slots one person may pick; null or missing means no limit. */
+  maxPicks?: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export const QUESTION_TYPES = ['text', 'choice', 'multi', 'file'] as const;
+export type QuestionType = (typeof QUESTION_TYPES)[number];
+
+export interface EventQuestion {
+  id: string;
+  type: QuestionType;
+  label: string;
+  required: boolean;
+  /** For 'choice' (pick one) and 'multi' (pick any). */
+  options?: string[];
+}
+
+export interface FileAnswer {
+  /** Storage path, "<event id>/<file id>[.ext]". */
+  path: string;
+  /** The name the file had on the sender's device. */
+  name: string;
+  size: number;
+}
+
+export type AnswerValue = string | string[] | FileAnswer;
+export type Answers = Record<string, AnswerValue>;
+
+// supabase/schema.sql sets the same file size on the storage bucket.
+export const QUESTION_LIMITS = {
+  maxQuestions: 10,
+  label: 200,
+  maxOptions: 20,
+  option: 100,
+  textAnswer: 1000,
+  fileName: 120,
+  fileBytes: 20 * 1024 * 1024,
+  maxPerSlot: 1000,
+} as const;
+
+export function isFileAnswer(v: unknown): v is FileAnswer {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) && typeof (v as FileAnswer).path === 'string';
 }
 
 export interface Participant {
@@ -107,6 +152,8 @@ export interface Participant {
   isMine?: boolean;
   availability: string[];
   availableDates?: string[];
+  /** Keyed by question id. Sent only to the event's creator and to the person who answered. */
+  answers?: Answers;
   createdAt: string;
   updatedAt: string;
 }

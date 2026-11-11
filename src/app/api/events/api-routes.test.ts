@@ -96,7 +96,7 @@ describe('POST /api/events', () => {
   it('answers 400 for invalid input, bad JSON and 413 for a huge body', async () => {
     const invalid = await createEventRoute(request('POST', '/api/events', { body: { title: '' } }));
     const badJson = await createEventRoute(request('POST', '/api/events', { body: '{nope' }));
-    const huge = await createEventRoute(request('POST', '/api/events', { body: 'x'.repeat(20_001) }));
+    const huge = await createEventRoute(request('POST', '/api/events', { body: 'x'.repeat(40_001) }));
 
     expect([invalid.status, badJson.status, huge.status]).toEqual([400, 400, 413]);
     expect(db.createEvent).not.toHaveBeenCalled();
@@ -223,7 +223,7 @@ describe('PATCH /api/events/[slug]', () => {
 
   it('answers 400 for invalid input and 413 for a huge body', async () => {
     const invalid = await PATCH(request('PATCH', eventPath, { headers: asAdmin, body: { title: ' ' } }), params);
-    const huge = await PATCH(request('PATCH', eventPath, { headers: asAdmin, body: 'x'.repeat(20_001) }), params);
+    const huge = await PATCH(request('PATCH', eventPath, { headers: asAdmin, body: 'x'.repeat(40_001) }), params);
 
     expect([invalid.status, huge.status]).toEqual([400, 413]);
     expect(db.updateEvent).not.toHaveBeenCalled();

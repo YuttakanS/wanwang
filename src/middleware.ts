@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+function originOf(url: string | undefined): string {
+  try {
+    return url ? new URL(url).origin : '';
+  } catch {
+    return '';
+  }
+}
+
+const storageOrigin = originOf(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL);
+
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV !== 'production';
 
@@ -13,7 +23,8 @@ function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "img-src 'self' data:",
-    "connect-src 'self'",
+    // Attached files are sent straight to Supabase Storage: Vercel caps request bodies at 4.5 MB.
+    `connect-src 'self'${storageOrigin ? ` ${storageOrigin}` : ''}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

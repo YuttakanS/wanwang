@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     if (limited) return limited;
 
     const raw = await req.text();
-    if (raw.length > 20_000) {
+    if (raw.length > 40_000) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     }
 

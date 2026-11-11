@@ -5,6 +5,7 @@ import {
   deleteEvent,
   getParticipantsByEventId,
 } from '@/lib/db';
+import { removeEventFiles } from '@/lib/fileStore';
 import { rateLimit } from '@/lib/rateLimit';
 import { validateEventPatch, ValidationError, verifySecret } from '@/lib/validation';
 
@@ -30,11 +31,12 @@ export async function GET(
     const isAdmin = verifySecret(presentedKey, adminKeyHash);
     const myToken = req.headers.get('x-edit-token');
 
-    // Never expose other people's edit tokens.
-    const publicParticipants = participants.map(({ editToken, ...p }) => ({
-      ...p,
-      isMine: verifySecret(myToken, editToken),
-    }));
+    // Never expose other people's edit tokens. Answers to the creator's questions go only to the
+    // creator and to the person who gave them.
+    const publicParticipants = participants.map(({ editToken, answers, ...p }) => {
+      const isMine = verifySecret(myToken, editToken);
+      return { ...p, isMine, ...(isAdmin || isMine ? { answers: answers ?? {} } : {}) };
+    });
 
     return NextResponse.json({
       success: true,
@@ -65,7 +67,7 @@ export async function PATCH(
     }
 
     const raw = await req.text();
-    if (raw.length > 20_000) {
+    if (raw.length > 40_000) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     }
     let body: Record<string, unknown>;
@@ -121,10 +123,13 @@ export async function DELETE(
     if (!adminKey) {
       return NextResponse.json({ error: 'Missing Admin Key' }, { status: 401 });
     }
+    // Read first: once the event is gone there is no id left to find its files by.
+    const event = await getEventBySlug(slug);
     const ok = await deleteEvent(slug, adminKey);
     if (!ok) {
       return NextResponse.json({ error: 'รหัส Admin ไม่ถูกต้อง หรือไม่พบกิจกรรม' }, { status: 403 });
     }
+    if (event?.questions?.some(q => q.type === 'file')) await removeEventFiles(event.id);
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     console.error('Delete event error:', err);

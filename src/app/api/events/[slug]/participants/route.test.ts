@@ -83,7 +83,7 @@ describe('POST /api/events/[slug]/participants payload cap', () => {
   });
 
   it('lets an edit exactly at the cap through because its own old row is excluded', async () => {
-    const edit = { id: 'a', editToken: TOKEN, name: 'Ann', note: NOTE, availability: ['2026-12-01'] };
+    const edit = { id: 'a', editToken: TOKEN, name: 'Ann', note: NOTE, availability: ['2026-12-01'], answers: {} };
     cap.value = JSON.stringify([B]).length + JSON.stringify(edit).length;
 
     const res = await post(edit);
@@ -93,7 +93,7 @@ describe('POST /api/events/[slug]/participants payload cap', () => {
   });
 
   it('returns 409 for an edit one byte over the cap, and saves nothing', async () => {
-    const edit = { id: 'a', editToken: TOKEN, name: 'Ann', note: NOTE, availability: ['2026-12-01'] };
+    const edit = { id: 'a', editToken: TOKEN, name: 'Ann', note: NOTE, availability: ['2026-12-01'], answers: {} };
     cap.value = JSON.stringify([B]).length + JSON.stringify(edit).length - 1;
     const before = files.get('participants.json');
 
