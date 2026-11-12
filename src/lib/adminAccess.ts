@@ -1,6 +1,6 @@
 // Client-side helpers for the creator's admin key. The key lives in localStorage,
 // so storage access is guarded: it can throw in private windows or when blocked.
-const ADMIN_PREFIX = 'wanwang_admin_';
+export const ADMIN_PREFIX = 'wanwang_admin_';
 const PENDING_PREFIX = 'wanwang_admin_link_pending_';
 const HIDDEN_KEY = 'wanwang_my_events_hidden';
 // Must not start with ADMIN_PREFIX, or listStoredAdminKeys would take it for an event's key.

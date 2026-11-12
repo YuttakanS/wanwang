@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   getHiddenSlugs,
@@ -10,10 +10,17 @@ import {
   unhideAllMyEvents,
 } from '@/lib/adminAccess';
 import { useI18n } from '@/lib/i18n';
+import { dropStaleMyEventsSpace, rememberMyEventsHeight } from '@/lib/myEventsSpace';
 import { settlePendingRotation } from '@/lib/rotateAdminKey';
 import { AdminEventSummary, MAX_ADMIN_LOOKUP } from '@/types';
 
-async function fetchSummaries(items: { slug: string; adminKey: string }[]): Promise<AdminEventSummary[]> {
+interface Lookup {
+  events: AdminEventSummary[];
+  // False when a request failed, so the list may be missing events.
+  complete: boolean;
+}
+
+async function fetchSummaries(items: { slug: string; adminKey: string }[]): Promise<Lookup> {
   const chunks: (typeof items)[] = [];
   for (let i = 0; i < items.length; i += MAX_ADMIN_LOOKUP) {
     chunks.push(items.slice(i, i + MAX_ADMIN_LOOKUP));
@@ -28,24 +35,31 @@ async function fetchSummaries(items: { slug: string; adminKey: string }[]): Prom
           body: JSON.stringify({ items: chunk }),
           cache: 'no-store',
         });
-        if (!res.ok) return [];
+        if (!res.ok) return null;
         const data = await res.json();
         return (data.events || []) as AdminEventSummary[];
       } catch {
-        return [];
+        return null;
       }
     })
   );
 
-  return results.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const answered = results.filter((r): r is AdminEventSummary[] => r !== null);
+  return {
+    events: answered.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    complete: answered.length === results.length,
+  };
 }
 
 /** Events created in this browser. A failed lookup may be temporary, so stored
  *  keys are never removed here; those events are just not shown. */
 export default function MyEvents() {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const [events, setEvents] = useState<AdminEventSummary[]>([]);
   const [hiddenCount, setHiddenCount] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const lookupComplete = useRef(false);
 
   const load = useCallback(async () => {
     // A key change whose answer was lost leaves a dead key in storage. The lookup would leave that
@@ -54,18 +68,39 @@ export default function MyEvents() {
     const stored = listStoredAdminKeys();
     const hidden = new Set(getHiddenSlugs());
     setHiddenCount(stored.filter(k => hidden.has(k.slug)).length);
-    return fetchSummaries(stored.filter(k => !hidden.has(k.slug)));
+    const result = await fetchSummaries(stored.filter(k => !hidden.has(k.slug)));
+    lookupComplete.current = result.complete;
+    return result.events;
+  }, []);
+
+  // The <head> script ran when this document loaded; events may have been added or deleted since,
+  // so space kept for a different set is let go before paint.
+  useLayoutEffect(() => {
+    dropStaleMyEventsSpace();
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    load().then(result => {
-      if (!cancelled) setEvents(result);
-    });
+    load()
+      .catch(() => {
+        lookupComplete.current = false;
+        return [] as AdminEventSummary[];
+      })
+      .then(result => {
+        if (cancelled) return;
+        setEvents(result);
+        setLoaded(true);
+      });
     return () => {
       cancelled = true;
     };
   }, [load]);
+
+  // Kept for the next visit, so the space can be held before this list arrives. A failed lookup
+  // may show too little, so the height from last time is kept instead.
+  useEffect(() => {
+    if (loaded && lookupComplete.current) rememberMyEventsHeight(sectionRef.current?.offsetHeight ?? 0);
+  }, [loaded, events, hiddenCount, lang]);
 
   const handleHide = (slug: string) => {
     hideMyEvent(slug);
@@ -74,14 +109,21 @@ export default function MyEvents() {
   };
 
   const handleShowHidden = async () => {
+    // Until this lookup answers, the list is briefly empty, which must not be saved as its height.
+    lookupComplete.current = false;
     unhideAllMyEvents();
     setEvents(await load());
   };
 
-  if (events.length === 0 && hiddenCount === 0) return null;
+  if (loaded && events.length === 0 && hiddenCount === 0) return null;
 
+  // Until the lookup answers, only the heading shows, and only where space was kept (myEventsSpace.ts).
   return (
-    <section className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-3 motion-enter">
+    <section
+      ref={sectionRef}
+      aria-busy={!loaded}
+      className={`bg-surface border-3 border-ink p-5 sm:p-6 space-y-3 motion-enter${loaded ? '' : ' my-events-space'}`}
+    >
       <div className="border-b-3 border-ink pb-3">
         <h2 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
           {t('myEventsTitle')}

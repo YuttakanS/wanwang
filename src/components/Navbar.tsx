@@ -12,12 +12,13 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-surface border-b-3 border-ink">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
         {/* Logo & Brand */}
-        <Link href="/" aria-label={t('appName')} className="flex items-center gap-2.5 group shrink-0">
-          <div className="w-9 h-9 bg-ink text-surface flex items-center justify-center font-bold text-lg border-2 border-ink group-hover:bg-accent group-hover:text-ink transition-colors">
+        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+          <div aria-hidden="true" className="w-9 h-9 bg-ink text-surface flex items-center justify-center font-bold text-lg border-2 border-ink group-hover:bg-accent group-hover:text-ink transition-colors">
             ว
           </div>
-          {/* The logo alone has to do on small phones, or the actions run off the screen. */}
-          <div className="hidden min-[400px]:flex flex-col justify-center">
+          {/* The logo alone has to do on small phones, or the actions run off the screen.
+              The name stays for screen readers there, so it is still the link's name. */}
+          <div className="sr-only min-[400px]:not-sr-only min-[400px]:flex flex-col justify-center">
             <span className="font-bold text-lg text-ink tracking-tight leading-tight">
               {t('appName')}
             </span>
@@ -30,9 +31,10 @@ export default function Navbar() {
         {/* Right Actions: Lang Switcher [ ENG // TH ] + Create Button */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Language Switcher Toggle: [ ENG // TH ] */}
-          <div className="inline-flex border-3 border-ink bg-surface" role="group" aria-label="Language selection">
+          <div className="inline-flex border-3 border-ink bg-surface" role="group" aria-label={t('langGroupLabel')}>
             <button
               type="button"
+              aria-pressed={lang === 'en'}
               onClick={() => setLang('en')}
               className={`px-2.5 sm:px-3 py-1 font-mono text-xs font-bold transition-none ${
                 lang === 'en'
@@ -45,6 +47,7 @@ export default function Navbar() {
             <div className="w-[2px] bg-ink" />
             <button
               type="button"
+              aria-pressed={lang === 'th'}
               onClick={() => setLang('th')}
               className={`px-2.5 sm:px-3 py-1 font-mono text-xs font-bold transition-none ${
                 lang === 'th'

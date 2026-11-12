@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Dispatch, SetStateAction, useCallback, useState, useEffect, useMemo, useRef } from 'react';
+import React, { Dispatch, SetStateAction, useCallback, useId, useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useSlotDragSelect } from '@/components/useSlotDragSelect';
 import QuestionFields, { firstUnanswered } from '@/components/QuestionFields';
@@ -38,6 +38,7 @@ export default function ScheduleMatrix({
   highlightSlotIds = [],
 }: ScheduleMatrixProps) {
   const { lang, t } = useI18n();
+  const idBase = useId();
 
   const [activeTab, setActiveTab] = useState<'heatmap' | 'vote'>('vote');
 
@@ -342,10 +343,11 @@ export default function ScheduleMatrix({
               {/* Display Name Input */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b-3 border-ink pb-4">
                 <div>
-                  <label className="block text-sm font-bold text-ink mb-1">
+                  <label htmlFor={`${idBase}-name`} className="block text-sm font-bold text-ink mb-1">
                     {t('yourNameLabel')}
                   </label>
                   <input
+                    id={`${idBase}-name`}
                     type="text"
                     required
                     value={participantName}
@@ -361,10 +363,11 @@ export default function ScheduleMatrix({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-ink mb-1">
+                  <label htmlFor={`${idBase}-note`} className="block text-sm font-bold text-ink mb-1">
                     {t('yourNoteLabel')}
                   </label>
                   <input
+                    id={`${idBase}-note`}
                     type="text"
                     value={participantNote}
                     onChange={e => setParticipantNote(e.target.value)}

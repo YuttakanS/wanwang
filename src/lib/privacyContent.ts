@@ -74,7 +74,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'ข้อมูลในเบราว์เซอร์และแอปของคุณ',
         paragraphs: [
-          'เราไม่ใช้คุกกี้ แต่เก็บรหัสผู้ดูแล รหัสแก้ไข ภาษาและธีมที่เลือก และรายการนัดที่ซ่อนไว้ใน localStorage และ sessionStorage ของเบราว์เซอร์ เพื่อให้คุณกลับมาแก้ไขได้',
+          'เราไม่ใช้คุกกี้ แต่เก็บรหัสผู้ดูแล รหัสแก้ไข ภาษาและธีมที่เลือก รายการนัดที่ซ่อนไว้ และความสูงของรายการนัดของฉัน (เพื่อไม่ให้หน้าเลื่อนตอนโหลด) ใน localStorage และ sessionStorage ของเบราว์เซอร์ เพื่อให้คุณกลับมาแก้ไขได้',
           'หากล้างข้อมูลเบราว์เซอร์ คุณอาจแก้ไขคำตอบเดิมไม่ได้ และต้องใช้ลิงก์ผู้ดูแลเพื่อเข้าจัดการนัดอีกครั้ง',
           'ในแอปวันว่าง รหัสผู้ดูแลและรหัสแก้ไขเก็บในพื้นที่ปลอดภัยของเครื่อง (Keychain หรือ Keystore) ส่วนภาษา ธีม และรายการนัดที่คุณสร้างหรือลงเวลาเก็บในพื้นที่ของแอปบนเครื่องนั้น แอปไม่มีโฆษณาและไม่มีระบบติดตามผู้ใช้',
           'หากลบแอปหรือเปลี่ยนเครื่อง คุณอาจแก้ไขคำตอบเดิมไม่ได้ และต้องใช้ลิงก์ผู้ดูแลเพื่อเข้าจัดการนัดอีกครั้ง',
@@ -151,7 +151,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
       {
         title: 'Data in your browser and the app',
         paragraphs: [
-          'We do not use cookies. Admin keys, edit tokens, your language and theme, and hidden events are kept in your browser’s localStorage and sessionStorage so you can come back and make changes.',
+          'We do not use cookies. Admin keys, edit tokens, your language and theme, hidden events, and the height of your “My events” list (so the page does not jump while it loads) are kept in your browser’s localStorage and sessionStorage so you can come back and make changes.',
           'If you clear your browser data, you may lose the ability to edit your response, and you will need the admin link to manage your event again.',
           'In the WanWang app, admin keys and edit tokens are kept in your device’s secure storage (Keychain or Keystore). Your language, theme and the list of events you created or answered are kept in the app’s storage on that device. The app has no ads and no user tracking.',
           'If you delete the app or change devices, you may lose the ability to edit your response, and you will need the admin link to manage your event again.',

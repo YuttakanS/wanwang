@@ -83,9 +83,9 @@
   border-radius: 0px !important;
 }
 
-/* Allows scrolling but no pinch or double-tap zoom. */
+/* Allows scrolling and pinch zoom, but no double-tap zoom, so quick taps on buttons stay taps. */
 html {
-  touch-action: pan-x pan-y;
+  touch-action: manipulation;
 }
 
 /* iOS Safari zooms in on any focused field with text under 16px. */
@@ -106,6 +106,52 @@ input[type='date'] {
 
 input[type='date']::-webkit-date-and-time-value {
   text-align: left;
+}
+
+/* Thai fallbacks scaled to IBM Plex Sans Thai's average Thai width, so text wraps the same before and
+   after Plex loads (layout shift). Tahoma is what Windows uses for Thai; Noto Sans Thai is Android's.
+   Ratios were measured on the app's Thai strings; 600 and 700 both map to the bold file. */
+@font-face {
+  font-family: 'Thai Fallback Tahoma';
+  src: local('Tahoma');
+  font-weight: 100 549;
+  size-adjust: 99.4%;
+  unicode-range: U+0E01-0E5B;
+}
+
+@font-face {
+  font-family: 'Thai Fallback Tahoma';
+  src: local('Tahoma Bold'), local('Tahoma-Bold');
+  font-weight: 550 900;
+  size-adjust: 92.6%;
+  unicode-range: U+0E01-0E5B;
+}
+
+@font-face {
+  font-family: 'Thai Fallback Noto';
+  src: local('Noto Sans Thai'), local('NotoSansThai-Regular');
+  font-weight: 100 549;
+  size-adjust: 104.1%;
+  unicode-range: U+0E01-0E5B;
+}
+
+@font-face {
+  font-family: 'Thai Fallback Noto';
+  src: local('Noto Sans Thai Bold'), local('NotoSansThai-Bold');
+  font-weight: 550 900;
+  size-adjust: 100.6%;
+  unicode-range: U+0E01-0E5B;
+}
+
+/* "My events" is read from this browser and the server, so it arrives after the first paint. Until
+   then it keeps the height it had last time, which a script in <head> sets (src/lib/myEventsSpace.ts). */
+.my-events-space {
+  display: none;
+}
+
+:root[data-my-events] .my-events-space {
+  display: block;
+  min-height: var(--my-events-height);
 }
 
 body {

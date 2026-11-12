@@ -12,6 +12,7 @@ export const translations: Record<Language, Translations> = {
     createEventBtn: 'สร้างนัดใหม่ +',
     langToggleEng: 'ENG',
     langToggleTh: 'TH',
+    langGroupLabel: 'เลือกภาษา',
 
     // Home Hero
     heroBadge: 'ระบบนัดหมายกลุ่มแบบกระชับ',
@@ -358,6 +359,7 @@ export const translations: Record<Language, Translations> = {
     createEventBtn: 'Create Event +',
     langToggleEng: 'ENG',
     langToggleTh: 'TH',
+    langGroupLabel: 'Language',
 
     // Home Hero
     heroBadge: 'Minimalist Group Scheduler',

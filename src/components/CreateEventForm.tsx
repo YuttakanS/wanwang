@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useId, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EventCategory, MAX_EVENT_SLOTS, TimeGranularity } from '@/types';
@@ -30,6 +30,7 @@ function isoDaysFromToday(days: number): string {
 export default function CreateEventForm() {
   const router = useRouter();
   const { lang, t } = useI18n();
+  const idBase = useId();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -159,10 +160,11 @@ export default function CreateEventForm() {
 
         {/* Title Input */}
         <div>
-          <label className="block text-sm font-bold text-ink mb-1">
+          <label htmlFor={`${idBase}-name`} className="block text-sm font-bold text-ink mb-1">
             {t('eventNameLabel')}
           </label>
           <input
+            id={`${idBase}-name`}
             type="text"
             required
             value={title}
@@ -177,19 +179,20 @@ export default function CreateEventForm() {
 
         {/* Category Selector */}
         <div>
-          <label className="block text-sm font-bold text-ink mb-1.5">
+          <label id={`${idBase}-cat`} className="block text-sm font-bold text-ink mb-1.5">
             {t('categoryLabel')}
           </label>
-          <CategoryPicker value={category} onChange={setCategory} />
+          <CategoryPicker value={category} onChange={setCategory} labelledBy={`${idBase}-cat`} />
         </div>
 
         {/* Location & Description */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-bold text-ink mb-1">
+            <label htmlFor={`${idBase}-loc`} className="block text-sm font-bold text-ink mb-1">
               {t('locationLabel')}
             </label>
             <input
+              id={`${idBase}-loc`}
               type="text"
               value={location}
               onChange={e => setLocation(e.target.value)}
@@ -199,10 +202,11 @@ export default function CreateEventForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-ink mb-1">
+            <label htmlFor={`${idBase}-notes`} className="block text-sm font-bold text-ink mb-1">
               {t('notesLabel')}
             </label>
             <input
+              id={`${idBase}-notes`}
               type="text"
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -257,10 +261,11 @@ export default function CreateEventForm() {
         {/* Custom Start & End Date Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
           <div className="min-w-0 max-w-full">
-            <label className="block text-xs font-bold text-ink mb-1">
+            <label htmlFor={`${idBase}-start`} className="block text-xs font-bold text-ink mb-1">
               {t('rangeStartLabel')}
             </label>
             <input
+              id={`${idBase}-start`}
               type="date"
               required
               value={startDate}
@@ -270,10 +275,11 @@ export default function CreateEventForm() {
           </div>
 
           <div className="min-w-0 max-w-full">
-            <label className="block text-xs font-bold text-ink mb-1">
+            <label htmlFor={`${idBase}-end`} className="block text-xs font-bold text-ink mb-1">
               {t('rangeEndLabel')}
             </label>
             <input
+              id={`${idBase}-end`}
               type="date"
               required
               min={startDate}
@@ -319,12 +325,13 @@ export default function CreateEventForm() {
 
         {/* Segmented Control (3 options, border-2 border-black, active = #FFE500) */}
         <div>
-          <label className="block text-xs font-bold text-ink mb-1.5">
+          <label id={`${idBase}-granularity`} className="block text-xs font-bold text-ink mb-1.5">
             {t('granularityLabel')}
           </label>
-          <div className="grid grid-cols-3 border-2 border-ink divide-x-2 divide-ink bg-surface select-none">
+          <div role="group" aria-labelledby={`${idBase}-granularity`} className="grid grid-cols-3 border-2 border-ink divide-x-2 divide-ink bg-surface select-none">
             <button
               type="button"
+              aria-pressed={granularity === 'day'}
               onClick={() => setGranularity('day')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'day'
@@ -336,6 +343,7 @@ export default function CreateEventForm() {
             </button>
             <button
               type="button"
+              aria-pressed={granularity === 'daypart'}
               onClick={() => setGranularity('daypart')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'daypart'
@@ -347,6 +355,7 @@ export default function CreateEventForm() {
             </button>
             <button
               type="button"
+              aria-pressed={granularity === 'hour'}
               onClick={() => setGranularity('hour')}
               className={`py-2.5 px-2 text-center text-xs sm:text-sm font-bold transition-none cursor-pointer ${
                 granularity === 'hour'
@@ -370,10 +379,11 @@ export default function CreateEventForm() {
         {granularity === 'hour' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t-2 border-ink">
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">
+              <label htmlFor={`${idBase}-from`} className="block text-xs font-bold text-ink mb-1">
                 {t('startHourLabel')}
               </label>
               <select
+                id={`${idBase}-from`}
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
                 className="w-full px-3 py-2 bg-sunken border-3 border-ink text-ink font-mono text-xs focus:outline-none focus:border-ink transition-none"
@@ -390,10 +400,11 @@ export default function CreateEventForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">
+              <label htmlFor={`${idBase}-to`} className="block text-xs font-bold text-ink mb-1">
                 {t('endHourLabel')}
               </label>
               <select
+                id={`${idBase}-to`}
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
                 className="w-full px-3 py-2 bg-sunken border-3 border-ink text-ink font-mono text-xs focus:outline-none focus:border-ink transition-none"
@@ -411,10 +422,11 @@ export default function CreateEventForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">
+              <label htmlFor={`${idBase}-interval`} className="block text-xs font-bold text-ink mb-1">
                 {t('intervalLabel')}
               </label>
               <select
+                id={`${idBase}-interval`}
                 value={slotInterval}
                 onChange={e => setSlotInterval(Number(e.target.value))}
                 className="w-full px-3 py-2 bg-sunken border-3 border-ink text-ink font-mono text-xs focus:outline-none focus:border-ink transition-none"
