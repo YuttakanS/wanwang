@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const store = new Map<string, string>();
+/** Names whose writes fail, as when the keychain is locked. */
+const failWrites = new Set<string>();
 
 vi.mock('expo-secure-store', () => ({
   setItemAsync: async (name: string, value: string) => {
+    if (failWrites.has(name)) throw new Error('Keychain is locked');
     store.set(name, value);
   },
   getItemAsync: async (name: string) => store.get(name) ?? null,
@@ -17,6 +20,13 @@ const made = { count: 0 };
 const keyNumber = (n: number) => n.toString(16).padStart(32, '0');
 vi.mock('./newAdminKey', () => ({
   newAdminKey: () => keyNumber(++made.count),
+}));
+
+const marked: string[] = [];
+vi.mock('./localStore', () => ({
+  markAdminLinkUnkept: async (slug: string) => {
+    marked.push(slug);
+  },
 }));
 
 const { ApiError } = await import('./api');
@@ -64,9 +74,11 @@ const fetchMock = vi.fn(async (url: string, init: { method?: string; headers: Re
 });
 
 beforeEach(async () => {
+  failWrites.clear();
   await forgetEventSecrets('abc');
   store.clear();
   made.count = 0;
+  marked.length = 0;
   Object.assign(server, { key: OLD_KEY, loseNextRotationAnswer: false, offline: false, blocked: false, picksOwnKey: null, rotations: [] });
   fetchMock.mockClear();
   vi.stubGlobal('fetch', fetchMock);
@@ -84,6 +96,11 @@ describe('rotateWithProposal', () => {
     expect(store.has(PENDING)).toBe(false);
   });
 
+  it('leaves a mark, so the screen reminds the creator to keep the new link', async () => {
+    await rotateWithProposal('abc', OLD_KEY);
+    expect(marked).toEqual(['abc']);
+  });
+
   it('remembers the proposed key before the request leaves', async () => {
     let pendingAtRequest: string | undefined;
     fetchMock.mockImplementationOnce(async () => {
@@ -96,6 +113,18 @@ describe('rotateWithProposal', () => {
     expect(pendingAtRequest).toBe(keyNumber(1));
   });
 
+  it('asks nothing when the proposed key cannot be stored first', async () => {
+    // Held in memory only, the key would be lost with the app if the answer went missing.
+    failWrites.add(PENDING);
+
+    await expect(rotateWithProposal('abc', OLD_KEY)).rejects.toThrow('could not be stored');
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(server.key).toBe(OLD_KEY);
+    expect(store.get(ADMIN)).toBe(OLD_KEY);
+    expect(marked).toEqual([]);
+  });
+
   it('ends with the new key when only the answer was lost', async () => {
     server.loseNextRotationAnswer = true;
 
@@ -104,6 +133,7 @@ describe('rotateWithProposal', () => {
     expect(server.key).toBe(keyNumber(1));
     expect(store.get(ADMIN)).toBe(keyNumber(1));
     expect(store.has(PENDING)).toBe(false);
+    expect(marked).toEqual(['abc']);
   });
 
   it('keeps the pending key when nothing can be learned, and fails with the cause', async () => {
@@ -115,6 +145,7 @@ describe('rotateWithProposal', () => {
     expect(error.status).toBe(0);
     expect(store.get(ADMIN)).toBe(OLD_KEY);
     expect(store.get(PENDING)).toBe(keyNumber(1));
+    expect(marked).toEqual([]);
   });
 
   it('proposes the pending key again instead of a new one', async () => {
@@ -135,13 +166,14 @@ describe('rotateWithProposal', () => {
     expect(store.has(PENDING)).toBe(false);
     // Forgetting the stored key is left to withAdminKey, which asks the server about that key itself.
     expect(store.get(ADMIN)).toBe(OLD_KEY);
+    expect(marked).toEqual([]);
   });
 
   it('keeps the pending key when a 403 comes from something in between', async () => {
     // The first attempt went through and its answer was lost while offline.
     server.loseNextRotationAnswer = true;
-    const settled = fetchMock.getMockImplementation()!;
-    fetchMock.mockImplementationOnce(settled).mockImplementationOnce(async () => {
+    const asServer = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementationOnce(asServer).mockImplementationOnce(async () => {
       throw new TypeError('Network request failed');
     });
     await rotateWithProposal('abc', OLD_KEY).catch(() => {});
@@ -159,12 +191,58 @@ describe('rotateWithProposal', () => {
     expect(store.get(ADMIN)).toBe(keyNumber(1));
   });
 
+  it('keeps the pending copy while the new key is only in memory', async () => {
+    // The server agreed, and the write of the new admin key failed: the phone locked, say.
+    failWrites.add(ADMIN);
+
+    await expect(rotateWithProposal('abc', OLD_KEY)).resolves.toBe(keyNumber(1));
+
+    // Usable for the rest of this run, and the copy in the store still survives the app being closed.
+    expect(await getAdminKey('abc')).toBe(keyNumber(1));
+    expect(store.get(ADMIN)).toBe(OLD_KEY);
+    expect(store.get(PENDING)).toBe(keyNumber(1));
+
+    // Once writing works again, the next load finishes the job.
+    failWrites.clear();
+    await settlePendingRotation('abc');
+    expect(store.get(ADMIN)).toBe(keyNumber(1));
+    expect(store.has(PENDING)).toBe(false);
+  });
+
+  it('recovers after a restart that came while the new key was only in memory', async () => {
+    failWrites.add(ADMIN);
+    await rotateWithProposal('abc', OLD_KEY);
+    failWrites.clear();
+    // What a restart leaves: the store as it is, nothing held in memory.
+    const left = new Map(store);
+    await forgetEventSecrets('abc');
+    for (const [name, value] of left) store.set(name, value);
+    expect(await getAdminKey('abc')).toBe(OLD_KEY);
+
+    await settlePendingRotation('abc');
+
+    expect(await getAdminKey('abc')).toBe(keyNumber(1));
+    expect(store.get(ADMIN)).toBe(keyNumber(1));
+    expect(store.has(PENDING)).toBe(false);
+  });
+
   it('stores the key of a server that picked its own', async () => {
     server.picksOwnKey = 'a'.repeat(32);
 
     await expect(rotateWithProposal('abc', OLD_KEY)).resolves.toBe('a'.repeat(32));
     expect(store.get(ADMIN)).toBe('a'.repeat(32));
     expect(store.has(PENDING)).toBe(false);
+  });
+
+  it('does not keep a pending key that such a server never used', async () => {
+    server.picksOwnKey = 'a'.repeat(32);
+    failWrites.add(ADMIN);
+
+    await rotateWithProposal('abc', OLD_KEY);
+
+    // Kept, it would be proposed again on the next load and change the key a second time.
+    expect(store.has(PENDING)).toBe(false);
+    expect(await getAdminKey('abc')).toBe('a'.repeat(32));
   });
 
   it('treats an answer without a usable key as no answer', async () => {
@@ -183,27 +261,30 @@ describe('rotateWithProposal', () => {
 
 describe('settlePendingRotation', () => {
   it('does nothing and asks nothing when no change is pending', async () => {
-    await expect(settlePendingRotation('abc')).resolves.toBe(false);
+    await settlePendingRotation('abc');
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(marked).toEqual([]);
   });
 
   it('takes over a change the server made while the answer was lost', async () => {
     server.key = keyNumber(7);
     await savePendingRotation('abc', keyNumber(7));
 
-    await expect(settlePendingRotation('abc')).resolves.toBe(true);
+    await settlePendingRotation('abc');
 
     expect(await getAdminKey('abc')).toBe(keyNumber(7));
     expect(await getPendingRotation('abc')).toBeNull();
+    expect(marked).toEqual(['abc']);
   });
 
   it('finishes a change the server never saw', async () => {
     await savePendingRotation('abc', keyNumber(7));
 
-    await expect(settlePendingRotation('abc')).resolves.toBe(true);
+    await settlePendingRotation('abc');
 
     expect(server.key).toBe(keyNumber(7));
     expect(await getAdminKey('abc')).toBe(keyNumber(7));
+    expect(marked).toEqual(['abc']);
   });
 
   it('recovers when only the pending key is left on the phone', async () => {
@@ -212,39 +293,53 @@ describe('settlePendingRotation', () => {
     await forgetEventSecrets('abc');
     await savePendingRotation('abc', keyNumber(7));
 
-    await expect(settlePendingRotation('abc')).resolves.toBe(true);
+    await settlePendingRotation('abc');
 
     expect(await getAdminKey('abc')).toBe(keyNumber(7));
     expect(server.rotations).toEqual([]);
+    expect(marked).toEqual(['abc']);
   });
 
   it('drops a pending key the server says is not the key, and leaves the stored one alone', async () => {
     await saveAdminKey('abc', 'not-the-key');
     await savePendingRotation('abc', keyNumber(7));
 
-    await expect(settlePendingRotation('abc')).resolves.toBe(false);
+    await settlePendingRotation('abc');
 
     expect(await getPendingRotation('abc')).toBeNull();
     expect(await getAdminKey('abc')).toBe('not-the-key');
+    expect(marked).toEqual([]);
   });
 
   it('keeps the pending key while offline', async () => {
     server.offline = true;
     await savePendingRotation('abc', keyNumber(7));
 
-    await expect(settlePendingRotation('abc')).resolves.toBe(false);
+    await settlePendingRotation('abc');
 
     expect(await getPendingRotation('abc')).toBe(keyNumber(7));
     expect(await getAdminKey('abc')).toBe(OLD_KEY);
+    expect(marked).toEqual([]);
   });
 
   it('only cleans up when the pending key is already the stored one', async () => {
     await saveAdminKey('abc', keyNumber(7));
     await savePendingRotation('abc', keyNumber(7));
 
-    await expect(settlePendingRotation('abc')).resolves.toBe(false);
+    await settlePendingRotation('abc');
 
     expect(await getPendingRotation('abc')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not clean up while that stored key is only in memory', async () => {
+    await savePendingRotation('abc', keyNumber(7));
+    failWrites.add(ADMIN);
+    await saveAdminKey('abc', keyNumber(7));
+
+    await settlePendingRotation('abc');
+
+    expect(store.get(PENDING)).toBe(keyNumber(7));
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

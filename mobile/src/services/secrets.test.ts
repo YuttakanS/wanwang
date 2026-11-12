@@ -71,6 +71,13 @@ describe('secrets', () => {
     expect(await getEditToken('abc')).toBe('t');
   });
 
+  it('says whether a secret reached the store', async () => {
+    await expect(saveAdminKey('abc', 'k')).resolves.toBe(true);
+    failWrites.on = true;
+    await expect(saveAdminKey('abc', 'k2')).resolves.toBe(false);
+    await expect(savePendingRotation('abc', 'next')).resolves.toBe(false);
+  });
+
   it('keeps a key it could not write, and writes it on a later read', async () => {
     failWrites.on = true;
     await saveAdminKey('abc', 'only-copy');

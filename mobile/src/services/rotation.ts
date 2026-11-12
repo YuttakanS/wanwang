@@ -5,6 +5,7 @@
 // out what really happened.
 import { outcomeOfFailure, type RotationOutcome, settleRotation } from '@/lib/keyRotation';
 import { ApiError, fetchEvent, rotateAdminKey } from './api';
+import { markAdminLinkUnkept } from './localStore';
 import { newAdminKey } from './newAdminKey';
 import { forgetPendingRotation, getAdminKey, getPendingRotation, saveAdminKey, savePendingRotation } from './secrets';
 
@@ -36,11 +37,15 @@ async function attempt(slug: string, currentKey: string | null, proposed: string
   return { outcome, failure };
 }
 
-async function finish(slug: string, outcome: RotationOutcome): Promise<void> {
+async function finish(slug: string, proposed: string, outcome: RotationOutcome): Promise<void> {
   if (outcome.status === 'done') {
-    // The old key stopped working on the server, so the new one is stored before anything else.
-    await saveAdminKey(slug, outcome.adminKey);
-    await forgetPendingRotation(slug);
+    // The old key stopped working on the server, so the new one is stored at once. The mark makes the
+    // screen remind the creator to keep the new link, for as long as it takes, restarts included.
+    const [stored] = await Promise.all([saveAdminKey(slug, outcome.adminKey), markAdminLinkUnkept(slug)]);
+    // A write that failed leaves the key in memory only, and the pending copy is then the one that
+    // survives the app being closed. It goes once the key is really in the store, or when it is not
+    // the key at all, which is what a server from before proposals leaves behind.
+    if (stored || outcome.adminKey !== proposed) await forgetPendingRotation(slug);
   } else if (outcome.status === 'refused') {
     await forgetPendingRotation(slug);
   }
@@ -53,30 +58,32 @@ async function finish(slug: string, outcome: RotationOutcome): Promise<void> {
  */
 export async function rotateWithProposal(slug: string, currentKey: string): Promise<string> {
   const proposed = (await getPendingRotation(slug)) ?? newAdminKey();
-  await savePendingRotation(slug, proposed);
+  // Nothing has changed on the server yet, so this is the moment to stop: a key held only in memory
+  // would be lost with the app if the answer went missing.
+  if (!(await savePendingRotation(slug, proposed))) throw new Error('The new admin key could not be stored');
 
   const { outcome, failure } = await attempt(slug, currentKey, proposed);
-  await finish(slug, outcome);
+  await finish(slug, proposed, outcome);
   if (outcome.status === 'done') return outcome.adminKey;
   throw failure ?? new ApiError('Admin key change failed', 0);
 }
 
 /**
  * Finishes a key change that was asked for and never confirmed. Run before an event loads, since the
- * stored key may already be dead. Resolves to true when it stored a new admin key.
+ * stored key may already be dead.
  */
-export async function settlePendingRotation(slug: string): Promise<boolean> {
+export async function settlePendingRotation(slug: string): Promise<void> {
   const proposed = await getPendingRotation(slug);
-  if (!proposed) return false;
+  if (!proposed) return;
 
   const storedKey = await getAdminKey(slug);
   if (storedKey === proposed) {
-    // Stored already, and only the clean-up after it was interrupted.
-    await forgetPendingRotation(slug);
-    return false;
+    // Already the admin key, and only the clean-up was interrupted. Writing it again says whether it
+    // is in the store or only in memory, and the pending copy is kept in the second case.
+    if (await saveAdminKey(slug, proposed)) await forgetPendingRotation(slug);
+    return;
   }
 
   const { outcome } = await attempt(slug, storedKey, proposed);
-  await finish(slug, outcome);
-  return outcome.status === 'done';
+  await finish(slug, proposed, outcome);
 }

@@ -9,13 +9,16 @@ const adminName = (slug: string) => `wanwang_admin_${slug}`;
 const tokenName = (slug: string) => `wanwang_token_${slug}`;
 const rotationName = (slug: string) => `wanwang_rotate_pending_${slug}`;
 
-async function write(name: string, value: string): Promise<void> {
+/** Resolves to whether the value reached the store. If not, it is still held for the rest of this run. */
+async function write(name: string, value: string): Promise<boolean> {
   unsaved.set(name, value);
   try {
     await SecureStore.setItemAsync(name, value);
     if (unsaved.get(name) === value) unsaved.delete(name);
+    return true;
   } catch {
     // Still held in `unsaved`.
+    return false;
   }
 }
 
