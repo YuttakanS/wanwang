@@ -79,6 +79,8 @@ describe('POST /api/events/[slug]/participants payload cap', () => {
     const res = await post({ name: 'Cat', note: NOTE, availability: ['2026-12-01'] });
 
     expect(res.status).toBe(409);
+    // Clients tell this apart from a full slot, which is also a 409.
+    expect((await res.json()).code).toBe('EVENT_FULL');
     expect(files.get('participants.json')).toBe(before);
   });
 
