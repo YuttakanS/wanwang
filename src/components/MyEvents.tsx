@@ -5,10 +5,12 @@ import Link from 'next/link';
 import {
   getHiddenSlugs,
   hideMyEvent,
+  listPendingRotationSlugs,
   listStoredAdminKeys,
   unhideAllMyEvents,
 } from '@/lib/adminAccess';
 import { useI18n } from '@/lib/i18n';
+import { settlePendingRotation } from '@/lib/rotateAdminKey';
 import { AdminEventSummary, MAX_ADMIN_LOOKUP } from '@/types';
 
 async function fetchSummaries(items: { slug: string; adminKey: string }[]): Promise<AdminEventSummary[]> {
@@ -46,6 +48,9 @@ export default function MyEvents() {
   const [hiddenCount, setHiddenCount] = useState(0);
 
   const load = useCallback(async () => {
+    // A key change whose answer was lost leaves a dead key in storage. The lookup would leave that
+    // event out, and this list is the usual way back to it, so such changes are settled first.
+    await Promise.all(listPendingRotationSlugs().map(slug => settlePendingRotation(slug).catch(() => null)));
     const stored = listStoredAdminKeys();
     const hidden = new Set(getHiddenSlugs());
     setHiddenCount(stored.filter(k => hidden.has(k.slug)).length);
