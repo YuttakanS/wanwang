@@ -240,6 +240,7 @@ export default function ScheduleMatrix({
           onParticipantSaved();
           throw new Error(t('errorSlotFull'));
         }
+        if (data.code === 'EVENT_FULL') throw new Error(t('errorEventFull'));
         throw new Error(data.error || 'Failed to save');
       }
 

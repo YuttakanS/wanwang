@@ -48,7 +48,7 @@ export async function POST(
     const existing = await getParticipantsByEventId(event.id);
     const others = existing.filter(p => p.id !== input.id);
     if (JSON.stringify(others).length + JSON.stringify(input).length > LIMITS.maxEventPayloadBytes) {
-      return NextResponse.json({ error: 'กิจกรรมนี้มีผู้โหวตเต็มแล้ว (Event is full)' }, { status: 409 });
+      return NextResponse.json({ error: 'กิจกรรมนี้มีผู้โหวตเต็มแล้ว (Event is full)', code: 'EVENT_FULL' }, { status: 409 });
     }
     const previous = existing.find(p => p.id === input.id);
 
