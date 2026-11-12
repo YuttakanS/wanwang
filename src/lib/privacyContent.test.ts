@@ -53,15 +53,13 @@ describe('the page view counting', () => {
     // The address sent with a page view is scrubbed by the component...
     expect(read('src/components/WebAnalytics.tsx')).toContain('scrubAnalyticsUrl(event.url)');
 
-    // ...and the browser is told not to send it as a referrer, which the counter's own request would.
+    // ...and the browser is told never to send more than the origin as a referrer, which the counter's
+    // own request would otherwise carry. On every page: one reached by a click inside the site keeps
+    // the policy of the page that was loaded first, so a rule for event pages alone would not do.
     const { default: nextConfig } = await import('../../next.config');
     const rules = await nextConfig.headers!();
-    const policyFor = (source: string) =>
-      rules.filter(rule => rule.source === source).flatMap(rule => rule.headers).find(header => header.key === 'Referrer-Policy')?.value;
-    expect(policyFor('/e/:path*')).toBe('strict-origin');
-    // The later of two matching rules wins, so the event rule has to come after the general one.
-    const order = rules.map(rule => rule.source);
-    expect(order.indexOf('/e/:path*')).toBeGreaterThan(order.indexOf('/:path*'));
+    const policies = rules.flatMap(rule => rule.headers.filter(header => header.key === 'Referrer-Policy').map(header => [rule.source, header.value]));
+    expect(policies).toEqual([['/:path*', 'strict-origin']]);
   });
 });
 
