@@ -14,6 +14,7 @@ import {
   getStoredAdminKey,
   isAdminLinkPending,
   markAdminLinkPending,
+  markAdminLinkUnkept,
   storeAdminKey,
   takeAdminKeyFromHash,
 } from '@/lib/adminAccess';
@@ -125,6 +126,9 @@ export default function EventPageClient({ slug }: { slug: string }) {
   // still has admin rights even if localStorage is blocked and the save failed.
   const handleAdminKeyRotated = (newKey: string) => {
     storeAdminKey(slug, newKey);
+    // Kept until dismissed, also if this tab is closed first. The session flag is the fallback for
+    // a browser that blocks localStorage.
+    markAdminLinkUnkept(slug);
     markAdminLinkPending(slug);
     pendingAdminKeyRef.current = newKey;
     fetchEventData();

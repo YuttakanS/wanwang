@@ -5,6 +5,8 @@ const PENDING_PREFIX = 'wanwang_admin_link_pending_';
 const HIDDEN_KEY = 'wanwang_my_events_hidden';
 // Must not start with ADMIN_PREFIX, or listStoredAdminKeys would take it for an event's key.
 const ROTATION_PREFIX = 'wanwang_rotate_pending_';
+// The same goes for this one.
+const UNKEPT_PREFIX = 'wanwang_link_unkept_';
 
 function hasWindow(): boolean {
   return typeof window !== 'undefined';
@@ -36,6 +38,7 @@ export function forgetEvent(slug: string): void {
   try {
     localStorage.removeItem(`${ADMIN_PREFIX}${slug}`);
     localStorage.removeItem(`${ROTATION_PREFIX}${slug}`);
+    localStorage.removeItem(`${UNKEPT_PREFIX}${slug}`);
     localStorage.removeItem(`wanwang_token_${slug}`);
     localStorage.removeItem(`wanwang_pid_${slug}`);
     writeHiddenSlugs(readHiddenSlugs().filter(s => s !== slug));
@@ -172,19 +175,43 @@ export function markAdminLinkPending(slug: string): void {
   }
 }
 
-export function isAdminLinkPending(slug: string): boolean {
-  if (!hasWindow()) return false;
+/**
+ * The same notice after the admin key changed. This one outlasts the tab: the old link is dead and
+ * the new one is in this browser only, and the change may have been finished from another page
+ * than the event's own, such as the list of my events.
+ */
+export function markAdminLinkUnkept(slug: string): void {
+  if (!hasWindow()) return;
   try {
-    return sessionStorage.getItem(`${PENDING_PREFIX}${slug}`) === '1';
+    localStorage.setItem(`${UNKEPT_PREFIX}${slug}`, '1');
+  } catch {
+    // The notice is a convenience; the share bar still offers the link.
+  }
+}
+
+function hasFlag(storage: () => Storage, name: string): boolean {
+  try {
+    return storage().getItem(name) === '1';
   } catch {
     return false;
   }
 }
 
+export function isAdminLinkPending(slug: string): boolean {
+  if (!hasWindow()) return false;
+  return hasFlag(() => sessionStorage, `${PENDING_PREFIX}${slug}`) || hasFlag(() => localStorage, `${UNKEPT_PREFIX}${slug}`);
+}
+
+/** Dismisses the notice, whichever of the two flags asked for it. */
 export function clearAdminLinkPending(slug: string): void {
   if (!hasWindow()) return;
   try {
     sessionStorage.removeItem(`${PENDING_PREFIX}${slug}`);
+  } catch {
+    // Nothing to clean up if storage is blocked.
+  }
+  try {
+    localStorage.removeItem(`${UNKEPT_PREFIX}${slug}`);
   } catch {
     // Nothing to clean up if storage is blocked.
   }
