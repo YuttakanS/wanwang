@@ -25,6 +25,12 @@ describe('errorMessage', () => {
     expect(errorMessage(new ApiError('x', 404), t)).toBe(t('notFoundDesc'));
   });
 
+  it('tells a full slot apart from a full event', () => {
+    expect(errorMessage(new ApiError('x', 409, undefined, { code: 'SLOT_FULL', fullSlots: ['2026-12-01'] }), t)).toBe(t('errorSlotFull'));
+    expect(errorMessage(new ApiError('x', 409, undefined, { code: 'EVENT_FULL' }), t)).toBe(t('eventFullError'));
+    expect(t('errorSlotFull')).not.toBe('errorSlotFull');
+  });
+
   it('never shows the text of an unexpected error', () => {
     expect(errorMessage(new Error('secret detail'), t)).toBe(t('errorDesc'));
   });

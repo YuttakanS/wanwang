@@ -16,7 +16,8 @@ export function errorMessage(error: unknown, t: Translate): string {
     case 403:
       return t('forbiddenError');
     case 409:
-      return t('eventFullError');
+      // A server from before the codes sends none, and only a full event answered 409 then.
+      return error.code === 'SLOT_FULL' ? t('errorSlotFull') : t('eventFullError');
     case 404:
       return t('notFoundDesc');
     case 429:

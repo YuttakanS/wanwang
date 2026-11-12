@@ -37,8 +37,8 @@ function PartCell({ slotId, label, store }: PartCellProps) {
       accessibilityLabel={label}
       accessibilityState={{ checked: isSelected }}
       onPress={() => {
-        store.toggle(slotId);
-        Haptics.selectionAsync().catch(() => {});
+        // A refusal has its own haptic, from whoever listens to the store.
+        if (store.toggle(slotId)) Haptics.selectionAsync().catch(() => {});
       }}
       style={[styles.cell, isSelected ? { backgroundColor: colors.accent, borderColor: ON_ACCENT } : { backgroundColor: colors.surface, borderColor: colors.ink }]}
     >
@@ -54,10 +54,12 @@ interface DaypartGridProps {
   dates: string[];
   today: string;
   store: SelectionStore;
+  /** Slots that already have as many people as the event allows. */
+  fullSlots: ReadonlySet<string>;
 }
 
 /** Four tappable parts per day, like the website. There are few enough cells that no drag is needed. */
-export function DaypartGrid({ dates, today, store }: DaypartGridProps) {
+export function DaypartGrid({ dates, today, store, fullSlots }: DaypartGridProps) {
   const { lang, t } = useI18n();
   const { colors } = useTheme();
 
@@ -81,6 +83,19 @@ export function DaypartGrid({ dates, today, store }: DaypartGridProps) {
             {DAY_PART_IDS.map(part =>
               isPast ? (
                 <View key={part} style={[styles.cell, { backgroundColor: colors.sunken, borderColor: colors.lineSoft }]} />
+              ) : fullSlots.has(daypartSlotId(date, part)) ? (
+                <View
+                  key={part}
+                  accessible
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={`${formatLocalizedDate(date, lang, 'chip')} ${t(PART_LABEL_KEYS[part].name)} ${t('slotFullNote')}`}
+                  accessibilityState={{ disabled: true, checked: false }}
+                  style={[styles.cell, { backgroundColor: colors.sunken, borderColor: colors.lineSoft }]}
+                >
+                  <NeoText variant="caption" tone="muted" maxFontSizeMultiplier={GRID_LABEL_MAX_SCALE} style={styles.fullTag}>
+                    {t('slotFullTag')}
+                  </NeoText>
+                </View>
               ) : (
                 <PartCell
                   key={part}
@@ -111,4 +126,5 @@ const styles = StyleSheet.create({
     borderWidth: borderWidths.thin,
   },
   mark: { color: ON_ACCENT },
+  fullTag: { fontSize: 10 },
 });

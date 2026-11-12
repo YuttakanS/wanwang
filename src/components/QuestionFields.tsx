@@ -20,19 +20,8 @@ const MB = 1024 * 1024;
 export const formatFileSize = (bytes: number) =>
   bytes >= MB ? `${(bytes / MB).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
-/** The first required question left unanswered, or null. */
-export function firstUnanswered(questions: EventQuestion[], answers: Answers): EventQuestion | null {
-  return (
-    questions.find(q => {
-      if (!q.required) return false;
-      const a = answers[q.id];
-      if (a === undefined) return true;
-      if (typeof a === 'string') return a.trim() === '';
-      if (Array.isArray(a)) return a.length === 0;
-      return false;
-    }) ?? null
-  );
-}
+// Lives in src/lib so the app can use the same check.
+export { firstUnanswered } from '@/lib/answers';
 
 /** The creator's questions, as the respondent fills them in. */
 export default function QuestionFields({ slug, questions, answers, onChange, onUploadingChange }: QuestionFieldsProps) {
