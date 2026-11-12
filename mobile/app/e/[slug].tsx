@@ -89,7 +89,11 @@ function EventDetail({ details, refetchError, refetch, justCreated }: EventDetai
     setShowAdminNotice(false);
     setDismissedMark(details.adminLinkUnkept);
     queryClient.setQueryData<LoadedEvent>(eventKey(event.slug), current => (current ? { ...current, adminLinkUnkept: null } : current));
-    void clearAdminLinkUnkept(event.slug);
+    // A change made a moment ago has its mark in storage before any load has shown it here. A load
+    // already on its way would then bring that mark back, so the one actually removed is remembered too.
+    void clearAdminLinkUnkept(event.slug).then(removed => {
+      if (removed) setDismissedMark(removed);
+    });
   };
   const [adminLost, setAdminLost] = useState(false);
   const onAdminLost = () => setAdminLost(true);

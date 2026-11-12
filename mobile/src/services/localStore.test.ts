@@ -39,9 +39,11 @@ describe('the mark for an admin link not yet put away', () => {
     expect(storage.get('wanwang_admin_link_unkept_abc')).toBe(mark);
     expect(await getAdminLinkUnkept('xyz')).toBeNull();
 
-    await clearAdminLinkUnkept('abc');
+    // Clearing hands back the mark it removed, for a screen that had not seen it yet.
+    await expect(clearAdminLinkUnkept('abc')).resolves.toBe(mark);
     expect(await getAdminLinkUnkept('abc')).toBeNull();
     expect(storage.has('wanwang_admin_link_unkept_abc')).toBe(false);
+    await expect(clearAdminLinkUnkept('abc')).resolves.toBeNull();
   });
 
   it('lasts for the run when it cannot be written', async () => {

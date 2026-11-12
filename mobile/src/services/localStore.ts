@@ -67,13 +67,16 @@ export async function getAdminLinkUnkept(slug: string): Promise<string | null> {
   }
 }
 
-export async function clearAdminLinkUnkept(slug: string): Promise<void> {
+/** Resolves to the mark it removed, which can be newer than the one the caller has seen. */
+export async function clearAdminLinkUnkept(slug: string): Promise<string | null> {
+  const removed = await getAdminLinkUnkept(slug);
   unkeptLinks.delete(slug);
   try {
     await AsyncStorage.removeItem(unkeptLinkName(slug));
   } catch {
     // The reminder comes back after a restart, which is the safe side to fail on.
   }
+  return removed;
 }
 
 const readKnownEvents = async () => parseKnownEvents(await AsyncStorage.getItem(EVENTS_KEY));

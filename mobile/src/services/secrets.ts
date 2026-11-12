@@ -62,9 +62,33 @@ export const forgetEditToken = (slug: string) => remove(tokenName(slug));
 /**
  * A new admin key that was proposed to the server and not yet confirmed. If the change went through
  * and its answer was lost, this is the only copy, so it is kept until the server has been asked.
+ *
+ * Unlike the other secrets it is never held in memory when it cannot be written. Whatever is found
+ * pending gets proposed, by the next load of the event if by nothing else, and a key that would not
+ * survive the app being closed must not be proposed at all.
  */
-export const getPendingRotation = (slug: string) => read(rotationName(slug));
-export const savePendingRotation = (slug: string, key: string) => write(rotationName(slug), key);
+export async function savePendingRotation(slug: string, key: string): Promise<boolean> {
+  try {
+    await SecureStore.setItemAsync(rotationName(slug), key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `failed` means the store could not be read, which is not the same as nothing being pending:
+ * starting a new change then could replace a pending key that is already the only one that works.
+ */
+export async function readPendingRotation(slug: string): Promise<{ key: string | null; failed: boolean }> {
+  try {
+    return { key: await SecureStore.getItemAsync(rotationName(slug)), failed: false };
+  } catch {
+    return { key: null, failed: true };
+  }
+}
+
+export const getPendingRotation = async (slug: string) => (await readPendingRotation(slug)).key;
 export const forgetPendingRotation = (slug: string) => remove(rotationName(slug));
 
 export async function forgetEventSecrets(slug: string): Promise<void> {

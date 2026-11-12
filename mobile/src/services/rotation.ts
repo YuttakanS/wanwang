@@ -7,7 +7,7 @@ import { outcomeOfFailure, type RotationOutcome, settleRotation } from '@/lib/ke
 import { ApiError, fetchEvent, rotateAdminKey } from './api';
 import { markAdminLinkUnkept } from './localStore';
 import { newAdminKey } from './newAdminKey';
-import { forgetPendingRotation, getAdminKey, getPendingRotation, saveAdminKey, savePendingRotation } from './secrets';
+import { forgetPendingRotation, getAdminKey, readPendingRotation, saveAdminKey, savePendingRotation } from './secrets';
 
 /** Whether the server accepts this key as the event's admin key. Null when it cannot be told. */
 async function isKeyLive(slug: string, key: string): Promise<boolean | null> {
@@ -57,10 +57,16 @@ async function finish(slug: string, proposed: string, outcome: RotationOutcome):
  * proposed again, so both attempts agree on the result whichever of them the server saw.
  */
 export async function rotateWithProposal(slug: string, currentKey: string): Promise<string> {
-  const proposed = (await getPendingRotation(slug)) ?? newAdminKey();
-  // Nothing has changed on the server yet, so this is the moment to stop: a key held only in memory
-  // would be lost with the app if the answer went missing.
-  if (!(await savePendingRotation(slug, proposed))) throw new Error('The new admin key could not be stored');
+  const pending = await readPendingRotation(slug);
+  // Not knowing whether a change is pending is no time to start another: a new proposal would replace
+  // one that may already be the key.
+  if (pending.failed) throw new Error('The pending admin key could not be read');
+
+  const proposed = pending.key ?? newAdminKey();
+  // Nothing has changed on the server yet, so this is the moment to stop: a key that is not in the
+  // store would be lost with the app if the answer went missing. It is not kept in memory either, so
+  // the next load of the event cannot propose it behind the creator's back.
+  if (pending.key === null && !(await savePendingRotation(slug, proposed))) throw new Error('The new admin key could not be stored');
 
   const { outcome, failure } = await attempt(slug, currentKey, proposed);
   await finish(slug, proposed, outcome);
@@ -73,7 +79,8 @@ export async function rotateWithProposal(slug: string, currentKey: string): Prom
  * stored key may already be dead.
  */
 export async function settlePendingRotation(slug: string): Promise<void> {
-  const proposed = await getPendingRotation(slug);
+  // Only ever a key that is in the store: see savePendingRotation.
+  const { key: proposed } = await readPendingRotation(slug);
   if (!proposed) return;
 
   const storedKey = await getAdminKey(slug);

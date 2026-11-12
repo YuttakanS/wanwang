@@ -3,13 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const store = new Map<string, string>();
 /** Names whose writes fail, as when the keychain is locked. */
 const failWrites = new Set<string>();
+const failReads = new Set<string>();
 
 vi.mock('expo-secure-store', () => ({
   setItemAsync: async (name: string, value: string) => {
     if (failWrites.has(name)) throw new Error('Keychain is locked');
     store.set(name, value);
   },
-  getItemAsync: async (name: string) => store.get(name) ?? null,
+  getItemAsync: async (name: string) => {
+    if (failReads.has(name)) throw new Error('Keychain is locked');
+    return store.get(name) ?? null;
+  },
   deleteItemAsync: async (name: string) => {
     store.delete(name);
   },
@@ -75,6 +79,7 @@ const fetchMock = vi.fn(async (url: string, init: { method?: string; headers: Re
 
 beforeEach(async () => {
   failWrites.clear();
+  failReads.clear();
   await forgetEventSecrets('abc');
   store.clear();
   made.count = 0;
@@ -123,6 +128,33 @@ describe('rotateWithProposal', () => {
     expect(server.key).toBe(OLD_KEY);
     expect(store.get(ADMIN)).toBe(OLD_KEY);
     expect(marked).toEqual([]);
+
+    // The event is loaded again right after the failed attempt. It must find nothing to propose.
+    failWrites.clear();
+    await settlePendingRotation('abc');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(server.key).toBe(OLD_KEY);
+    expect(await getPendingRotation('abc')).toBeNull();
+    expect(marked).toEqual([]);
+  });
+
+  it('starts no new change while it cannot tell whether one is pending', async () => {
+    // The server already changed to the pending key, and its answer was lost.
+    server.key = keyNumber(7);
+    await savePendingRotation('abc', keyNumber(7));
+    failReads.add(PENDING);
+
+    // A fresh proposal here would overwrite the only copy of the key that works.
+    await expect(rotateWithProposal('abc', OLD_KEY)).rejects.toThrow('could not be read');
+    await settlePendingRotation('abc');
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(made.count).toBe(0);
+    expect(store.get(PENDING)).toBe(keyNumber(7));
+
+    failReads.clear();
+    await settlePendingRotation('abc');
+    expect(await getAdminKey('abc')).toBe(keyNumber(7));
   });
 
   it('ends with the new key when only the answer was lost', async () => {
