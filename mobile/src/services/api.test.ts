@@ -93,9 +93,30 @@ describe('endpoints', () => {
   it('returns the saved participant', async () => {
     fetchMock.mockResolvedValue(json({ success: true, participant: { id: 'p1', editToken: 't1' } }));
 
-    const participant = await saveParticipant('abc', { name: 'A', note: '', availability: ['2026-12-01'] });
+    const participant = await saveParticipant('abc', { name: 'A', note: '', availability: ['2026-12-01'], answers: { q1: 'yes' } });
 
     expect(participant).toEqual({ id: 'p1', editToken: 't1' });
+    // Leaving the answers out would make the server drop the stored ones, files included.
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).answers).toEqual({ q1: 'yes' });
+  });
+
+  it('keeps the code and the slots of a 409, so a full slot can be told from a full event', async () => {
+    fetchMock.mockResolvedValue(json({ error: 'full', code: 'SLOT_FULL', fullSlots: ['2026-12-01', 7] }, { status: 409 }));
+
+    const error = await saveParticipant('abc', { name: 'A', note: '', availability: ['2026-12-01'], answers: {} }).catch(e => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.code).toBe('SLOT_FULL');
+    expect(error.fullSlots).toEqual(['2026-12-01']);
+  });
+
+  it('has no code and no slots for an error that carries none', async () => {
+    fetchMock.mockResolvedValue(json({ error: 'full' }, { status: 409 }));
+
+    const error = await saveParticipant('abc', { name: 'A', note: '', availability: ['2026-12-01'], answers: {} }).catch(e => e);
+
+    expect(error.code).toBeUndefined();
+    expect(error.fullSlots).toEqual([]);
   });
 
   it('splits a long lookup into lists the API accepts', async () => {

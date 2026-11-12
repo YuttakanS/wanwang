@@ -15,13 +15,20 @@ interface DayGridProps {
   store: SelectionStore;
   outsideVersion: number;
   labelFor: (day: MonthCell) => string;
+  /** Days that already have as many people as the event allows. */
+  fullSlots: ReadonlySet<string>;
+  /** The short tag and the spoken note for a full day. */
+  fullText: { tag: string; note: string };
   onDraggingChange: (dragging: boolean) => void;
 }
 
-export function DayGrid({ days, store, outsideVersion, labelFor, onDraggingChange }: DayGridProps) {
+export function DayGrid({ days, store, outsideVersion, labelFor, fullSlots, fullText, onDraggingChange }: DayGridProps) {
   const [cellSize, setCellSize] = useState(0);
 
-  const cells = useMemo(() => days.map(day => (day.isInRange && !day.isPast ? day.dateStr : null)), [days]);
+  const cells = useMemo(
+    () => days.map(day => (day.isInRange && !day.isPast && !fullSlots.has(day.dateStr) ? day.dateStr : null)),
+    [days, fullSlots],
+  );
 
   const { gesture, mask, onGridLayout } = useCalendarGesture({
     cells,
@@ -50,7 +57,16 @@ export function DayGrid({ days, store, outsideVersion, labelFor, onDraggingChang
             };
             const slotId = cells[index];
             return slotId === null ? (
-              <DisabledDayCell key={day.dateStr} dayNumber={day.dayNum} position={position} />
+              <DisabledDayCell
+                key={day.dateStr}
+                dayNumber={day.dayNum}
+                position={position}
+                reason={
+                  day.isInRange && !day.isPast && fullSlots.has(day.dateStr)
+                    ? { tag: fullText.tag, label: `${labelFor(day)} ${fullText.note}` }
+                    : undefined
+                }
+              />
             ) : (
               <DayCell
                 key={day.dateStr}

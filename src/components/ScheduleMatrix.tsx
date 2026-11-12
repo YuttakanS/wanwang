@@ -4,6 +4,7 @@ import React, { Dispatch, SetStateAction, useCallback, useState, useEffect, useM
 import Link from 'next/link';
 import { useSlotDragSelect } from '@/components/useSlotDragSelect';
 import QuestionFields, { firstUnanswered } from '@/components/QuestionFields';
+import { fullSlotsFor, slotsTakenByOthers, withinLimits } from '@/lib/slotLimits';
 import {
   WanWangEvent,
   Participant,
@@ -113,39 +114,23 @@ export default function ScheduleMatrix({
 
   // How many other people hold each slot. My own saved answer is left out, matching the server:
   // a slot I already hold is never "full" for me, so I can still edit my answer.
-  const takenByOthers = useMemo(() => {
-    const taken = new Map<string, number>();
-    if (!maxPerSlot) return taken;
-    for (const p of participants) {
-      if (p.id === currentParticipantId) continue;
-      for (const s of p.availability || p.availableDates || []) taken.set(s, (taken.get(s) ?? 0) + 1);
-    }
-    return taken;
-  }, [participants, currentParticipantId, maxPerSlot]);
+  const takenByOthers = useMemo(
+    () => slotsTakenByOthers(participants, currentParticipantId, maxPerSlot),
+    [participants, currentParticipantId, maxPerSlot]
+  );
 
-  const fullSlots = useMemo(() => {
-    const full = new Set<string>();
-    if (!maxPerSlot) return full;
-    const mine = participants.find(p => p.id === currentParticipantId);
-    const held = new Set(mine?.availability || mine?.availableDates || []);
-    for (const [slot, count] of takenByOthers) {
-      if (count >= maxPerSlot && !held.has(slot)) full.add(slot);
-    }
-    return full;
-  }, [participants, currentParticipantId, maxPerSlot, takenByOthers]);
+  const fullSlots = useMemo(
+    () => fullSlotsFor(participants, currentParticipantId, maxPerSlot),
+    [participants, currentParticipantId, maxPerSlot]
+  );
 
   // Every way of picking slots (tap, drag, shortcuts) goes through here, so none of them can
   // take a full slot or go over the per-person limit.
   const setSlotsWithinLimits: Dispatch<SetStateAction<string[]>> = useCallback(
     action =>
-      setMySelectedSlots(prev => {
-        const wanted = typeof action === 'function' ? action(prev) : action;
-        const had = new Set(prev);
-        const kept = wanted.filter(s => had.has(s));
-        let added = wanted.filter(s => !had.has(s) && !fullSlots.has(s));
-        if (maxPicks) added = added.slice(0, Math.max(0, maxPicks - kept.length));
-        return added.length === 0 && kept.length === prev.length ? prev : [...kept, ...added];
-      }),
+      setMySelectedSlots(prev =>
+        withinLimits(prev, typeof action === 'function' ? action(prev) : action, fullSlots, maxPicks)
+      ),
     [fullSlots, maxPicks]
   );
 

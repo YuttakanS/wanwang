@@ -1,19 +1,41 @@
-import type { AdminEventSummary, Participant, TimeGranularity, EventCategory, WanWangEvent } from '@/types';
+import type { AdminEventSummary, Answers, Participant, TimeGranularity, EventCategory, WanWangEvent } from '@/types';
 import { MAX_ADMIN_LOOKUP } from '@/types';
 import { apiUrl } from '~/constants/config';
 
 const TIMEOUT_MS = 20_000;
 
+/** What the server adds to some errors so they can be told apart, such as the two kinds of 409. */
+export interface ApiErrorDetail {
+  code?: string;
+  /** With SLOT_FULL: the slots that filled up. Empty when the database caught it at the last moment. */
+  fullSlots?: string[];
+}
+
 /** status 0 means the request never got an answer: no network, or a timeout. */
 export class ApiError extends Error {
+  readonly code?: string;
+  readonly fullSlots: string[];
+
   constructor(
     message: string,
     readonly status: number,
     readonly retryAfterSeconds?: number,
+    detail: ApiErrorDetail = {},
   ) {
     super(message);
     this.name = 'ApiError';
+    this.code = detail.code;
+    this.fullSlots = detail.fullSlots ?? [];
   }
+}
+
+function detailIn(data: unknown): ApiErrorDetail {
+  if (!data || typeof data !== 'object') return {};
+  const { code, fullSlots } = data as { code?: unknown; fullSlots?: unknown };
+  return {
+    code: typeof code === 'string' ? code : undefined,
+    fullSlots: Array.isArray(fullSlots) ? fullSlots.filter((slot): slot is string => typeof slot === 'string') : undefined,
+  };
 }
 
 export interface Credentials {
@@ -59,7 +81,12 @@ async function request<T>(path: string, { method = 'GET', body, adminKey, editTo
   }
 
   if (!response.ok || !data) {
-    throw new ApiError(data?.error || `Request failed (${response.status})`, response.status, parseRetryAfter(response.headers.get('Retry-After')));
+    throw new ApiError(
+      data?.error || `Request failed (${response.status})`,
+      response.status,
+      parseRetryAfter(response.headers.get('Retry-After')),
+      detailIn(data),
+    );
   }
   return data;
 }
@@ -92,6 +119,8 @@ export interface SaveParticipantInput {
   name: string;
   note: string;
   availability: string[];
+  /** Always sent: the server replaces the stored answers with these, and drops files left out. */
+  answers: Answers;
 }
 
 export type EventPatch = Partial<

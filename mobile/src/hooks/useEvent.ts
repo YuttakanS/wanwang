@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Participant } from '@/types';
+import type { Answers, Participant } from '@/types';
 import { ApiError, deleteParticipant, saveParticipant } from '~/services/api';
 import { isValidSlug } from '~/services/deepLink';
 import { loadEvent } from '~/services/loadEvent';
@@ -28,6 +28,7 @@ export interface VoteInput {
   name: string;
   note: string;
   availability: string[];
+  answers: Answers;
 }
 
 /** Thrown when the answer's token cannot be read, so nothing is sent that the server would refuse. */

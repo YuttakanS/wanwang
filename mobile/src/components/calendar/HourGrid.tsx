@@ -23,16 +23,22 @@ interface HourGridProps {
   today: string;
   store: SelectionStore;
   outsideVersion: number;
+  /** Slots that already have as many people as the event allows. */
+  fullSlots: ReadonlySet<string>;
+  /** The short tag and the spoken note for a full slot. */
+  fullText: { tag: string; note: string };
   onDraggingChange: (dragging: boolean) => void;
 }
 
 /** The same engine as DayGrid: tap to toggle, or press and hold then drag across rows and days. */
-export function HourGrid({ dates, times, today, store, outsideVersion, onDraggingChange }: HourGridProps) {
+export function HourGrid({ dates, times, today, store, outsideVersion, fullSlots, fullText, onDraggingChange }: HourGridProps) {
   const { lang } = useI18n();
   const [cellWidth, setCellWidth] = useState(0);
   const columns = dates.length;
 
-  const cells = useMemo(() => hourCells(dates, times, today), [dates, times, today]);
+  // Every cell that is not in the past, full or not, in the grid's order.
+  const openCells = useMemo(() => hourCells(dates, times, today), [dates, times, today]);
+  const cells = useMemo(() => openCells.map(slotId => (slotId !== null && fullSlots.has(slotId) ? null : slotId)), [openCells, fullSlots]);
 
   const { gesture, mask, onGridLayout } = useCalendarGesture({
     cells,
@@ -77,7 +83,18 @@ export function HourGrid({ dates, times, today, store, outsideVersion, onDraggin
                   width: cellWidth,
                   height: CELL_HEIGHT,
                 };
-                if (slotId === null) return <DisabledDayCell key={`past-${index}`} position={position} />;
+                if (slotId === null) {
+                  const fullId = openCells[index];
+                  if (fullId === null) return <DisabledDayCell key={`past-${index}`} position={position} />;
+                  const [fullDate, fullTime] = fullId.split('T');
+                  return (
+                    <DisabledDayCell
+                      key={`full-${fullId}`}
+                      position={position}
+                      reason={{ tag: fullText.tag, label: `${formatLocalizedDate(fullDate, lang, 'chip')} ${fullTime} ${fullText.note}` }}
+                    />
+                  );
+                }
                 const [date, time] = slotId.split('T');
                 return (
                   <DayCell
