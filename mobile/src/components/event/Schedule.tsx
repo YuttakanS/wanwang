@@ -19,7 +19,7 @@ import { NeoNotice } from '~/components/neo/NeoNotice';
 import { NeoText } from '~/components/neo/NeoText';
 import { PrivacyNote } from '~/components/PrivacyNote';
 import { borderWidths } from '~/constants/theme';
-import { EDIT_TOKEN_UNAVAILABLE, useSaveVote } from '~/hooks/useEvent';
+import { EditTokenUnavailableError, useSaveVote } from '~/hooks/useEvent';
 import { useFullSlots } from '~/hooks/useFullSlots';
 import { useI18n } from '~/hooks/useI18n';
 import { useSelectionStore } from '~/hooks/useSelectionStore';
@@ -175,8 +175,11 @@ export function Schedule({
           onTabChange('heatmap');
         },
         onError: error => {
+          // The answer can no longer be reached from this phone, so the next save starts a new one.
+          // A 409 is not that: a full slot or a full event leaves the answer where it is.
+          if (error instanceof EditTokenUnavailableError) savedId.current = null;
           if (!(error instanceof ApiError)) return;
-          if (error.status === 403 || error.status === EDIT_TOKEN_UNAVAILABLE) savedId.current = null;
+          if (error.status === 403) savedId.current = null;
           // Someone took the last place while this form was open. The refetch that follows marks them full.
           if (error.code === 'SLOT_FULL' && error.fullSlots.length > 0) {
             const gone = new Set(error.fullSlots);

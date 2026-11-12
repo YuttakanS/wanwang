@@ -110,6 +110,15 @@ export class SelectionStore {
     this.notify();
   }
 
+  /**
+   * Makes the calendar draw itself from the store again. For when what a gesture drew on the UI
+   * thread was overwritten there, and the screen would otherwise keep showing something else.
+   */
+  redraw(): void {
+    this.outsideVersion++;
+    this.notify();
+  }
+
   /** Sets the selection as given, limits or not: a saved answer is shown as it was saved. */
   replace(slotIds: Iterable<string>): void {
     this.slots = new Set(slotIds);

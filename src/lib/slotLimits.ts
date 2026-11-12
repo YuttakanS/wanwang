@@ -44,6 +44,13 @@ export function fullSlotsFor(
   return full;
 }
 
+/** Whether two sets hold the same slots, so a caller can keep the one it already has. */
+export function sameSlots(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const slot of a) if (!b.has(slot)) return false;
+  return true;
+}
+
 /**
  * What a change to the selection may become. Slots already chosen stay, new ones are dropped if
  * they are full, and only as many are added as the per-person limit leaves room for.

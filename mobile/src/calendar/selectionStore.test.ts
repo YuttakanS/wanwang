@@ -90,6 +90,20 @@ describe('SelectionStore limits', () => {
     expect(store.size).toBe(3);
   });
 
+  it('redraws on request without changing the selection', () => {
+    const store = new SelectionStore();
+    store.applyFromGesture(['a'], true);
+    const before = store.getOutsideVersion();
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    store.redraw();
+
+    expect(store.getOutsideVersion()).toBe(before + 1);
+    expect(store.getSnapshot()).toEqual(['a']);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
   it('has no limits until told', () => {
     const store = new SelectionStore();
     store.addMany(['a', 'b', 'c']);

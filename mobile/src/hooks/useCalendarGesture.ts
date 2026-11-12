@@ -83,6 +83,13 @@ export function useCalendarGesture({ cells, store, columns, gap, cellHeight, out
   // can lag the UI thread. An update could otherwise put back a cell size of 0 and leave a dead grid.
   const measured = useRef({ cellSize: 0, cellHeight: 0 });
 
+  // How many times the effect below has drawn the mask from the store. A gesture hands back the count
+  // the UI thread had seen when it started drawing. A newer count here means the mask was drawn again
+  // after that, over what the gesture drew, so the result has to be drawn once more from the store.
+  const redraws = useSharedValue(0);
+  const redrawsStarted = useRef(0);
+  const redrawsAtGestureStart = useSharedValue(0);
+
   const dragMode = useSharedValue(DRAG_NONE);
   const lastCell = useSharedValue(-1);
   const lastHapticAt = useSharedValue(0);
@@ -100,17 +107,23 @@ export function useCalendarGesture({ cells, store, columns, gap, cellHeight, out
       mask[i].set(selectedWords[i]);
     }
     layout.set({ ...measured.current, gap, columns, cellCount: cells.length });
-  }, [cells, store, gap, columns, outsideVersion, selectable, mask, layout]);
+    // Last, so the UI thread never sees the new count before it has the new mask.
+    redrawsStarted.current += 1;
+    redraws.set(redrawsStarted.current);
+  }, [cells, store, gap, columns, outsideVersion, selectable, mask, layout, redraws]);
 
   // If the grid goes away under a finger, the end of the gesture never arrives to unlock scrolling.
   useEffect(() => () => onDraggingChange(false), [onDraggingChange]);
 
   const commit = useCallback(
-    (words: number[], add: boolean) => {
+    (words: number[], add: boolean, redrawsSeen: number) => {
       const slotIds = indexesIn(words, cells.length)
         .map(index => cells[index])
         .filter((slotId): slotId is string => slotId !== null);
       store.applyFromGesture(slotIds, add);
+      // The cells changed under the finger, for example because a slot filled up, and the mask was
+      // drawn from a store that did not hold this gesture yet.
+      if (redrawsSeen !== redrawsStarted.current) store.redraw();
     },
     [cells, store]
   );
@@ -135,6 +148,7 @@ export function useCalendarGesture({ cells, store, columns, gap, cellHeight, out
     activateAfterLongPress: LONG_PRESS_MS,
     onActivate: event => {
       clearMask(touched);
+      redrawsAtGestureStart.set(redraws.get());
       scheduleOnRN(onDraggingChange, true);
       scheduleOnRN(startDragHaptic);
 
@@ -173,7 +187,7 @@ export function useCalendarGesture({ cells, store, columns, gap, cellHeight, out
       dragMode.set(DRAG_NONE);
       lastCell.set(-1);
       scheduleOnRN(onDraggingChange, false);
-      scheduleOnRN(commit, readMask(touched), mode === DRAG_ADD);
+      scheduleOnRN(commit, readMask(touched), mode === DRAG_ADD, redrawsAtGestureStart.get());
     },
   });
 
@@ -186,7 +200,7 @@ export function useCalendarGesture({ cells, store, columns, gap, cellHeight, out
       clearMask(touched);
       lastHapticAt.set(0);
       paintCell(index, add);
-      scheduleOnRN(commit, readMask(touched), add);
+      scheduleOnRN(commit, readMask(touched), add, redraws.get());
     },
   });
 

@@ -31,8 +31,17 @@ export interface VoteInput {
   answers: Answers;
 }
 
-/** Thrown when the answer's token cannot be read, so nothing is sent that the server would refuse. */
-export const EDIT_TOKEN_UNAVAILABLE = 409;
+/**
+ * Thrown when the answer's token cannot be read, so nothing is sent that the server would refuse.
+ * Not an ApiError: the server never said this, and a status borrowed from it (409 before) is also
+ * what a full slot or a full event answers, which must not be mistaken for a lost token.
+ */
+export class EditTokenUnavailableError extends Error {
+  constructor() {
+    super('Edit token unavailable');
+    this.name = 'EditTokenUnavailableError';
+  }
+}
 
 export function useSaveVote(slug: string, title: string) {
   const queryClient = useQueryClient();
@@ -40,7 +49,7 @@ export function useSaveVote(slug: string, title: string) {
     /** Resolves to the answer's id, so a later save updates it even if the refetch below fails. */
     mutationFn: async ({ participantId, ...fields }: VoteInput): Promise<string> => {
       const editToken = participantId ? await getEditToken(slug) : null;
-      if (participantId && !editToken) throw new ApiError('Edit token unavailable', EDIT_TOKEN_UNAVAILABLE);
+      if (participantId && !editToken) throw new EditTokenUnavailableError();
 
       let saved: Participant;
       try {

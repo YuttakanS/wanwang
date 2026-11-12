@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { answersToSend, firstUnanswered } from './answers';
-import { fullSlotsFor, slotsTakenByOthers, withinLimits } from './slotLimits';
+import { fullSlotsFor, sameSlots, slotsTakenByOthers, withinLimits } from './slotLimits';
 import type { EventQuestion } from '@/types';
 
 const people = [
@@ -39,6 +39,19 @@ describe('fullSlotsFor', () => {
   it('marks a slot I do not hold', () => {
     const others = [...people, { id: 'c', availability: ['d2'] }];
     expect([...fullSlotsFor(others, 'me', 2)]).toEqual(['d2']);
+  });
+});
+
+describe('sameSlots', () => {
+  it('compares members, not objects or order', () => {
+    expect(sameSlots(new Set(['d1', 'd2']), new Set(['d2', 'd1']))).toBe(true);
+    expect(sameSlots(new Set(), new Set())).toBe(true);
+  });
+
+  it('tells a different, a larger and a smaller set apart', () => {
+    expect(sameSlots(new Set(['d1']), new Set(['d2']))).toBe(false);
+    expect(sameSlots(new Set(['d1']), new Set(['d1', 'd2']))).toBe(false);
+    expect(sameSlots(new Set(['d1', 'd2']), new Set(['d1']))).toBe(false);
   });
 });
 
