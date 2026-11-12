@@ -3,6 +3,10 @@
 const ADMIN_PREFIX = 'wanwang_admin_';
 const PENDING_PREFIX = 'wanwang_admin_link_pending_';
 const HIDDEN_KEY = 'wanwang_my_events_hidden';
+// Must not start with ADMIN_PREFIX, or listStoredAdminKeys would take it for an event's key.
+const ROTATION_PREFIX = 'wanwang_rotate_pending_';
+// The same goes for this one.
+const UNKEPT_PREFIX = 'wanwang_link_unkept_';
 
 function hasWindow(): boolean {
   return typeof window !== 'undefined';
@@ -33,6 +37,8 @@ export function forgetEvent(slug: string): void {
   if (!hasWindow()) return;
   try {
     localStorage.removeItem(`${ADMIN_PREFIX}${slug}`);
+    localStorage.removeItem(`${ROTATION_PREFIX}${slug}`);
+    localStorage.removeItem(`${UNKEPT_PREFIX}${slug}`);
     localStorage.removeItem(`wanwang_token_${slug}`);
     localStorage.removeItem(`wanwang_pid_${slug}`);
     writeHiddenSlugs(readHiddenSlugs().filter(s => s !== slug));
@@ -114,6 +120,50 @@ export function takeAdminKeyFromHash(): string | null {
   }
 }
 
+// A key change that was asked for but not yet confirmed. The new key is kept until the server's
+// answer arrives, because if the change happened and the answer was lost, this is the only copy.
+export function getPendingRotation(slug: string): string | null {
+  if (!hasWindow()) return null;
+  try {
+    return localStorage.getItem(`${ROTATION_PREFIX}${slug}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Every event with a key change still waiting for its answer. */
+export function listPendingRotationSlugs(): string[] {
+  if (!hasWindow()) return [];
+  try {
+    const slugs: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const name = localStorage.key(i);
+      if (name?.startsWith(ROTATION_PREFIX)) slugs.push(name.slice(ROTATION_PREFIX.length));
+    }
+    return slugs;
+  } catch {
+    return [];
+  }
+}
+
+export function setPendingRotation(slug: string, newKey: string): void {
+  if (!hasWindow()) return;
+  try {
+    localStorage.setItem(`${ROTATION_PREFIX}${slug}`, newKey);
+  } catch {
+    // Storage blocked: a lost answer cannot be recovered, as before.
+  }
+}
+
+export function clearPendingRotation(slug: string): void {
+  if (!hasWindow()) return;
+  try {
+    localStorage.removeItem(`${ROTATION_PREFIX}${slug}`);
+  } catch {
+    // Nothing to clean up if storage is blocked.
+  }
+}
+
 // Pending flag: show the "save your admin link" notice once after creating an event.
 // sessionStorage keeps it across a refresh until the creator dismisses it.
 export function markAdminLinkPending(slug: string): void {
@@ -125,19 +175,43 @@ export function markAdminLinkPending(slug: string): void {
   }
 }
 
-export function isAdminLinkPending(slug: string): boolean {
-  if (!hasWindow()) return false;
+/**
+ * The same notice after the admin key changed. This one outlasts the tab: the old link is dead and
+ * the new one is in this browser only, and the change may have been finished from another page
+ * than the event's own, such as the list of my events.
+ */
+export function markAdminLinkUnkept(slug: string): void {
+  if (!hasWindow()) return;
   try {
-    return sessionStorage.getItem(`${PENDING_PREFIX}${slug}`) === '1';
+    localStorage.setItem(`${UNKEPT_PREFIX}${slug}`, '1');
+  } catch {
+    // The notice is a convenience; the share bar still offers the link.
+  }
+}
+
+function hasFlag(storage: () => Storage, name: string): boolean {
+  try {
+    return storage().getItem(name) === '1';
   } catch {
     return false;
   }
 }
 
+export function isAdminLinkPending(slug: string): boolean {
+  if (!hasWindow()) return false;
+  return hasFlag(() => sessionStorage, `${PENDING_PREFIX}${slug}`) || hasFlag(() => localStorage, `${UNKEPT_PREFIX}${slug}`);
+}
+
+/** Dismisses the notice, whichever of the two flags asked for it. */
 export function clearAdminLinkPending(slug: string): void {
   if (!hasWindow()) return;
   try {
     sessionStorage.removeItem(`${PENDING_PREFIX}${slug}`);
+  } catch {
+    // Nothing to clean up if storage is blocked.
+  }
+  try {
+    localStorage.removeItem(`${UNKEPT_PREFIX}${slug}`);
   } catch {
     // Nothing to clean up if storage is blocked.
   }

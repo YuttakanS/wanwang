@@ -14,12 +14,14 @@ import {
   getStoredAdminKey,
   isAdminLinkPending,
   markAdminLinkPending,
+  markAdminLinkUnkept,
   storeAdminKey,
   takeAdminKeyFromHash,
 } from '@/lib/adminAccess';
 import { WanWangEvent, Participant, EventCategory } from '@/types';
 import { formatLocalizedDate, formatLocalizedDateRange } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
+import { settlePendingRotation } from '@/lib/rotateAdminKey';
 
 class EventLoadError extends Error {
   constructor(message: string, readonly status: number) {
@@ -57,7 +59,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
       // start before the first finishes (Strict Mode double-runs effects in dev).
       pendingAdminKeyRef.current = takeAdminKeyFromHash() ?? pendingAdminKeyRef.current;
       const linkKey = pendingAdminKeyRef.current;
-      const storedKey = getStoredAdminKey(slug);
+      // A key change whose answer never arrived is settled first. Otherwise the stored key may
+      // already be dead while the only copy of the new one sits unused. The settled key is used
+      // directly, in case storing it did not work.
+      const storedKey = (await settlePendingRotation(slug)) ?? getStoredAdminKey(slug);
 
       const requestEvent = (adminKey: string | null) => {
         const headers: Record<string, string> = {};
@@ -121,6 +126,9 @@ export default function EventPageClient({ slug }: { slug: string }) {
   // still has admin rights even if localStorage is blocked and the save failed.
   const handleAdminKeyRotated = (newKey: string) => {
     storeAdminKey(slug, newKey);
+    // Kept until dismissed, also if this tab is closed first. The session flag is the fallback for
+    // a browser that blocks localStorage.
+    markAdminLinkUnkept(slug);
     markAdminLinkPending(slug);
     pendingAdminKeyRef.current = newKey;
     fetchEventData();

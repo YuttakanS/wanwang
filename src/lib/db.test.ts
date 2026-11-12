@@ -349,6 +349,47 @@ describe('rotateAdminKey', () => {
 
     await expect(rotateAdminKey('abc123', CURRENT_KEY)).resolves.toBeNull();
   });
+
+  const PROPOSED = '0123456789abcdef0123456789abcdef';
+
+  it('stores the key the client proposed', async () => {
+    state.results.push({ data: stored, error: null });
+    state.results.push({ data: { id: 'event-1' }, error: null });
+
+    await expect(rotateAdminKey('abc123', CURRENT_KEY, PROPOSED)).resolves.toBe(PROPOSED);
+    expect(argsOf(state.calls[1], 'update').admin_key).toBe(hashSecret(PROPOSED));
+  });
+
+  it('succeeds without writing when the proposed key is already the stored one', async () => {
+    // The first attempt worked and its answer was lost, so the old key is dead by now.
+    state.results.push({ data: { id: 'event-1', admin_key: hashSecret(PROPOSED) }, error: null });
+
+    await expect(rotateAdminKey('abc123', CURRENT_KEY, PROPOSED)).resolves.toBe(PROPOSED);
+    expect(didWrite()).toBe(false);
+  });
+
+  it('refuses a proposal when neither it nor the current key matches', async () => {
+    state.results.push({ data: stored, error: null });
+
+    await expect(rotateAdminKey('abc123', 'wrong-key', PROPOSED)).resolves.toBeNull();
+    expect(didWrite()).toBe(false);
+  });
+
+  it('succeeds when the same proposal was stored by a request that arrived at the same time', async () => {
+    state.results.push({ data: stored, error: null });
+    state.results.push({ data: null, error: null });
+    state.results.push({ data: { admin_key: hashSecret(PROPOSED) }, error: null });
+
+    await expect(rotateAdminKey('abc123', CURRENT_KEY, PROPOSED)).resolves.toBe(PROPOSED);
+  });
+
+  it('returns null when a different rotation won over the proposal', async () => {
+    state.results.push({ data: stored, error: null });
+    state.results.push({ data: null, error: null });
+    state.results.push({ data: { admin_key: hashSecret('someone-elses-key') }, error: null });
+
+    await expect(rotateAdminKey('abc123', CURRENT_KEY, PROPOSED)).resolves.toBeNull();
+  });
 });
 
 describe('deleteEvent', () => {
