@@ -1,4 +1,5 @@
 // The website's half of changing an admin key. The rules are in keyRotation.ts.
+import { clearPendingRotation, getPendingRotation, getStoredAdminKey, markAdminLinkPending, storeAdminKey } from './adminAccess';
 import { bytesToHex, isAdminKeyFormat } from './adminKeyFormat';
 import { outcomeOfFailure, settleRotation, type RotationOutcome } from './keyRotation';
 
@@ -49,4 +50,25 @@ export function requestRotation(slug: string, currentKey: string | null, newKey:
     () => (currentKey ? askServer(slug, currentKey, newKey) : Promise.resolve<RotationOutcome>({ status: 'refused' })),
     () => isKeyLive(slug, newKey)
   );
+}
+
+/**
+ * Finishes a key change that was asked for and never confirmed, and resolves to the new key when
+ * it stored one. The event page runs this before it loads, and the list of my events before it
+ * looks them up, because until then the stored key may already be dead.
+ */
+export async function settlePendingRotation(slug: string): Promise<string | null> {
+  const pending = getPendingRotation(slug);
+  if (!pending) return null;
+
+  const outcome = await requestRotation(slug, getStoredAdminKey(slug), pending);
+  if (outcome.status === 'done') {
+    storeAdminKey(slug, outcome.adminKey);
+    clearPendingRotation(slug);
+    // The new link is in this browser only until it is copied, so the event page reminds the creator.
+    markAdminLinkPending(slug);
+    return outcome.adminKey;
+  }
+  if (outcome.status === 'refused') clearPendingRotation(slug);
+  return null;
 }

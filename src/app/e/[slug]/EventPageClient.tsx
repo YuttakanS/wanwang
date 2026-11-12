@@ -11,8 +11,6 @@ import StatusPage from '@/components/StatusPage';
 import SiteFooter from '@/components/SiteFooter';
 import {
   clearAdminLinkPending,
-  clearPendingRotation,
-  getPendingRotation,
   getStoredAdminKey,
   isAdminLinkPending,
   markAdminLinkPending,
@@ -22,7 +20,7 @@ import {
 import { WanWangEvent, Participant, EventCategory } from '@/types';
 import { formatLocalizedDate, formatLocalizedDateRange } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
-import { requestRotation } from '@/lib/rotateAdminKey';
+import { settlePendingRotation } from '@/lib/rotateAdminKey';
 
 class EventLoadError extends Error {
   constructor(message: string, readonly status: number) {
@@ -60,22 +58,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
       // start before the first finishes (Strict Mode double-runs effects in dev).
       pendingAdminKeyRef.current = takeAdminKeyFromHash() ?? pendingAdminKeyRef.current;
       const linkKey = pendingAdminKeyRef.current;
-      let storedKey = getStoredAdminKey(slug);
-
       // A key change whose answer never arrived is settled first. Otherwise the stored key may
-      // already be dead while the only copy of the new one sits unused.
-      const unconfirmedKey = getPendingRotation(slug);
-      if (unconfirmedKey) {
-        const outcome = await requestRotation(slug, storedKey, unconfirmedKey);
-        if (outcome.status === 'done') {
-          storeAdminKey(slug, outcome.adminKey);
-          clearPendingRotation(slug);
-          markAdminLinkPending(slug);
-          storedKey = outcome.adminKey;
-        } else if (outcome.status === 'refused') {
-          clearPendingRotation(slug);
-        }
-      }
+      // already be dead while the only copy of the new one sits unused. The settled key is used
+      // directly, in case storing it did not work.
+      const storedKey = (await settlePendingRotation(slug)) ?? getStoredAdminKey(slug);
 
       const requestEvent = (adminKey: string | null) => {
         const headers: Record<string, string> = {};

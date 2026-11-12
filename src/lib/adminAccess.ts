@@ -128,6 +128,21 @@ export function getPendingRotation(slug: string): string | null {
   }
 }
 
+/** Every event with a key change still waiting for its answer. */
+export function listPendingRotationSlugs(): string[] {
+  if (!hasWindow()) return [];
+  try {
+    const slugs: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const name = localStorage.key(i);
+      if (name?.startsWith(ROTATION_PREFIX)) slugs.push(name.slice(ROTATION_PREFIX.length));
+    }
+    return slugs;
+  } catch {
+    return [];
+  }
+}
+
 export function setPendingRotation(slug: string, newKey: string): void {
   if (!hasWindow()) return;
   try {
