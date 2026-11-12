@@ -1,6 +1,6 @@
 import type { AdminEventSummary, Participant, TimeGranularity, EventCategory, WanWangEvent } from '@/types';
-import { isAdminKeyFormat } from '@/lib/adminKeyFormat';
 import { MAX_ADMIN_LOOKUP } from '@/types';
+import { isAdminKeyFormat } from '@/lib/adminKeyFormat';
 import { apiUrl } from '~/constants/config';
 
 const TIMEOUT_MS = 20_000;
