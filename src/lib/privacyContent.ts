@@ -17,7 +17,7 @@ interface PrivacyContent {
 export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
   th: {
     title: 'นโยบายความเป็นส่วนตัว',
-    updated: 'ปรับปรุงล่าสุด 11 พฤศจิกายน 2569',
+    updated: 'ปรับปรุงล่าสุด 12 พฤศจิกายน 2569',
     sections: [
       {
         title: 'ข้อมูลที่เราเก็บ',
@@ -42,7 +42,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'เราใช้ข้อมูลเพื่ออะไร',
         paragraphs: [
           'เพื่อให้บริการหาเวลานัดตามที่คุณใช้งาน และเพื่อดูแลความปลอดภัยของระบบ ซึ่งเป็นการประมวลผลบนฐานการให้บริการตามที่คุณร้องขอ และประโยชน์โดยชอบด้วยกฎหมาย',
-          'เราไม่ขายข้อมูล ไม่มีโฆษณา และไม่มีระบบติดตามผู้ใช้',
+          'เราไม่ขายข้อมูล ไม่มีโฆษณา และไม่ติดตามคุณข้ามเว็บไซต์หรือสร้างโปรไฟล์ของคุณ',
           'เรานับจำนวนนัด คำตอบ ไฟล์แนบ และความคิดเห็นเป็นยอดรวมรายวัน เพื่อดูว่าบริการถูกใช้มากแค่ไหน ยอดรวมนี้เป็นตัวเลขอย่างเดียว ไม่มีชื่อหรือเนื้อหา ไม่ผูกกับบุคคลหรืออุปกรณ์ใด และคงอยู่หลังจากนัดถูกลบแล้ว',
         ],
       },
@@ -59,6 +59,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'ผู้ให้บริการที่เกี่ยวข้อง',
         paragraphs: [
           'Vercel ให้บริการเว็บและอาจบันทึกข้อมูลการเข้าถึง เช่น IP address ส่วน Supabase ให้บริการฐานข้อมูลและที่เก็บไฟล์แนบ',
+          'บนเว็บไซต์ เราใช้ Vercel Web Analytics นับจำนวนการเข้าชมหน้าเว็บ โดยไม่ใช้คุกกี้ สิ่งที่บันทึกคือหน้าที่เปิด เว็บที่พามา ประเทศ และชนิดของอุปกรณ์กับเบราว์เซอร์ ลิงก์ของนัดถูกตัดออกก่อนส่ง สถิตินี้จึงไม่บอกว่าคุณเปิดนัดไหน Vercel แยกผู้เข้าชมด้วยค่า hash ที่เปลี่ยนทุกวัน จึงติดตามคุณข้ามวันไม่ได้ แอปวันว่างไม่มีการนับนี้',
           'ผู้ให้บริการเหล่านี้อาจเก็บหรือประมวลผลข้อมูลบนเซิร์ฟเวอร์นอกประเทศไทย',
         ],
       },
@@ -93,7 +94,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
   },
   en: {
     title: 'Privacy Notice',
-    updated: 'Last updated 11 November 2026',
+    updated: 'Last updated 12 November 2026',
     sections: [
       {
         title: 'What we collect',
@@ -118,7 +119,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'Why we use it',
         paragraphs: [
           'To provide the scheduling service you are using and to keep the system secure. The legal bases are providing the service you request and our legitimate interests.',
-          'We do not sell data, show ads, or track users.',
+          'We do not sell data, show ads, track you across websites or build a profile of you.',
           'We keep a daily count of events, responses, attached files and feedback, to see how much the service is used. These totals are numbers only: no names or content, not linked to any person or device. They remain after an event is deleted.',
         ],
       },
@@ -135,6 +136,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'Service providers',
         paragraphs: [
           'Vercel hosts the site and may log access data such as IP addresses. Supabase hosts the database and attached files.',
+          'On the website we use Vercel Web Analytics to count page views, without cookies. It records the page opened, the referring site, the country, and the type of device and browser. An event’s link is removed before anything is sent, so these statistics do not show which event you opened. Vercel tells visitors apart with a hash that changes every day, so it cannot follow you from one day to the next. The WanWang app does not do this counting.',
           'These providers may store or process data on servers outside Thailand.',
         ],
       },
