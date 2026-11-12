@@ -40,6 +40,45 @@ export async function saveLanguage(language: Language): Promise<void> {
   }
 }
 
+// A mark that an event's admin key changed and its new link has not been put away yet. It lives here
+// rather than in the result of loading the event, which is thrown away when a load is retried or
+// cancelled, and it outlasts a restart: until the link is copied, the new key is on this phone only.
+// The value says which change it is, so dismissing one notice cannot hide the next.
+const unkeptLinkName = (slug: string) => `wanwang_admin_link_unkept_${slug}`;
+const unkeptLinks = new Map<string, string>();
+
+export async function markAdminLinkUnkept(slug: string): Promise<void> {
+  const mark = String(Date.now());
+  unkeptLinks.set(slug, mark);
+  try {
+    await AsyncStorage.setItem(unkeptLinkName(slug), mark);
+  } catch {
+    // Held in memory, so the reminder still lasts for this run.
+  }
+}
+
+export async function getAdminLinkUnkept(slug: string): Promise<string | null> {
+  const held = unkeptLinks.get(slug);
+  if (held) return held;
+  try {
+    return await AsyncStorage.getItem(unkeptLinkName(slug));
+  } catch {
+    return null;
+  }
+}
+
+/** Resolves to the mark it removed, which can be newer than the one the caller has seen. */
+export async function clearAdminLinkUnkept(slug: string): Promise<string | null> {
+  const removed = await getAdminLinkUnkept(slug);
+  unkeptLinks.delete(slug);
+  try {
+    await AsyncStorage.removeItem(unkeptLinkName(slug));
+  } catch {
+    // The reminder comes back after a restart, which is the safe side to fail on.
+  }
+  return removed;
+}
+
 const readKnownEvents = async () => parseKnownEvents(await AsyncStorage.getItem(EVENTS_KEY));
 
 export async function loadKnownEvents(): Promise<KnownEvent[]> {
@@ -68,7 +107,9 @@ function changeKnownEvents(change: (events: KnownEvent[]) => KnownEvent[]): Prom
 
 export const rememberEvent = (slug: string, title: string) => changeKnownEvents(events => withKnownEvent(events, slug, title));
 
-export const forgetKnownEvent = (slug: string) => changeKnownEvents(events => events.filter(e => e.slug !== slug));
+export async function forgetKnownEvent(slug: string): Promise<void> {
+  await Promise.all([changeKnownEvents(events => events.filter(e => e.slug !== slug)), clearAdminLinkUnkept(slug)]);
+}
 
 export const setEventHidden = (slug: string, hidden: boolean) =>
   changeKnownEvents(events => events.map(e => (e.slug === slug ? { ...e, hidden } : e)));

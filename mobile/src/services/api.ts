@@ -1,5 +1,6 @@
 import type { AdminEventSummary, Answers, Participant, TimeGranularity, EventCategory, WanWangEvent } from '@/types';
 import { MAX_ADMIN_LOOKUP } from '@/types';
+import { isAdminKeyFormat } from '@/lib/adminKeyFormat';
 import { apiUrl } from '~/constants/config';
 
 const TIMEOUT_MS = 20_000;
@@ -149,8 +150,14 @@ export async function deleteEvent(slug: string, adminKey: string): Promise<void>
   await request(eventPath(slug), { method: 'DELETE', adminKey });
 }
 
-export async function rotateAdminKey(slug: string, adminKey: string): Promise<string> {
-  const data = await request<{ adminKey: string }>(`${eventPath(slug)}/admin-key`, { method: 'POST', adminKey });
+/**
+ * `newKey` is the key the app wants, so that asking again after a lost answer gets the same result.
+ * Resolves to the key that works now, which a server from before proposals picks itself.
+ */
+export async function rotateAdminKey(slug: string, adminKey: string, newKey: string): Promise<string> {
+  const data = await request<{ adminKey?: unknown }>(`${eventPath(slug)}/admin-key`, { method: 'POST', adminKey, body: { newKey } });
+  // Anything else stored as the key would lock the creator out, so it counts as no answer.
+  if (!isAdminKeyFormat(data.adminKey)) throw new ApiError('Unexpected response', 0);
   return data.adminKey;
 }
 

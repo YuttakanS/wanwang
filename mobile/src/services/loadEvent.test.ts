@@ -11,16 +11,29 @@ vi.mock('./secrets', () => ({
   },
 }));
 
+// Finishing a key change has its own tests in rotation.test.ts. Here it only leaves its mark.
+const settled = { leavesMark: null as string | null, fails: false, calls: 0, fetchesBefore: -1 };
+const marks = new Map<string, string>();
+vi.mock('./rotation', () => ({
+  settlePendingRotation: async (slug: string) => {
+    settled.calls++;
+    settled.fetchesBefore = fetchMock.mock.calls.length;
+    if (settled.fails) throw new Error('Keychain is unavailable');
+    if (settled.leavesMark) marks.set(slug, settled.leavesMark);
+  },
+}));
+
 vi.mock('./localStore', () => ({
+  getAdminLinkUnkept: async (slug: string) => marks.get(slug) ?? null,
   rememberEvent: async (slug: string) => {
     remembered.push(slug);
   },
 }));
 
+const fetchMock = vi.fn();
 const { holdAdminLink, loadEvent } = await import('./loadEvent');
 
 const VALID_KEY = 'valid';
-const fetchMock = vi.fn();
 
 function respondAsServer(_url: string, init: { headers: Record<string, string> }) {
   const isAdmin = init.headers['x-admin-key'] === VALID_KEY;
@@ -32,9 +45,50 @@ const keysSent = () => fetchMock.mock.calls.map(call => call[1].headers['x-admin
 beforeEach(() => {
   stored.clear();
   remembered.length = 0;
+  marks.clear();
+  Object.assign(settled, { leavesMark: null, fails: false, calls: 0, fetchesBefore: -1 });
   fetchMock.mockReset();
   fetchMock.mockImplementation(respondAsServer);
   vi.stubGlobal('fetch', fetchMock);
+});
+
+describe('loadEvent and a pending key change', () => {
+  it('settles it before the event is asked for, and reports the mark it left', async () => {
+    settled.leavesMark = 'm1';
+    stored.set('admin_abc', VALID_KEY);
+
+    const loaded = await loadEvent('abc');
+
+    expect(settled.calls).toBe(1);
+    expect(settled.fetchesBefore).toBe(0);
+    expect(loaded).toMatchObject({ isAdmin: true, adminLinkUnkept: 'm1' });
+  });
+
+  it('keeps reporting the mark on every later load, until it is cleared', async () => {
+    // The result of one load can be thrown away, by a retry or by a refresh that replaces it.
+    marks.set('abc', 'm1');
+    stored.set('admin_abc', VALID_KEY);
+
+    expect(await loadEvent('abc')).toMatchObject({ adminLinkUnkept: 'm1' });
+    expect(await loadEvent('abc')).toMatchObject({ adminLinkUnkept: 'm1' });
+
+    marks.clear();
+    expect(await loadEvent('abc')).toMatchObject({ adminLinkUnkept: null });
+  });
+
+  it('reports the mark along with a claimed admin link and with a refused one', async () => {
+    marks.set('abc', 'm1');
+    holdAdminLink('abc', VALID_KEY);
+    expect(await loadEvent('abc')).toMatchObject({ adminLinkClaimed: true, adminLinkUnkept: 'm1' });
+
+    holdAdminLink('abc', 'wrong');
+    expect(await loadEvent('abc')).toMatchObject({ adminLinkInvalid: true, adminLinkUnkept: 'm1' });
+  });
+
+  it('still loads the event when settling fails', async () => {
+    settled.fails = true;
+    expect(await loadEvent('abc')).toMatchObject({ event: { slug: 'abc' }, adminLinkUnkept: null });
+  });
 });
 
 describe('loadEvent', () => {

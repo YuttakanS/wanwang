@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiUrl } from '~/constants/config';
-import { ApiError, createEvent, deleteParticipant, fetchEvent, lookupAdminEvents, saveParticipant, shouldRetryRequest } from './api';
+import { ApiError, createEvent, deleteParticipant, fetchEvent, lookupAdminEvents, rotateAdminKey, saveParticipant, shouldRetryRequest } from './api';
 
 const fetchMock = vi.fn();
 
@@ -14,6 +14,32 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe('rotateAdminKey', () => {
+  const NEW_KEY = '0123456789abcdef0123456789abcdef';
+
+  it('sends the current key in the header and the proposed one in the body', async () => {
+    fetchMock.mockResolvedValue(json({ success: true, adminKey: NEW_KEY }));
+
+    await expect(rotateAdminKey('abc', 'old', NEW_KEY)).resolves.toBe(NEW_KEY);
+
+    expect(fetchMock.mock.calls[0][0]).toBe(`${apiUrl}/api/events/abc/admin-key`);
+    expect(sentHeaders()['x-admin-key']).toBe('old');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ newKey: NEW_KEY });
+  });
+
+  it.each([[{ success: true }], [{ success: true, adminKey: '' }], [{ success: true, adminKey: 'short' }], [{ success: true, adminKey: 42 }]])(
+    'counts %j as no answer rather than storing it as the key',
+    async body => {
+      fetchMock.mockResolvedValue(json(body));
+
+      const error = await rotateAdminKey('abc', 'old', NEW_KEY).catch(e => e);
+
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error.status).toBe(0);
+    },
+  );
 });
 
 describe('request errors', () => {

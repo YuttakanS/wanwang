@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -15,7 +16,7 @@ import { NeoButton } from '~/components/neo/NeoButton';
 import { NeoNotice } from '~/components/neo/NeoNotice';
 import { Screen, type ScreenScrollView } from '~/components/Screen';
 import { StatusScreen } from '~/components/StatusScreen';
-import { useEvent } from '~/hooks/useEvent';
+import { eventKey, useEvent } from '~/hooks/useEvent';
 import { useI18n } from '~/hooks/useI18n';
 import { useMyEvents, useMyEventsActions } from '~/hooks/useMyEvents';
 import { usePullToRefresh } from '~/hooks/usePullToRefresh';
@@ -23,6 +24,7 @@ import { ApiError } from '~/services/api';
 import { isValidSlug } from '~/services/deepLink';
 import { errorMessage } from '~/services/errorMessage';
 import type { LoadedEvent } from '~/services/loadEvent';
+import { clearAdminLinkUnkept } from '~/services/localStore';
 
 function NotFound({ slug }: { slug: string }) {
   const { t } = useI18n();
@@ -73,12 +75,29 @@ function EventDetail({ details, refetchError, refetch, justCreated }: EventDetai
   const [inspected, setInspected] = useState<string | null>(null);
   const [highlighted, setHighlighted] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
+  const queryClient = useQueryClient();
   const [showAdminNotice, setShowAdminNotice] = useState(justCreated);
-  // The event on screen can still hold the old key, if the refetch after changing it failed.
-  const [rotatedKey, setRotatedKey] = useState<string | null>(null);
+  // The event on screen can still hold the old key, if the refetch after changing it failed. The new
+  // key stands in only for that old one: an event loaded later carries whatever key the phone holds.
+  const [rotated, setRotated] = useState<{ key: string; replaced: string | undefined } | null>(null);
+  // A key change leaves a mark until its new link has been put away, so the reminder survives a failed
+  // load, leaving this screen and a restart. A load that was already on its way can still bring back a
+  // mark that was dismissed here, which is why the dismissed one is remembered.
+  const [dismissedMark, setDismissedMark] = useState<string | null>(null);
+  const linkUnkept = details.adminLinkUnkept !== null && details.adminLinkUnkept !== dismissedMark;
+  const dismissAdminNotice = () => {
+    setShowAdminNotice(false);
+    setDismissedMark(details.adminLinkUnkept);
+    queryClient.setQueryData<LoadedEvent>(eventKey(event.slug), current => (current ? { ...current, adminLinkUnkept: null } : current));
+    // A change made a moment ago has its mark in storage before any load has shown it here. A load
+    // already on its way would then bring that mark back, so the one actually removed is remembered too.
+    void clearAdminLinkUnkept(event.slug).then(removed => {
+      if (removed) setDismissedMark(removed);
+    });
+  };
   const [adminLost, setAdminLost] = useState(false);
   const onAdminLost = () => setAdminLost(true);
-  const adminKey = rotatedKey ?? event.adminKey;
+  const adminKey = rotated && event.adminKey === rotated.replaced ? rotated.key : event.adminKey;
 
   const scrollRef = useRef<ScreenScrollView>(null);
   const scheduleY = useRef(0);
@@ -98,8 +117,8 @@ function EventDetail({ details, refetchError, refetch, justCreated }: EventDetai
       {refetchError && <NeoNotice message={errorMessage(refetchError, t)} />}
       {adminLinkInvalid && <NeoNotice message={t('adminLinkInvalidMsg')} />}
       {adminLost && !isAdmin && <NeoNotice message={t('adminLostError')} />}
-      {showAdminNotice && isAdmin && adminKey ? (
-        <AdminLinkNotice slug={event.slug} adminKey={adminKey} onDismiss={() => setShowAdminNotice(false)} />
+      {(showAdminNotice || linkUnkept) && isAdmin && adminKey ? (
+        <AdminLinkNotice slug={event.slug} adminKey={adminKey} onDismiss={dismissAdminNotice} />
       ) : null}
 
       <EventHeader
@@ -107,7 +126,7 @@ function EventDetail({ details, refetchError, refetch, justCreated }: EventDetai
         participants={participants}
         isAdmin={isAdmin}
         onAdminKeyRotated={newKey => {
-          setRotatedKey(newKey);
+          setRotated({ key: newKey, replaced: event.adminKey });
           setShowAdminNotice(true);
         }}
         onAdminLost={onAdminLost}

@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { deleteEvent, type EventPatch, rotateAdminKey, updateEvent } from '~/services/api';
+import { deleteEvent, type EventPatch, updateEvent } from '~/services/api';
 import { forgetKnownEvent } from '~/services/localStore';
+import { rotateWithProposal } from '~/services/rotation';
 import { withAdminKey } from '~/services/secretGuards';
-import { forgetEventSecrets, saveAdminKey } from '~/services/secrets';
+import { forgetEventSecrets } from '~/services/secrets';
 import { eventKey, MY_EVENTS_KEY } from './useEvent';
 
 /** `onAdminLost` is for the screen, because the panel showing the error goes away along with the rights. */
@@ -16,17 +17,8 @@ export function useAdminActions(slug: string, onAdminLost?: () => void) {
   });
 
   const rotate = useMutation({
-    mutationFn: () =>
-      withAdminKey(
-        slug,
-        async key => {
-          const newKey = await rotateAdminKey(slug, key);
-          // The old key stopped working on the server, so the new one is stored before anything else.
-          await saveAdminKey(slug, newKey);
-          return newKey;
-        },
-        onAdminLost,
-      ),
+    // Stores the new key itself, and keeps it through an answer that never arrives.
+    mutationFn: () => withAdminKey(slug, key => rotateWithProposal(slug, key), onAdminLost),
     onSettled: refreshEvent,
   });
 
