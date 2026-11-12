@@ -261,6 +261,30 @@ describe('POST /api/events/[slug]/admin-key', () => {
     db.rotateAdminKey.mockResolvedValue('new-key');
     const res = await rotateKey(request('POST', path, { headers: asAdmin }), params);
     expect((await res.json()).adminKey).toBe('new-key');
+    // No body: the server picks the key, as apps released before proposals still ask.
+    expect(db.rotateAdminKey).toHaveBeenCalledWith(SLUG, ADMIN_KEY, undefined);
+  });
+
+  it('passes on a key the client proposes', async () => {
+    const newKey = '0123456789abcdef0123456789abcdef';
+    db.rotateAdminKey.mockResolvedValue(newKey);
+    const res = await rotateKey(request('POST', path, { headers: asAdmin, body: { newKey } }), params);
+    expect(res.status).toBe(200);
+    expect(db.rotateAdminKey).toHaveBeenCalledWith(SLUG, ADMIN_KEY, newKey);
+  });
+
+  it.each([
+    ['too short', { newKey: 'abc' }],
+    ['not hex', { newKey: 'z'.repeat(32) }],
+    ['uppercase', { newKey: 'A'.repeat(32) }],
+    ['not a string', { newKey: 12345 }],
+    ['not an object', '[]'],
+    ['not JSON', '{'],
+  ])('answers 400 to a proposed key that is %s, without touching the event', async (_name, body) => {
+    db.rotateAdminKey.mockClear();
+    const res = await rotateKey(request('POST', path, { headers: asAdmin, body }), params);
+    expect(res.status).toBe(400);
+    expect(db.rotateAdminKey).not.toHaveBeenCalled();
   });
 });
 

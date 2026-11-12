@@ -629,9 +629,15 @@ export async function deleteParticipant(
   return false;
 }
 
-/** Replaces the admin key, invalidating the old key and every link built from it. */
-export async function rotateAdminKey(slug: string, currentKey: string): Promise<string | null> {
-  const newKey = crypto.randomBytes(16).toString('hex');
+/**
+ * Replaces the admin key, invalidating the old key and every link built from it.
+ *
+ * A client may propose the new key. Asking again with the same proposal then succeeds even
+ * though the old key no longer works, so an answer lost on the way back cannot lock the
+ * creator out. Knowing the proposal is knowing the key, so this gives nothing away.
+ */
+export async function rotateAdminKey(slug: string, currentKey: string, proposedKey?: string): Promise<string | null> {
+  const newKey = proposedKey ?? crypto.randomBytes(16).toString('hex');
   const newHash = hashSecret(newKey);
   const now = new Date().toISOString();
 
@@ -642,7 +648,9 @@ export async function rotateAdminKey(slug: string, currentKey: string): Promise<
       .eq('slug', slug)
       .maybeSingle();
     if (readError) throw new Error(readError.message);
-    if (!existing || !verifySecret(currentKey, existing.admin_key)) return null;
+    if (!existing) return null;
+    if (proposedKey && verifySecret(proposedKey, existing.admin_key)) return proposedKey;
+    if (!verifySecret(currentKey, existing.admin_key)) return null;
 
     // Matching the old key too means two simultaneous rotations cannot both win.
     const { data, error } = await supabase
@@ -653,10 +661,21 @@ export async function rotateAdminKey(slug: string, currentKey: string): Promise<
       .select('id')
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return data ? newKey : null;
+    if (data) return newKey;
+    if (!proposedKey) return null;
+
+    // The same proposal sent twice at once: the other request stored it, so this one succeeded too.
+    const { data: after, error: rereadError } = await supabase
+      .from('events')
+      .select('admin_key')
+      .eq('id', existing.id)
+      .maybeSingle();
+    if (rereadError) throw new Error(rereadError.message);
+    return after && verifySecret(proposedKey, after.admin_key) ? proposedKey : null;
   }
 
   const events = await readLocalEvents();
+  if (proposedKey && events.some(e => e.slug === slug && verifySecret(proposedKey, e.adminKey))) return proposedKey;
   const index = events.findIndex(e => e.slug === slug && verifySecret(currentKey, e.adminKey));
   if (index === -1) return null;
   events[index] = { ...events[index], adminKey: newHash, updatedAt: now };

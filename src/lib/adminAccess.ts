@@ -3,6 +3,8 @@
 const ADMIN_PREFIX = 'wanwang_admin_';
 const PENDING_PREFIX = 'wanwang_admin_link_pending_';
 const HIDDEN_KEY = 'wanwang_my_events_hidden';
+// Must not start with ADMIN_PREFIX, or listStoredAdminKeys would take it for an event's key.
+const ROTATION_PREFIX = 'wanwang_rotate_pending_';
 
 function hasWindow(): boolean {
   return typeof window !== 'undefined';
@@ -33,6 +35,7 @@ export function forgetEvent(slug: string): void {
   if (!hasWindow()) return;
   try {
     localStorage.removeItem(`${ADMIN_PREFIX}${slug}`);
+    localStorage.removeItem(`${ROTATION_PREFIX}${slug}`);
     localStorage.removeItem(`wanwang_token_${slug}`);
     localStorage.removeItem(`wanwang_pid_${slug}`);
     writeHiddenSlugs(readHiddenSlugs().filter(s => s !== slug));
@@ -111,6 +114,35 @@ export function takeAdminKeyFromHash(): string | null {
     return decodeURIComponent(match[1]);
   } catch {
     return null;
+  }
+}
+
+// A key change that was asked for but not yet confirmed. The new key is kept until the server's
+// answer arrives, because if the change happened and the answer was lost, this is the only copy.
+export function getPendingRotation(slug: string): string | null {
+  if (!hasWindow()) return null;
+  try {
+    return localStorage.getItem(`${ROTATION_PREFIX}${slug}`);
+  } catch {
+    return null;
+  }
+}
+
+export function setPendingRotation(slug: string, newKey: string): void {
+  if (!hasWindow()) return;
+  try {
+    localStorage.setItem(`${ROTATION_PREFIX}${slug}`, newKey);
+  } catch {
+    // Storage blocked: a lost answer cannot be recovered, as before.
+  }
+}
+
+export function clearPendingRotation(slug: string): void {
+  if (!hasWindow()) return;
+  try {
+    localStorage.removeItem(`${ROTATION_PREFIX}${slug}`);
+  } catch {
+    // Nothing to clean up if storage is blocked.
   }
 }
 

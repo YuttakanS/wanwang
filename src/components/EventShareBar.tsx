@@ -6,7 +6,15 @@ import { WanWangEvent, Participant } from '@/types';
 import { generateShareMessage, participantsHaveSlots } from '@/lib/timeUtils';
 import { buildShareUrl, ShareTarget } from '@/lib/shareTargets';
 import { useRouter } from 'next/navigation';
-import { buildAdminLink, forgetEvent, getStoredAdminKey } from '@/lib/adminAccess';
+import {
+  buildAdminLink,
+  clearPendingRotation,
+  forgetEvent,
+  getPendingRotation,
+  getStoredAdminKey,
+  setPendingRotation,
+} from '@/lib/adminAccess';
+import { newAdminKey, requestRotation } from '@/lib/rotateAdminKey';
 import { copyText } from '@/lib/clipboard';
 import ConfirmModal from '@/components/ConfirmModal';
 import EditEventForm from '@/components/EditEventForm';
@@ -122,13 +130,18 @@ export default function EventShareBar({
     setRotateFailed(false);
 
     try {
-      const res = await fetch(`/api/events/${event.slug}/admin-key`, {
-        method: 'POST',
-        headers: { 'x-admin-key': adminKey },
-      });
-      const data = await res.json();
-      if (!res.ok || !data.adminKey) throw new Error(data.error || 'Rotate failed');
-      onAdminKeyRotated(data.adminKey);
+      // A key left from an attempt whose answer never arrived is sent again, so both attempts
+      // agree on the result whichever one the server saw.
+      const newKey = getPendingRotation(event.slug) ?? newAdminKey();
+      setPendingRotation(event.slug, newKey);
+      const outcome = await requestRotation(event.slug, adminKey, newKey);
+      if (outcome.status === 'done') {
+        clearPendingRotation(event.slug);
+        onAdminKeyRotated(outcome.adminKey);
+      } else {
+        if (outcome.status === 'refused') clearPendingRotation(event.slug);
+        setRotateFailed(true);
+      }
     } catch (err) {
       console.error('Rotate admin key failed:', err);
       setRotateFailed(true);
