@@ -59,7 +59,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'ผู้ให้บริการที่เกี่ยวข้อง',
         paragraphs: [
           'Vercel ให้บริการเว็บและอาจบันทึกข้อมูลการเข้าถึง เช่น IP address ส่วน Supabase ให้บริการฐานข้อมูลและที่เก็บไฟล์แนบ',
-          'บนเว็บไซต์ เราใช้ Vercel Web Analytics นับจำนวนการเข้าชมหน้าเว็บ โดยไม่ใช้คุกกี้ สิ่งที่บันทึกคือหน้าที่เปิด เว็บที่พามา ประเทศ และชนิดของอุปกรณ์กับเบราว์เซอร์ ลิงก์ของนัดถูกตัดออกก่อนส่ง สถิตินี้จึงไม่บอกว่าคุณเปิดนัดไหน Vercel แยกผู้เข้าชมด้วยค่า hash ที่เปลี่ยนทุกวัน จึงติดตามคุณข้ามวันไม่ได้ แอปวันว่างไม่มีการนับนี้',
+          'บนเว็บไซต์ เราใช้ Vercel Web Analytics นับจำนวนการเข้าชมหน้าเว็บ โดยไม่ใช้คุกกี้ สิ่งที่บันทึกคือเวลา หน้าที่เปิด เว็บที่พามา ตำแหน่งโดยประมาณ (ประเทศ ภูมิภาค และเมือง) ชนิดของอุปกรณ์ ระบบปฏิบัติการ และเบราว์เซอร์พร้อมเลขรุ่น ลิงก์ของนัดถูกตัดออกก่อนส่ง สถิตินี้จึงไม่บอกว่าคุณเปิดนัดไหน Vercel แยกผู้เข้าชมด้วยค่า hash ที่เปลี่ยนทุกวัน จึงติดตามคุณข้ามวันไม่ได้ แอปวันว่างไม่มีการนับนี้',
           'ผู้ให้บริการเหล่านี้อาจเก็บหรือประมวลผลข้อมูลบนเซิร์ฟเวอร์นอกประเทศไทย',
         ],
       },
@@ -136,7 +136,7 @@ export const PRIVACY_CONTENT: Record<Language, PrivacyContent> = {
         title: 'Service providers',
         paragraphs: [
           'Vercel hosts the site and may log access data such as IP addresses. Supabase hosts the database and attached files.',
-          'On the website we use Vercel Web Analytics to count page views, without cookies. It records the page opened, the referring site, the country, and the type of device and browser. An event’s link is removed before anything is sent, so these statistics do not show which event you opened. Vercel tells visitors apart with a hash that changes every day, so it cannot follow you from one day to the next. The WanWang app does not do this counting.',
+          'On the website we use Vercel Web Analytics to count page views, without cookies. It records the time, the page opened, the referring site, an approximate location (country, region and city), the type of device, and the operating system and browser with their versions. An event’s link is removed before anything is sent, so these statistics do not show which event you opened. Vercel tells visitors apart with a hash that changes every day, so it cannot follow you from one day to the next. The WanWang app does not do this counting.',
           'These providers may store or process data on servers outside Thailand.',
         ],
       },

@@ -16,7 +16,16 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       // Event pages show people's names and availability, so keep them out of search results.
-      { source: "/e/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      // Their address is all that protects them, so it is never sent as a referrer either, not even
+      // to this site: the page-view counter's own request would otherwise carry it. This entry
+      // comes after the general one, and the later of two values for the same header wins.
+      {
+        source: "/e/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Referrer-Policy", value: "strict-origin" },
+        ],
+      },
       // Android refuses to verify App Links unless this file is served as JSON.
       { source: "/.well-known/assetlinks.json", headers: [{ key: "Content-Type", value: "application/json" }] },
     ];

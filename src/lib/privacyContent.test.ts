@@ -30,6 +30,41 @@ describe('retention period', () => {
   });
 });
 
+// What Vercel Web Analytics stores with each page view, from https://vercel.com/docs/analytics/privacy-policy:
+// timestamp, URL, referrer, geolocation down to the city, device type, OS and browser with versions.
+describe('the page view counting', () => {
+  const th = JSON.stringify(PRIVACY_CONTENT.th);
+  const en = JSON.stringify(PRIVACY_CONTENT.en);
+
+  it('is named in both languages', () => {
+    expect(th).toContain('Vercel Web Analytics');
+    expect(en).toContain('Vercel Web Analytics');
+  });
+
+  it('does not understate the location or the device details that are recorded', () => {
+    for (const word of ['ประเทศ', 'ภูมิภาค', 'เมือง', 'ระบบปฏิบัติการ', 'เลขรุ่น']) expect(th).toContain(word);
+    for (const word of ['country', 'region', 'city', 'operating system', 'versions']) expect(en).toContain(word);
+  });
+
+  it('promises that an event cannot be told from the statistics, which the code has to keep', async () => {
+    expect(th).toContain('ลิงก์ของนัดถูกตัดออกก่อนส่ง');
+    expect(en).toContain('link is removed before anything is sent');
+
+    // The address sent with a page view is scrubbed by the component...
+    expect(read('src/components/WebAnalytics.tsx')).toContain('scrubAnalyticsUrl(event.url)');
+
+    // ...and the browser is told not to send it as a referrer, which the counter's own request would.
+    const { default: nextConfig } = await import('../../next.config');
+    const rules = await nextConfig.headers!();
+    const policyFor = (source: string) =>
+      rules.filter(rule => rule.source === source).flatMap(rule => rule.headers).find(header => header.key === 'Referrer-Policy')?.value;
+    expect(policyFor('/e/:path*')).toBe('strict-origin');
+    // The later of two matching rules wins, so the event rule has to come after the general one.
+    const order = rules.map(rule => rule.source);
+    expect(order.indexOf('/e/:path*')).toBeGreaterThan(order.indexOf('/:path*'));
+  });
+});
+
 // The app stores secrets differently from a browser, and the notice has to say so.
 describe('the mobile app', () => {
   it('is described in both languages', () => {
