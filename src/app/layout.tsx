@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Thai, Space_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
+import WebAnalytics from "@/components/WebAnalytics";
 import ZoomLock from "@/components/ZoomLock";
 import { I18nProvider } from "@/lib/i18n";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -68,6 +69,8 @@ export default async function RootLayout({
         <I18nProvider>
           {children}
         </I18nProvider>
+        {/* The script is served by Vercel itself, so it exists only there. */}
+        {process.env.VERCEL ? <WebAnalytics /> : null}
       </body>
     </html>
   );

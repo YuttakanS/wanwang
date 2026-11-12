@@ -3,7 +3,11 @@ import type { NextConfig } from "next";
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Only ever the origin, also for requests to this site. An event's address is all that protects it,
+  // and with the usual policy the page-view counter's own request would carry it. This has to hold on
+  // every page, not just on /e/: a page reached by a click inside the site keeps the policy of the
+  // page that was loaded first.
+  { key: "Referrer-Policy", value: "strict-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
