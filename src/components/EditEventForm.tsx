@@ -142,8 +142,8 @@ export default function EditEventForm({ event, hasVotes, onSaved, onCancel }: Ed
       </div>
 
       <div>
-        <span className="block text-sm font-bold text-ink mb-1.5">{t('categoryLabel')}</span>
-        <CategoryPicker value={category} onChange={setCategory} />
+        <span id={`${idBase}-cat`} className="block text-sm font-bold text-ink mb-1.5">{t('categoryLabel')}</span>
+        <CategoryPicker value={category} onChange={setCategory} labelledBy={`${idBase}-cat`} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

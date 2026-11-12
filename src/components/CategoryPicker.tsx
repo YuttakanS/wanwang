@@ -15,12 +15,14 @@ export const CATEGORY_LABEL_KEYS: Record<EventCategory, string> = {
 interface CategoryPickerProps {
   value: EventCategory;
   onChange: (category: EventCategory) => void;
+  /** Id of the visible heading that names this group. */
+  labelledBy?: string;
 }
 
-export default function CategoryPicker({ value, onChange }: CategoryPickerProps) {
+export default function CategoryPicker({ value, onChange, labelledBy }: CategoryPickerProps) {
   const { t } = useI18n();
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <div role="group" aria-labelledby={labelledBy} className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {EVENT_CATEGORIES.map(cat => {
         const isSelected = value === cat.id;
         return (
