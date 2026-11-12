@@ -1,5 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getPendingRotation, getStoredAdminKey, isAdminLinkPending, listPendingRotationSlugs, listStoredAdminKeys, setPendingRotation, storeAdminKey } from './adminAccess';
+import {
+  clearAdminLinkPending,
+  forgetEvent,
+  getPendingRotation,
+  getStoredAdminKey,
+  isAdminLinkPending,
+  listPendingRotationSlugs,
+  listStoredAdminKeys,
+  markAdminLinkPending,
+  markAdminLinkUnkept,
+  setPendingRotation,
+  storeAdminKey,
+} from './adminAccess';
 import { settlePendingRotation } from './rotateAdminKey';
 
 /** Enough of the browser's Storage for adminAccess.ts. */
@@ -103,6 +115,55 @@ describe('settlePendingRotation', () => {
 
     expect(getPendingRotation('abc123')).toBe(NEW_KEY);
     expect(getStoredAdminKey('abc123')).toBe(OLD_KEY);
+  });
+});
+
+describe('the reminder to keep a new admin link', () => {
+  /** What another tab, or this one reopened, starts with. */
+  const openNewTab = () => vi.stubGlobal('sessionStorage', memoryStorage());
+
+  it('is still there in another tab after a change settled elsewhere, such as on the home page', async () => {
+    server.key = NEW_KEY;
+    setPendingRotation('abc123', NEW_KEY);
+    await settlePendingRotation('abc123');
+
+    openNewTab();
+
+    expect(isAdminLinkPending('abc123')).toBe(true);
+  });
+
+  it('goes for good once dismissed', async () => {
+    setPendingRotation('abc123', NEW_KEY);
+    await settlePendingRotation('abc123');
+
+    clearAdminLinkPending('abc123');
+    expect(isAdminLinkPending('abc123')).toBe(false);
+    openNewTab();
+    expect(isAdminLinkPending('abc123')).toBe(false);
+  });
+
+  it('after creating an event still lasts for the tab only', () => {
+    markAdminLinkPending('abc123');
+    expect(isAdminLinkPending('abc123')).toBe(true);
+    openNewTab();
+    expect(isAdminLinkPending('abc123')).toBe(false);
+  });
+
+  it('is dismissed whichever flag asked for it', () => {
+    markAdminLinkPending('abc123');
+    markAdminLinkUnkept('abc123');
+    clearAdminLinkPending('abc123');
+    expect(isAdminLinkPending('abc123')).toBe(false);
+  });
+
+  it('is not taken for an event with an admin key, and goes when the event is forgotten', () => {
+    markAdminLinkUnkept('xyz789');
+    expect(listStoredAdminKeys()).toEqual([{ slug: 'abc123', adminKey: OLD_KEY }]);
+
+    markAdminLinkUnkept('abc123');
+    forgetEvent('abc123');
+    expect(isAdminLinkPending('abc123')).toBe(false);
+    expect(isAdminLinkPending('xyz789')).toBe(true);
   });
 });
 

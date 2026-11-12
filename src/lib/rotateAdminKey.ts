@@ -1,5 +1,5 @@
 // The website's half of changing an admin key. The rules are in keyRotation.ts.
-import { clearPendingRotation, getPendingRotation, getStoredAdminKey, markAdminLinkPending, storeAdminKey } from './adminAccess';
+import { clearPendingRotation, getPendingRotation, getStoredAdminKey, markAdminLinkUnkept, storeAdminKey } from './adminAccess';
 import { bytesToHex, isAdminKeyFormat } from './adminKeyFormat';
 import { outcomeOfFailure, settleRotation, type RotationOutcome } from './keyRotation';
 
@@ -65,8 +65,9 @@ export async function settlePendingRotation(slug: string): Promise<string | null
   if (outcome.status === 'done') {
     storeAdminKey(slug, outcome.adminKey);
     clearPendingRotation(slug);
-    // The new link is in this browser only until it is copied, so the event page reminds the creator.
-    markAdminLinkPending(slug);
+    // The new link is in this browser only until it is copied, so the event page reminds the creator,
+    // in whichever tab it is next opened: this may be running on another page.
+    markAdminLinkUnkept(slug);
     return outcome.adminKey;
   }
   if (outcome.status === 'refused') clearPendingRotation(slug);
