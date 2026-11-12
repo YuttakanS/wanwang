@@ -73,9 +73,19 @@ function EventDetail({ details, refetchError, refetch, justCreated }: EventDetai
   const [inspected, setInspected] = useState<string | null>(null);
   const [highlighted, setHighlighted] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [showAdminNotice, setShowAdminNotice] = useState(justCreated);
+  const [showAdminNotice, setShowAdminNotice] = useState(justCreated || details.adminKeyChanged);
   // The event on screen can still hold the old key, if the refetch after changing it failed.
   const [rotatedKey, setRotatedKey] = useState<string | null>(null);
+  // A load can finish a key change whose answer was lost. The new link is on this phone only until it is
+  // copied, and that load's event carries the key, so an older one kept here must not win over it.
+  const [noticedKeyChange, setNoticedKeyChange] = useState(details.adminKeyChanged);
+  if (details.adminKeyChanged !== noticedKeyChange) {
+    setNoticedKeyChange(details.adminKeyChanged);
+    if (details.adminKeyChanged) {
+      setRotatedKey(null);
+      setShowAdminNotice(true);
+    }
+  }
   const [adminLost, setAdminLost] = useState(false);
   const onAdminLost = () => setAdminLost(true);
   const adminKey = rotatedKey ?? event.adminKey;

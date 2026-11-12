@@ -14,12 +14,51 @@ vi.mock('expo-secure-store', () => ({
   },
 }));
 
-const { forgetAdminKeyIfCurrent, forgetEventSecrets, getAdminKey, getEditToken, saveAdminKey, saveEditToken } = await import('./secrets');
+const {
+  forgetAdminKeyIfCurrent,
+  forgetEventSecrets,
+  forgetPendingRotation,
+  getAdminKey,
+  getEditToken,
+  getPendingRotation,
+  saveAdminKey,
+  saveEditToken,
+  savePendingRotation,
+} = await import('./secrets');
 
 beforeEach(async () => {
   failWrites.on = false;
   await forgetEventSecrets('abc');
   store.clear();
+});
+
+describe('a pending key change', () => {
+  it('is kept apart from the admin key, under a name that is not mistaken for one', async () => {
+    await saveAdminKey('abc', 'k');
+    await savePendingRotation('abc', 'next');
+
+    expect(store.get('wanwang_rotate_pending_abc')).toBe('next');
+    expect(await getPendingRotation('abc')).toBe('next');
+    expect(await getAdminKey('abc')).toBe('k');
+
+    await forgetPendingRotation('abc');
+    expect(await getPendingRotation('abc')).toBeNull();
+    expect(await getAdminKey('abc')).toBe('k');
+  });
+
+  it('survives a failed write for the rest of the run, like the other secrets', async () => {
+    failWrites.on = true;
+    await savePendingRotation('abc', 'next');
+    expect(store.has('wanwang_rotate_pending_abc')).toBe(false);
+    expect(await getPendingRotation('abc')).toBe('next');
+  });
+
+  it('goes when the event is forgotten', async () => {
+    await savePendingRotation('abc', 'next');
+    await forgetEventSecrets('abc');
+    expect(await getPendingRotation('abc')).toBeNull();
+    expect(store.size).toBe(0);
+  });
 });
 
 describe('secrets', () => {

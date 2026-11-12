@@ -11,16 +11,26 @@ vi.mock('./secrets', () => ({
   },
 }));
 
+// Nothing pending in these tests. Finishing a key change has its own tests in rotation.test.ts.
+const settled = { changed: false, calls: 0, fetchesBefore: -1 };
+vi.mock('./rotation', () => ({
+  settlePendingRotation: async () => {
+    settled.calls++;
+    settled.fetchesBefore = fetchMock.mock.calls.length;
+    return settled.changed;
+  },
+}));
+
 vi.mock('./localStore', () => ({
   rememberEvent: async (slug: string) => {
     remembered.push(slug);
   },
 }));
 
+const fetchMock = vi.fn();
 const { holdAdminLink, loadEvent } = await import('./loadEvent');
 
 const VALID_KEY = 'valid';
-const fetchMock = vi.fn();
 
 function respondAsServer(_url: string, init: { headers: Record<string, string> }) {
   const isAdmin = init.headers['x-admin-key'] === VALID_KEY;
@@ -32,9 +42,27 @@ const keysSent = () => fetchMock.mock.calls.map(call => call[1].headers['x-admin
 beforeEach(() => {
   stored.clear();
   remembered.length = 0;
+  Object.assign(settled, { changed: false, calls: 0, fetchesBefore: -1 });
   fetchMock.mockReset();
   fetchMock.mockImplementation(respondAsServer);
   vi.stubGlobal('fetch', fetchMock);
+});
+
+describe('loadEvent and a pending key change', () => {
+  it('settles it before the event is asked for, and reports a new key', async () => {
+    settled.changed = true;
+    stored.set('admin_abc', VALID_KEY);
+
+    const loaded = await loadEvent('abc');
+
+    expect(settled.calls).toBe(1);
+    expect(settled.fetchesBefore).toBe(0);
+    expect(loaded).toMatchObject({ isAdmin: true, adminKeyChanged: true });
+  });
+
+  it('reports no new key when nothing was pending', async () => {
+    expect(await loadEvent('abc')).toMatchObject({ adminKeyChanged: false });
+  });
 });
 
 describe('loadEvent', () => {
