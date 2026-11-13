@@ -79,9 +79,9 @@ export default function BestTimeLeaderboard({
       {/* Header */}
       <div className="border-b-3 border-ink pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h3 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
+          <h2 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
             {t('leaderboardTitle')}
-          </h3>
+          </h2>
           <p className="text-xs text-muted mt-0.5">
             {t('leaderboardSubtitle')}
           </p>
