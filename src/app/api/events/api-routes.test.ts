@@ -72,6 +72,13 @@ describe('rate limiting', () => {
     expect(res.status).toBe(429);
     for (const fn of Object.values(db)) expect(fn).not.toHaveBeenCalled();
   });
+
+  it('counts a page reloading itself apart from page loads', async () => {
+    await GET(request('GET', eventPath), params);
+    await GET(request('GET', eventPath, { headers: { 'x-wanwang-refresh': '1' } }), params);
+
+    expect(limiter.rateLimit.mock.calls.map(call => call[1])).toEqual(['read', 'refresh']);
+  });
 });
 
 describe('POST /api/events', () => {

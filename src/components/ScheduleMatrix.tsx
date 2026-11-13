@@ -65,6 +65,16 @@ export default function ScheduleMatrix({
     [event.startTime, event.endTime, event.slotInterval]
   );
   const heatmap = useMemo(() => computeHeatmap(allSlots, participants, granularity), [allSlots, participants, granularity]);
+  // The page reloads answers in the background, so the open slot's details are read from the
+  // current heatmap rather than kept from the moment it was tapped.
+  const shownSlotInfo: SlotHeatmapInfo | null = activeSlotInfo && (heatmap[activeSlotInfo.slotId] ?? {
+    ...activeSlotInfo,
+    availableCount: 0,
+    totalParticipants: participants.length,
+    percentage: 0,
+    availableNames: [],
+    unavailableNames: participants.map(p => p.name),
+  });
 
   const rangeStart = event.dateRangeStart || event.dates[0] || formatDateToISO(new Date());
   const rangeEnd = event.dateRangeEnd || event.dates[event.dates.length - 1] || rangeStart;
@@ -86,6 +96,11 @@ export default function ScheduleMatrix({
     }
   };
 
+  // The form is filled from my saved answer only when it first appears; a save fills it from the
+  // server's answer itself. The page also reloads the list in the background, which must not wipe
+  // edits not yet saved.
+  const filledFromIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedToken = localStorage.getItem(`wanwang_token_${event.slug}`);
@@ -94,15 +109,19 @@ export default function ScheduleMatrix({
       if (found) {
         setCurrentParticipantId(found.id);
         setEditToken(storedToken);
-        setParticipantName(found.name);
-        setParticipantNote(found.note || '');
-        setMySelectedSlots(found.availability || found.availableDates || []);
-        setMyAnswers(found.answers ?? {});
-        // If already participated, switch to heatmap tab by default
-        setActiveTab('heatmap');
+        if (filledFromIdRef.current !== found.id) {
+          filledFromIdRef.current = found.id;
+          setParticipantName(found.name);
+          setParticipantNote(found.note || '');
+          setMySelectedSlots(found.availability || found.availableDates || []);
+          setMyAnswers(found.answers ?? {});
+          // If already participated, switch to heatmap tab by default
+          setActiveTab('heatmap');
+        }
       } else {
         // My entry is gone, so the next save must create a new one. Sending the old
         // id would be rejected as an update to someone else's data.
+        filledFromIdRef.current = null;
         setCurrentParticipantId(null);
         setEditToken(null);
       }
@@ -235,6 +254,17 @@ export default function ScheduleMatrix({
         localStorage.setItem(`wanwang_pid_${event.slug}`, data.participant.id);
         setCurrentParticipantId(data.participant.id);
         setEditToken(data.participant.editToken);
+      }
+
+      // The form shows what the server kept. Done here, not when the list reloads: an earlier
+      // background reload may already have brought this answer, and the list then does not change.
+      const saved: Participant | undefined = data.participant;
+      if (saved) {
+        filledFromIdRef.current = saved.id;
+        setParticipantName(saved.name);
+        setParticipantNote(saved.note || '');
+        setMySelectedSlots(saved.availability || saved.availableDates || []);
+        setMyAnswers(saved.answers ?? {});
       }
 
       setSaveSuccess(true);
@@ -927,34 +957,34 @@ export default function ScheduleMatrix({
               )}
 
               {/* Inspector Popover / Card for Clicked Slot */}
-              {activeSlotInfo && (
+              {shownSlotInfo && (
                 <div className="p-4 bg-ink text-surface border-3 border-ink font-sans text-xs space-y-3 motion-enter">
                   <div className="flex items-center justify-between border-b-2 border-surface/40 pb-2">
                     <span className="font-bold text-surface text-sm">
                       {granularity === 'day' ? (
-                        `${formatLocalizedDate(activeSlotInfo.date, lang, 'chip')} (${t('allDayLabel')})`
+                        `${formatLocalizedDate(shownSlotInfo.date, lang, 'chip')} (${t('allDayLabel')})`
                       ) : granularity === 'daypart' ? (
-                        `${formatLocalizedDate(activeSlotInfo.date, lang, 'chip')} - ${getDayPartLabel(activeSlotInfo.time)}`
+                        `${formatLocalizedDate(shownSlotInfo.date, lang, 'chip')} - ${getDayPartLabel(shownSlotInfo.time)}`
                       ) : (
                         t('dataHeader', {
-                          date: formatLocalizedDate(activeSlotInfo.date, lang, 'chip'),
-                          time: activeSlotInfo.time,
+                          date: formatLocalizedDate(shownSlotInfo.date, lang, 'chip'),
+                          time: shownSlotInfo.time,
                         })
                       )}
                     </span>
                     <span className="font-mono font-bold bg-accent text-ink px-2.5 py-0.5 text-xs">
-                      {activeSlotInfo.availableCount}/{activeSlotInfo.totalParticipants} ({activeSlotInfo.percentage}%)
+                      {shownSlotInfo.availableCount}/{shownSlotInfo.totalParticipants} ({shownSlotInfo.percentage}%)
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
                       <span className="font-bold text-on-ink-accent block mb-1.5">
-                        {t('confirmedFreeLabel', { count: activeSlotInfo.availableNames.length })}
+                        {t('confirmedFreeLabel', { count: shownSlotInfo.availableNames.length })}
                       </span>
-                      {activeSlotInfo.availableNames.length > 0 ? (
+                      {shownSlotInfo.availableNames.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
-                          {activeSlotInfo.availableNames.map(name => (
+                          {shownSlotInfo.availableNames.map(name => (
                             <span key={name} className="px-2 py-0.5 bg-surface text-ink font-semibold">
                               {name}
                             </span>
@@ -967,11 +997,11 @@ export default function ScheduleMatrix({
 
                     <div>
                       <span className="font-bold text-surface/80 block mb-1.5">
-                        {t('busyListLabel', { count: activeSlotInfo.unavailableNames.length })}
+                        {t('busyListLabel', { count: shownSlotInfo.unavailableNames.length })}
                       </span>
-                      {activeSlotInfo.unavailableNames.length > 0 ? (
+                      {shownSlotInfo.unavailableNames.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
-                          {activeSlotInfo.unavailableNames.map(name => (
+                          {shownSlotInfo.unavailableNames.map(name => (
                             <span key={name} className="px-2 py-0.5 bg-muted text-surface">
                               {name}
                             </span>

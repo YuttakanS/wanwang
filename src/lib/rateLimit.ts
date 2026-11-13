@@ -14,6 +14,9 @@ const RULES = {
   admin: { limit: 30, windowSeconds: 60 },
   lookup: { limit: 30, windowSeconds: 60 },
   read: { limit: 120, windowSeconds: 60 },
+  // An open event page reloading itself in the background, kept apart so that many open tabs
+  // behind one IP never block people opening a page or saving an answer.
+  refresh: { limit: 120, windowSeconds: 60 },
   feedback: { limit: 5, windowSeconds: 3600 },
   upload: { limit: 30, windowSeconds: 3600 },
 } satisfies Record<string, Rule>;
