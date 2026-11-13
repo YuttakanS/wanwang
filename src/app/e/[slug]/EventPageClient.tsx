@@ -22,16 +22,26 @@ import { WanWangEvent, Participant, EventCategory } from '@/types';
 import { formatLocalizedDate, formatLocalizedDateRange } from '@/lib/timeUtils';
 import { useI18n } from '@/lib/i18n';
 import { settlePendingRotation } from '@/lib/rotateAdminKey';
+import { startVisibleRefresh } from '@/lib/visibleRefresh';
+
+/** How often an open event page picks up other people's answers while it is on screen. */
+const REFRESH_INTERVAL_MS = 60_000;
+/** Switching back and forth between tabs reloads at most this often. */
+const REFRESH_MIN_GAP_MS = 10_000;
+/** After the server says to slow down, background reloads wait at least this long. */
+const REFRESH_BACKOFF_MS = 60_000;
 
 class EventLoadError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly retryAfterSeconds = 0) {
     super(message);
   }
 }
 
 async function readEventResponse(res: Response) {
   const data = await res.json().catch(() => null);
-  if (!res.ok || !data) throw new EventLoadError(data?.error || '', res.status);
+  if (!res.ok || !data) {
+    throw new EventLoadError(data?.error || '', res.status, Number(res.headers.get('Retry-After')) || 0);
+  }
   return data;
 }
 
@@ -50,8 +60,24 @@ export default function EventPageClient({ slug }: { slug: string }) {
   // Only the newest load may set state. An older one finishing last would hand the schedule a
   // participant list without the answer just saved, and it would then save a second answer.
   const latestLoadRef = useRef(0);
+  // Loads asked for by the page itself (first load, after a save, retry). A background refresh
+  // never starts while one runs, so it can neither make it stale nor stand in for it.
+  const foregroundLoadsRef = useRef(0);
+  // The last response that reached state, so a refresh that brings nothing new leaves the page alone.
+  const lastDataJsonRef = useRef('');
+  // No background reload before this time: one just ran, the server asked to slow down, or the
+  // event is gone.
+  const nextRefreshAtRef = useRef(0);
 
-  const fetchEventData = useCallback(async () => {
+  // A background load only picks up other people's changes. If it fails, the page keeps what it
+  // shows, unless the event is gone.
+  const loadEvent = useCallback(async (background: boolean) => {
+    if (background) {
+      if (foregroundLoadsRef.current > 0 || Date.now() < nextRefreshAtRef.current) return;
+      nextRefreshAtRef.current = Date.now() + REFRESH_MIN_GAP_MS;
+    } else {
+      foregroundLoadsRef.current++;
+    }
     const load = ++latestLoadRef.current;
     const isStale = () => load !== latestLoadRef.current;
     try {
@@ -75,6 +101,10 @@ export default function EventPageClient({ slug }: { slug: string }) {
         if (myToken) {
           headers['x-edit-token'] = myToken;
         }
+        // Counted apart from page loads, so open tabs cannot use up the limit for opening a page.
+        if (background) {
+          headers['x-wanwang-refresh'] = '1';
+        }
         return fetch(`/api/events/${slug}`, { headers, cache: 'no-store' });
       };
 
@@ -96,21 +126,39 @@ export default function EventPageClient({ slug }: { slug: string }) {
 
       if (isStale()) return;
       setLoadError(null);
-      setEvent(data.event);
-      setParticipants(data.participants || []);
+      const dataJson = JSON.stringify(data);
+      if (dataJson !== lastDataJsonRef.current) {
+        lastDataJsonRef.current = dataJson;
+        setEvent(data.event);
+        setParticipants(data.participants || []);
+      }
       setIsAdmin(Boolean(data.isAdmin));
       setShowAdminNotice(Boolean(data.isAdmin) && isAdminLinkPending(slug));
     } catch (err: unknown) {
       if (isStale()) return;
+      if (background) {
+        if (err instanceof EventLoadError && err.status === 429) {
+          nextRefreshAtRef.current = Date.now() + Math.max(REFRESH_BACKOFF_MS, err.retryAfterSeconds * 1000);
+        }
+        if (!(err instanceof EventLoadError && err.status === 404)) return;
+      }
+      // Nothing left to reload once the event is gone.
+      if (err instanceof EventLoadError && err.status === 404) nextRefreshAtRef.current = Infinity;
       setLoadError(
         err instanceof EventLoadError
           ? { status: err.status, message: err.message }
           : { status: 0, message: '' } // network failure
       );
     } finally {
+      if (!background) foregroundLoadsRef.current--;
       if (!isStale()) setIsLoading(false);
     }
   }, [slug]);
+
+  const fetchEventData = useCallback(() => loadEvent(false), [loadEvent]);
+
+  // Other people answer while this page is open; show their answers without a reload.
+  useEffect(() => startVisibleRefresh(() => loadEvent(true), REFRESH_INTERVAL_MS), [loadEvent]);
 
   useEffect(() => {
     fetchEventData();

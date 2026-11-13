@@ -14,7 +14,8 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const limited = await rateLimit(req, 'read');
+    const isRefresh = req.headers.get('x-wanwang-refresh') === '1';
+    const limited = await rateLimit(req, isRefresh ? 'refresh' : 'read');
     if (limited) return limited;
 
     const { slug } = await params;
