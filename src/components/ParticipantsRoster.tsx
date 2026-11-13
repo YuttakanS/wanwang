@@ -138,9 +138,9 @@ export default function ParticipantsRoster({
   return (
     <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-4">
       <div className="border-b-3 border-ink pb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-xl font-bold text-ink">
+        <h2 className="text-xl font-bold text-ink">
           {t('rosterTitle', { count: participants.length })}
-        </h3>
+        </h2>
         {isAdmin && (
           <button
             type="button"

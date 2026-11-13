@@ -495,7 +495,7 @@ export default function ScheduleMatrix({
                           <div
                             key={`${d.dateStr}-${index}`}
                             title={isFull ? t('slotFullNote') : d.isPast ? t('pastDateNote') : t('outOfRangeNote')}
-                            className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-line-soft bg-sunken text-faint cursor-not-allowed select-none"
+                            className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-line-soft bg-sunken text-muted cursor-not-allowed select-none"
                           >
                             <span>{d.dayNum}</span>
                             {isFull && <span className="text-[10px] leading-none font-bold">{t('slotFullTag')}</span>}
@@ -563,7 +563,7 @@ export default function ScheduleMatrix({
                               onClick={() => handleToggleSlot(slotId)}
                               className={`h-12 border-r-2 border-ink last:border-r-0 flex flex-col items-center justify-center font-mono text-xs transition-none ${
                                 isFull
-                                  ? 'bg-sunken text-faint cursor-not-allowed'
+                                  ? 'bg-sunken text-muted cursor-not-allowed'
                                   : isSelected
                                   ? 'bg-accent text-ink font-extrabold cursor-pointer'
                                   : 'bg-surface hover:bg-sunken text-ink/30 cursor-pointer'
@@ -628,7 +628,7 @@ export default function ScheduleMatrix({
                               title={isFull ? t('slotFullNote') : undefined}
                               className={`w-24 sm:w-28 h-8 shrink-0 border-r-2 border-ink last:border-r-0 transition-none flex items-center justify-center font-mono text-xs ${
                                 isFull
-                                  ? 'bg-sunken text-faint cursor-not-allowed'
+                                  ? 'bg-sunken text-muted cursor-not-allowed'
                                   : isSelected
                                   ? 'bg-accent text-ink font-extrabold border-ink cursor-pointer'
                                   : 'bg-surface hover:bg-sunken text-ink/25 cursor-pointer'
@@ -684,9 +684,9 @@ export default function ScheduleMatrix({
         <div className="bg-surface border-3 border-ink p-5 sm:p-6 space-y-5 motion-enter">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-3 border-ink pb-3">
             <div>
-              <h3 className="text-lg font-bold text-ink">
+              <h2 className="text-lg font-bold text-ink">
                 {t('inspectTitle')}
-              </h3>
+              </h2>
               <p className="text-xs text-muted mt-0.5">
                 {t('inspectSubtitle')}
               </p>
@@ -698,9 +698,9 @@ export default function ScheduleMatrix({
 
           {participants.length === 0 ? (
             <div className="py-10 text-center space-y-3 border-2 border-dashed border-ink p-5">
-              <h4 className="font-bold text-lg text-ink">
+              <h3 className="font-bold text-lg text-ink">
                 {t('emptyHeatmapTitle')}
-              </h4>
+              </h3>
               <p className="text-xs text-muted">
                 {t('emptyHeatmapDesc')}
               </p>
@@ -759,7 +759,7 @@ export default function ScheduleMatrix({
                         return (
                           <div
                             key={`${d.dateStr}-${index}`}
-                            className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-line-soft bg-sunken text-faint select-none"
+                            className="aspect-square flex flex-col items-center justify-center font-mono text-xs border-2 border-line-soft bg-sunken text-muted select-none"
                           >
                             <span>{d.dayNum}</span>
                           </div>
