@@ -26,7 +26,7 @@ const spaceMono = Space_Mono({
   display: "swap",
 });
 
-// A prerendered page has no per-request nonce, so the CSP in middleware would block its scripts.
+// A prerendered page has no per-request nonce, so the CSP set in proxy.ts would block its scripts.
 export const dynamic = "force-dynamic";
 
 // No maximum-scale or user-scalable=no: people must be able to zoom (WCAG 1.4.4).
@@ -55,13 +55,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // middleware.ts passes its CSP on this request header, so the inline script can carry its nonce.
+  // proxy.ts passes its CSP on this request header, so the inline script can carry its nonce.
   const csp = (await headers()).get("content-security-policy");
   const nonce = csp?.match(/'nonce-([^']+)'/)?.[1];
 
   return (
     // The init script sets data-theme and the space for "My events" before React loads, which React would otherwise report.
-    <html lang="th" className={`scroll-smooth ${plexThai.variable} ${spaceMono.variable}`} suppressHydrationWarning>
+    // Next 16 no longer turns smooth scrolling off for route changes on its own; this asks it to.
+    <html lang="th" data-scroll-behavior="smooth" className={`scroll-smooth ${plexThai.variable} ${spaceMono.variable}`} suppressHydrationWarning>
       <head>
         <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT + MY_EVENTS_SPACE_SCRIPT }} />
       </head>
