@@ -250,6 +250,66 @@ describe('updateEvent', () => {
   });
 });
 
+describe('updateEvent sign', () => {
+  const sign = { text: 'Moved to 6 pm', color: '#ffe500' };
+  const existing = { data: { ...stored, granularity: 'day', dates: [] }, error: null };
+  const payloadWritten = () => argsOf(state.calls.find(c => stepsNamed(c, 'update').length > 0)!, 'update');
+
+  it('writes the sign and returns it', async () => {
+    state.results.push(existing, { data: { id: 'event-1', dates: [], sign }, error: null });
+
+    const updated = await updateEvent('abc123', CURRENT_KEY, { sign });
+
+    expect(payloadWritten().sign).toEqual(sign);
+    expect(updated?.sign).toEqual(sign);
+  });
+
+  it('writes null to take the sign down', async () => {
+    state.results.push(existing, { data: { id: 'event-1', dates: [], sign: null }, error: null });
+
+    const updated = await updateEvent('abc123', CURRENT_KEY, { sign: null });
+
+    expect(payloadWritten()).toHaveProperty('sign', null);
+    expect(updated?.sign).toBeNull();
+  });
+
+  it('leaves the sign out of an edit that does not mention it', async () => {
+    state.results.push(existing, { data: { id: 'event-1', dates: [] }, error: null });
+
+    const updated = await updateEvent('abc123', CURRENT_KEY, { title: 'New' });
+
+    expect(payloadWritten()).not.toHaveProperty('sign');
+    expect(updated?.sign).toBeNull();
+  });
+
+  it.each([{ text: 'no colour' }, { text: '', color: '#ffffff' }, 'text', 5])(
+    'reads a stored %j as no sign',
+    async bad => {
+      state.results.push(existing, { data: { id: 'event-1', dates: [], sign: bad }, error: null });
+
+      expect((await updateEvent('abc123', CURRENT_KEY, { title: 'New' }))?.sign).toBeNull();
+    }
+  );
+
+  const missingColumn = {
+    code: 'PGRST204',
+    message: "Could not find the 'sign' column of 'events' in the schema cache",
+  };
+
+  it('says the sign is unavailable when the database has no column for it yet', async () => {
+    state.results.push(existing, { data: null, error: missingColumn });
+
+    await expect(updateEvent('abc123', CURRENT_KEY, { sign })).rejects.toThrow('SIGN_UNAVAILABLE');
+  });
+
+  it('does not blame the sign for another missing column', async () => {
+    const other = { code: 'PGRST204', message: "Could not find the 'questions' column of 'events' in the schema cache" };
+    state.results.push(existing, { data: null, error: other });
+
+    await expect(updateEvent('abc123', CURRENT_KEY, { sign, questions: [] })).rejects.toThrow("'questions' column");
+  });
+});
+
 describe('updateEvent slot cap', () => {
   // 47 half-hour slots a day: 212 days is under the 10,000 cap and 213 is over.
   const fine = { start_time: '00:00', end_time: '23:30', slot_interval: 30 };

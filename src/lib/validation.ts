@@ -8,10 +8,11 @@ import {
   MAX_EVENT_SLOTS,
   QUESTION_LIMITS,
   QUESTION_TYPES,
+  SIGN_LIMITS,
   TimeGranularity,
   WanWangEvent,
 } from '@/types';
-import type { Answers, EventQuestion, QuestionType } from '@/types';
+import type { Answers, EventQuestion, EventSign, QuestionType } from '@/types';
 import { countEventSlots, generateAllEventSlots } from './timeUtils';
 
 export const LIMITS = {
@@ -161,6 +162,25 @@ function optionalLimit(v: unknown, max: number, field: string): number | null {
   return v;
 }
 
+const SIGN_COLOR_RE = /^#[0-9a-f]{6}$/;
+
+/** The creator's sign. null, a missing value or an empty text all mean "no sign". */
+export function validateSign(raw: unknown): EventSign | null {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw new ValidationError('Invalid sign');
+  const sign = raw as Record<string, unknown>;
+
+  // The sign is one line: line breaks, tabs and other control characters become a space.
+  const oneLine = typeof sign.text === 'string' ? sign.text.replace(/[\p{Cc}\s]+/gu, ' ') : sign.text;
+  const text = str(oneLine, SIGN_LIMITS.text, 'sign text');
+  // Zero-width characters alone would save a sign with nothing on it.
+  if (!text.replace(/[\p{Cf}\s]/gu, '')) return null;
+
+  const color = typeof sign.color === 'string' ? sign.color.toLowerCase() : '';
+  if (!SIGN_COLOR_RE.test(color)) throw new ValidationError('Invalid sign colour');
+  return { text, color };
+}
+
 export function validateEventInput(body: Record<string, unknown>): ValidEventInput {
   const title = str(body.title, LIMITS.title, 'title', true);
   const description = str(body.description, LIMITS.description, 'description');
@@ -221,11 +241,14 @@ export interface ValidEventPatch {
   questions?: EventQuestion[];
   maxPerSlot?: number | null;
   maxPicks?: number | null;
+  sign?: EventSign | null;
 }
 
 /** Whitelist PATCH fields (blocks overriding id/slug/adminKey). */
 export function validateEventPatch(body: Record<string, unknown>): ValidEventPatch {
   const out: ValidEventPatch = {};
+  // null takes the sign down.
+  if (body.sign !== undefined) out.sign = validateSign(body.sign);
   if (body.questions !== undefined) out.questions = validateQuestions(body.questions);
   // null clears a limit.
   if (body.maxPerSlot !== undefined) {

@@ -106,6 +106,12 @@ export async function PATCH(
         { status: 400 }
       );
     }
+    if (error?.message === 'SIGN_UNAVAILABLE') {
+      return NextResponse.json(
+        { error: 'ป้าย LED ยังไม่พร้อมใช้งาน (The LED sign is not available yet)' },
+        { status: 503 }
+      );
+    }
     console.error('Update event error:', err);
     return NextResponse.json({ error: 'Failed to update event' }, { status: 500 });
   }
