@@ -173,7 +173,8 @@ export function validateSign(raw: unknown): EventSign | null {
   // The sign is one line: line breaks, tabs and other control characters become a space.
   const oneLine = typeof sign.text === 'string' ? sign.text.replace(/[\p{Cc}\s]+/gu, ' ') : sign.text;
   const text = str(oneLine, SIGN_LIMITS.text, 'sign text');
-  if (!text) return null;
+  // Zero-width characters alone would save a sign with nothing on it.
+  if (!text.replace(/[\p{Cf}\s]/gu, '')) return null;
 
   const color = typeof sign.color === 'string' ? sign.color.toLowerCase() : '';
   if (!SIGN_COLOR_RE.test(color)) throw new ValidationError('Invalid sign colour');

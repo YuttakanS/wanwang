@@ -201,10 +201,14 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS sign JSONB;
 
 ALTER TABLE events DROP CONSTRAINT IF EXISTS events_sign_limits;
 ALTER TABLE events ADD CONSTRAINT events_sign_limits CHECK (
-    sign IS NULL OR (
+    -- COALESCE: a missing key makes its test NULL, and a CHECK lets NULL through.
+    sign IS NULL OR COALESCE(
         jsonb_typeof(sign) = 'object'
+        AND jsonb_typeof(sign->'text') = 'string'
         AND char_length(sign->>'text') BETWEEN 1 AND 120
-        AND sign->>'color' ~ '^#[0-9a-f]{6}$'
+        AND jsonb_typeof(sign->'color') = 'string'
+        AND sign->>'color' ~ '^#[0-9a-f]{6}$',
+        FALSE
     )
 );
 

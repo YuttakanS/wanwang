@@ -287,7 +287,23 @@ describe('validateSign', () => {
     expect(validateSign({ text: 'one\r\ntwo\tthree\u0000four', color: '#ffffff' })?.text).toBe('one two three four');
   });
 
-  it.each([null, undefined, { text: '', color: '#ffffff' }, { text: ' \n ', color: '#ffffff' }, { color: '#ffffff' }])(
+  it.each(['s', 'p', '{', '!'])('keeps the one-character text %s', text => {
+    expect(validateSign({ text, color: '#ffffff' })?.text).toBe(text);
+  });
+
+  it('keeps the joiners inside an emoji', () => {
+    const family = '\u{1F468}‍\u{1F469}‍\u{1F467}';
+    expect(validateSign({ text: family, color: '#ffffff' })?.text).toBe(family);
+  });
+
+  it.each([
+    null,
+    undefined,
+    { text: '', color: '#ffffff' },
+    { text: ' \n ', color: '#ffffff' },
+    { text: '​ ‍﻿', color: '#ffffff' },
+    { color: '#ffffff' },
+  ])(
     'reads %j as no sign',
     raw => {
       expect(validateSign(raw)).toBeNull();
