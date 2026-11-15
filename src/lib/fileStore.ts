@@ -10,7 +10,7 @@ import { Answers, isFileAnswer } from '@/types';
 export const FILE_BUCKET = 'event-files';
 
 /** Per event, so one shared link cannot fill the whole project's storage. */
-export const EVENT_FILE_QUOTA = { files: 200, bytes: 500 * 1024 * 1024 } as const;
+export const EVENT_FILE_QUOTA = { files: 200, bytes: 2 * 1024 * 1024 * 1024 } as const;
 
 const DOWNLOAD_URL_SECONDS = 60;
 const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000;
