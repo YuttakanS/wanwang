@@ -7,6 +7,7 @@ import BestTimeLeaderboard from '@/components/BestTimeLeaderboard';
 import EventShareBar from '@/components/EventShareBar';
 import ParticipantsRoster from '@/components/ParticipantsRoster';
 import AdminLinkNotice from '@/components/AdminLinkNotice';
+import LedSign from '@/components/LedSign';
 import StatusPage from '@/components/StatusPage';
 import SiteFooter from '@/components/SiteFooter';
 import {
@@ -239,6 +240,8 @@ export default function EventPageClient({ slug }: { slug: string }) {
       <Navbar />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 space-y-6 motion-stagger">
+        {event.sign && <LedSign text={event.sign.text} color={event.sign.color} />}
+
         {showAdminNotice && event.adminKey && (
           <AdminLinkNotice slug={slug} adminKey={event.adminKey} onDismiss={dismissAdminNotice} />
         )}

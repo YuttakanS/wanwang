@@ -75,6 +75,39 @@ describe('updateEvent slot cap without Supabase', () => {
   });
 });
 
+describe('updateEvent sign without Supabase', () => {
+  const sign = { text: 'Moved to 6 pm', color: '#ffe500' };
+
+  beforeEach(() => {
+    files.clear();
+  });
+
+  it('saves the sign and returns it', async () => {
+    seed();
+
+    const updated = await updateEvent('abc123', KEY, { sign });
+
+    expect(updated?.sign).toEqual(sign);
+    expect(stored().sign).toEqual(sign);
+  });
+
+  it('takes the sign down', async () => {
+    seed({ sign });
+
+    await updateEvent('abc123', KEY, { sign: null });
+
+    expect(stored().sign).toBeNull();
+  });
+
+  it('keeps the sign through an edit that does not mention it', async () => {
+    seed({ sign });
+
+    await updateEvent('abc123', KEY, { title: 'New' });
+
+    expect(stored().sign).toEqual(sign);
+  });
+});
+
 describe('updateEvent range changes without Supabase', () => {
   const range = { dateRangeStart: '2026-01-02', dateRangeEnd: '2026-01-03' };
 

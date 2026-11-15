@@ -195,6 +195,19 @@ ALTER TABLE events ADD CONSTRAINT events_question_limits CHECK (
     AND (max_picks IS NULL OR max_picks BETWEEN 1 AND 10000)
 );
 
+-- The creator's LED-style sign at the top of the event page: {text, color}; NULL = no sign.
+-- The text length must match SIGN_LIMITS.text in src/types/index.ts.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS sign JSONB;
+
+ALTER TABLE events DROP CONSTRAINT IF EXISTS events_sign_limits;
+ALTER TABLE events ADD CONSTRAINT events_sign_limits CHECK (
+    sign IS NULL OR (
+        jsonb_typeof(sign) = 'object'
+        AND char_length(sign->>'text') BETWEEN 1 AND 120
+        AND sign->>'color' ~ '^#[0-9a-f]{6}$'
+    )
+);
+
 -- The API checks the per-slot limit before saving, but two saves arriving together would both
 -- pass that check. This trigger is what makes the limit hold: saves for one event take a lock
 -- and are counted one at a time. A slot the person already held is not counted again, so people

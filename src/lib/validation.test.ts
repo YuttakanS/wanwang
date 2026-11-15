@@ -14,6 +14,7 @@ import {
   validateParticipantInput,
   validateQuestions,
   validateRange,
+  validateSign,
   verifySecret,
 } from './validation';
 
@@ -271,6 +272,47 @@ describe('limits on an event', () => {
   it('lets an edit clear a limit, and leaves limits alone when it does not mention them', () => {
     expect(validateEventPatch({ maxPerSlot: null })).toEqual({ maxPerSlot: null });
     expect(validateEventPatch({ title: 'New' })).toEqual({ title: 'New' });
+  });
+});
+
+describe('validateSign', () => {
+  it('keeps the text and lower-cases the colour', () => {
+    expect(validateSign({ text: '  Moved to 6 pm  ', color: '#FFE500' })).toEqual({
+      text: 'Moved to 6 pm',
+      color: '#ffe500',
+    });
+  });
+
+  it('puts the text on one line', () => {
+    expect(validateSign({ text: 'one\r\ntwo\tthree\u0000four', color: '#ffffff' })?.text).toBe('one two three four');
+  });
+
+  it.each([null, undefined, { text: '', color: '#ffffff' }, { text: ' \n ', color: '#ffffff' }, { color: '#ffffff' }])(
+    'reads %j as no sign',
+    raw => {
+      expect(validateSign(raw)).toBeNull();
+    }
+  );
+
+  it.each([
+    ['a text that is too long', { text: 'x'.repeat(121), color: '#ffffff' }],
+    ['a text that is not a string', { text: 5, color: '#ffffff' }],
+    ['a missing colour', { text: 'Hi' }],
+    ['a colour name', { text: 'Hi', color: 'red' }],
+    ['a short hex colour', { text: 'Hi', color: '#fff' }],
+    ['a colour carrying CSS', { text: 'Hi', color: '#ffffff;background:url(x)' }],
+    ['a list', ['Hi', '#ffffff']],
+    ['a string', 'Hi'],
+  ])('rejects %s', (_name, raw) => {
+    expect(() => validateSign(raw)).toThrow(ValidationError);
+  });
+
+  it('lets an edit set the sign or take it down, and leaves it alone when not mentioned', () => {
+    expect(validateEventPatch({ sign: { text: 'Hi', color: '#39ff14' } })).toEqual({
+      sign: { text: 'Hi', color: '#39ff14' },
+    });
+    expect(validateEventPatch({ sign: null })).toEqual({ sign: null });
+    expect(validateEventPatch({ title: 'New' })).not.toHaveProperty('sign');
   });
 });
 

@@ -18,6 +18,7 @@ import { newAdminKey, requestRotation } from '@/lib/rotateAdminKey';
 import { copyText } from '@/lib/clipboard';
 import ConfirmModal from '@/components/ConfirmModal';
 import EditEventForm from '@/components/EditEventForm';
+import LedSignEditor from '@/components/LedSignEditor';
 import { useI18n } from '@/lib/i18n';
 
 interface EventShareBarProps {
@@ -62,7 +63,10 @@ export default function EventShareBar({
   const [deleteFailed, setDeleteFailed] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const closeDeleteConfirm = useCallback(() => setConfirmingDelete(false), []);
-  const [isEditing, setIsEditing] = useState(false);
+  // One form at a time under the admin buttons.
+  const [adminForm, setAdminForm] = useState<'edit' | 'sign' | null>(null);
+  const toggleAdminForm = (form: 'edit' | 'sign') =>
+    setAdminForm(current => (current === form ? null : form));
   const [confirmingRotate, setConfirmingRotate] = useState(false);
   const closeRotateConfirm = useCallback(() => setConfirmingRotate(false), []);
   const router = useRouter();
@@ -288,12 +292,22 @@ export default function EventShareBar({
 
           <button
             type="button"
-            aria-expanded={isEditing}
+            aria-expanded={adminForm === 'edit'}
             disabled={isUpdating}
-            onClick={() => setIsEditing(editing => !editing)}
+            onClick={() => toggleAdminForm('edit')}
             className="px-2 py-1 bg-surface hover:bg-ink hover:text-surface border-2 border-ink font-mono text-xs transition-none"
           >
             {t('editEventBtn')}
+          </button>
+
+          <button
+            type="button"
+            aria-expanded={adminForm === 'sign'}
+            disabled={isUpdating}
+            onClick={() => toggleAdminForm('sign')}
+            className="px-2 py-1 bg-surface hover:bg-ink hover:text-surface border-2 border-ink font-mono text-xs transition-none"
+          >
+            {t('ledSignBtn')}
           </button>
 
           <button
@@ -337,13 +351,24 @@ export default function EventShareBar({
         </div>
       )}
 
-      {isAdmin && openPanel === 'admin' && isEditing && (
+      {isAdmin && openPanel === 'admin' && adminForm === 'edit' && (
         <EditEventForm
           event={event}
           hasVotes={participantsHaveSlots(participants)}
-          onCancel={() => setIsEditing(false)}
+          onCancel={() => setAdminForm(null)}
           onSaved={() => {
-            setIsEditing(false);
+            setAdminForm(null);
+            onEventUpdated();
+          }}
+        />
+      )}
+
+      {isAdmin && openPanel === 'admin' && adminForm === 'sign' && (
+        <LedSignEditor
+          event={event}
+          onCancel={() => setAdminForm(null)}
+          onSaved={() => {
+            setAdminForm(null);
             onEventUpdated();
           }}
         />

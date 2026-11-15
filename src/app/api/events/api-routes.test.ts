@@ -192,6 +192,7 @@ describe('PATCH /api/events/[slug]', () => {
     ['UNAUTHORIZED', 403],
     ['CANNOT_CHANGE_GRANULARITY_WITH_VOTES', 400],
     ['CANNOT_SHRINK_RANGE_WITH_VOTES', 400],
+    ['SIGN_UNAVAILABLE', 503],
     ['some database failure', 500],
   ])('maps the error %s to %i', async (message, status) => {
     db.updateEvent.mockRejectedValue(new Error(message));
@@ -200,6 +201,23 @@ describe('PATCH /api/events/[slug]', () => {
 
     expect(res.status).toBe(status);
     if (status === 500) expect(await res.text()).not.toContain('database failure');
+  });
+
+  it('passes a sign on, and null to take it down', async () => {
+    db.updateEvent.mockResolvedValue(makeEvent());
+
+    await PATCH(request('PATCH', eventPath, { headers: asAdmin, body: { sign: { text: ' Hi ', color: '#FFE500' } } }), params);
+    await PATCH(request('PATCH', eventPath, { headers: asAdmin, body: { sign: null } }), params);
+
+    expect(db.updateEvent).toHaveBeenNthCalledWith(1, SLUG, ADMIN_KEY, { sign: { text: 'Hi', color: '#ffe500' } });
+    expect(db.updateEvent).toHaveBeenNthCalledWith(2, SLUG, ADMIN_KEY, { sign: null });
+  });
+
+  it('answers 400 for a sign with a bad colour', async () => {
+    const res = await PATCH(request('PATCH', eventPath, { headers: asAdmin, body: { sign: { text: 'Hi', color: 'red' } } }), params);
+
+    expect(res.status).toBe(400);
+    expect(db.updateEvent).not.toHaveBeenCalled();
   });
 
   it('answers 400 and explains when an edit would exceed the slot cap', async () => {

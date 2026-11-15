@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { WanWangEvent, Participant, AdminEventSummary, TimeGranularity } from '@/types';
-import type { Answers, EventQuestion } from '@/types';
+import type { Answers, EventQuestion, EventSign } from '@/types';
 import { supabase, shouldUseSupabase } from './supabaseClient';
 import { LIMITS, ValidationError, hashSecret, rangeDays, verifySecret } from './validation';
 import { countEventSlots, generateDatesInRange, formatDateToISO, participantsHaveSlots } from './timeUtils';
@@ -60,11 +60,21 @@ async function writeLocalParticipants(participants: Participant[]): Promise<void
 }
 
 /** The optional columns, read the same way everywhere an event row becomes an event. */
-function extrasFromRow(row: { questions?: unknown; max_per_slot?: number | null; max_picks?: number | null }) {
+function extrasFromRow(row: {
+  questions?: unknown;
+  max_per_slot?: number | null;
+  max_picks?: number | null;
+  sign?: unknown;
+}) {
+  const sign = row.sign as Partial<EventSign> | null | undefined;
   return {
     questions: (Array.isArray(row.questions) ? row.questions : []) as EventQuestion[],
     maxPerSlot: row.max_per_slot ?? null,
     maxPicks: row.max_picks ?? null,
+    sign:
+      sign && typeof sign.text === 'string' && sign.text && typeof sign.color === 'string'
+        ? { text: sign.text, color: sign.color }
+        : null,
   };
 }
 
@@ -320,6 +330,7 @@ export async function updateEvent(
     if (updates.questions !== undefined) payload.questions = updates.questions;
     if (updates.maxPerSlot !== undefined) payload.max_per_slot = updates.maxPerSlot;
     if (updates.maxPicks !== undefined) payload.max_picks = updates.maxPicks;
+    if (updates.sign !== undefined) payload.sign = updates.sign;
 
     if (updates.dateRangeStart && updates.dateRangeEnd) {
       const oldDates: string[] = existing.dates || [];
@@ -345,7 +356,13 @@ export async function updateEvent(
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      // PGRST204: this database has no sign column yet, because schema.sql has not been re-run on it.
+      if (updates.sign !== undefined && error.code === 'PGRST204' && error.message.includes("'sign'")) {
+        throw new Error('SIGN_UNAVAILABLE');
+      }
+      throw new Error(error.message);
+    }
 
     const dates = data.dates || [];
     const dateRangeStart = dates.length > 0 ? dates[0] : formatDateToISO(new Date());
@@ -432,6 +449,7 @@ export async function updateEvent(
     ...(updates.questions !== undefined && { questions: updates.questions }),
     ...(updates.maxPerSlot !== undefined && { maxPerSlot: updates.maxPerSlot }),
     ...(updates.maxPicks !== undefined && { maxPicks: updates.maxPicks }),
+    ...(updates.sign !== undefined && { sign: updates.sign }),
     dateRangeStart: newStart,
     dateRangeEnd: newEnd,
     dates: newDates,

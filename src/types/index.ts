@@ -98,9 +98,21 @@ export interface WanWangEvent {
   maxPerSlot?: number | null;
   /** Most slots one person may pick; null or missing means no limit. */
   maxPicks?: number | null;
+  /** A message the creator shows on an LED-style sign at the top of the page; null or missing means none. */
+  sign?: EventSign | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export interface EventSign {
+  text: string;
+  /** "#rrggbb" in lower case. */
+  color: string;
+}
+
+// supabase/schema.sql enforces the same length.
+export const SIGN_LIMITS = { text: 120 } as const;
+export const SIGN_DEFAULT_COLOR = '#ffe500';
 
 export const QUESTION_TYPES = ['text', 'choice', 'multi', 'file'] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
