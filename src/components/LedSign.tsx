@@ -27,6 +27,8 @@ const LIT_COVERAGE = 0.4;
 const TALLEST_TEXT = 'ปี่ป๊ฏูฎูÁy';
 /** Wider than this and some browsers hand back a blank canvas. 120 of the widest Latin letters need 9,204. */
 const MAX_SOURCE_WIDTH = 16000;
+/** How long the sign stays unlit waiting for the site's font before it uses what the device has. */
+const FONT_WAIT_MS = 3000;
 
 /**
  * 'scroll' moves the text. People who asked for reduced motion get 'still' when the whole text
@@ -234,16 +236,23 @@ export default function LedSign({ text, color, preview = false }: LedSignProps) 
     // first font is waited for: the ones after it are system fonts, every device lacks some of
     // them, and asking for the whole list fails at once.
     const webFont = `700 32px ${fontFamily.split(',')[0]}`;
-    if (!document.fonts?.check || document.fonts.check(webFont, text)) {
+    // The letter size is measured from the tallest text, so its letters must have arrived too.
+    const needed = TALLEST_TEXT + text;
+    let fontTimeout = 0;
+    if (!document.fonts?.check || document.fonts.check(webFont, needed)) {
       lightUp();
     } else {
       layOut();
       document.fonts
-        .load(webFont, text)
+        .load(webFont, needed)
         .catch(() => undefined)
         .then(() => {
           if (!disposed) lightUp();
         });
+      // A font that neither arrives nor fails must not leave the sign unlit for good.
+      fontTimeout = window.setTimeout(() => {
+        if (!bitmap) lightUp();
+      }, FONT_WAIT_MS);
     }
 
     const resizeObserver = new ResizeObserver(layOut);
@@ -260,6 +269,7 @@ export default function LedSign({ text, color, preview = false }: LedSignProps) 
 
     return () => {
       disposed = true;
+      window.clearTimeout(fontTimeout);
       state.refresh = () => {};
       cancelAnimationFrame(frameRequest);
       resizeObserver.disconnect();
